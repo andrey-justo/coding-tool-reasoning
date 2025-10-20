@@ -1,0 +1,9 @@
+{
+    "edge_conditions": [
+        "Test even distribution of data across all shards.",
+        "Test requests are retried or redirected when a shard is unavailable.",
+        "Test adding or removing a shard triggers data rebalancing.",
+        "Test all data assigned to a single shard.",
+        "Test lookup for a non-existent shard."
+    ]
+}

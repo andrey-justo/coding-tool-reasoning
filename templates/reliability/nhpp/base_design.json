@@ -1,0 +1,11 @@
+{
+  "name": "Non-homogeneous Poisson Process (NHPP) Design Pattern",
+  "problem": "Model and simulate time-dependent event arrivals (e.g., failures, requests) where the rate (intensity) varies over time. Useful for reliability analysis and predicting system behavior under dynamic conditions.",
+  "steps": [
+    "Define the event type and time-dependent rate function.",
+    "Implement NHPP simulation logic to generate events over time.",
+    "Collect and analyze event data for reliability metrics.",
+    "Use results to inform reliability improvements or system design.",
+    "Test NHPP model with different rate functions and scenarios."
+  ]
+}

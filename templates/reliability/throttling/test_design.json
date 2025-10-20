@@ -1,0 +1,9 @@
+{
+    "edge_conditions": [
+        "Test client exceeding allowed requests in the time window is throttled.",
+        "Test requests are queued when resources are near the limit.",
+        "Test all requests are processed when under the limit.",
+        "Test multiple clients hitting the limit simultaneously.",
+        "Test time window boundary conditions."
+    ]
+}

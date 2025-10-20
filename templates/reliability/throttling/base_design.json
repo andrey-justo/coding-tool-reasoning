@@ -1,0 +1,11 @@
+{
+  "name": "Throttling Design Pattern",
+  "problem": "Define a function to preserve usage of resources based on client requests. Preserving the usage should be based on the timing bucket and maximum requests allowed; if resources are overloaded then slow requests until it cannot receive any other requests.",
+  "steps": [
+    "Identify the resource or service to throttle.",
+    "Implement a throttling mechanism using timing buckets and request limits.",
+    "Monitor request rates and slow down requests when limits are approached.",
+    "Block or queue requests when the system is overloaded.",
+    "Test throttling under normal and peak load conditions."
+  ]
+}

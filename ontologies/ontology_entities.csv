@@ -1,0 +1,56 @@
+Entity,Intent,Action,TargetEntity
+Function,Define a reusable operation,Call,Class
+Class,Encapsulate data and behavior,Instantiate,Object
+Object,Represent an instance,Invoke,Function
+Module,Group related code,Import,Module
+Variable,Store data,Assign,Value
+Function,Improve readability,Extract,Function
+Variable,Increase clarity,Rename,Variable
+Class,Enhance structure,Move,Module
+Function,Replace deprecated logic,Replace,Function
+Module,Split responsibilities,Extract,Module
+Function,Port logic to new language,Translate,Function_B
+Class,Map structure to new language,Map,Class_B
+Module,Adapt module to target language,Adapt,Module_B
+Variable,Convert data type,Convert,Variable_B
+Object,Recreate instance in target language,Instantiate,Object_B
+Class,Hide internal details,Encapsulate,Variable
+Class,Reuse behavior,Inherit,Class
+Class,Specialize behavior,Override,Function
+Class,Build complex types,Compose,Class
+Class,Group related objects,Aggregate,Object
+Object,Access encapsulated data,Get,Variable
+Object,Modify encapsulated data,Set,Variable
+Module,Expose public API,Encapsulate,Function
+Naming,Improve code clarity,Rename,Identifier
+Comment,Explain intent,Add,Comment
+Comment,Remove obsolete explanation,Delete,Comment
+Error,Handle exceptional case,Throw,Exception
+Error,Prevent failure,Catch,Exception
+Test,Verify behavior,Assert,Condition
+Test,Ensure code correctness,Write,Test
+Code,Remove duplication,Extract,Function
+Code,Increase cohesion,Group,RelatedCode
+Code,Reduce coupling,Decouple,Module
+Function,Ensure no side effects,Make,PureFunction
+Function,Accept function as argument,Define,HigherOrderFunction
+Function,Return function as result,Create,HigherOrderFunction
+Function,Combine functions,Compose,Function
+Function,Partially apply arguments,Curry,Function
+Data,Prevent modification,Make,Immutable
+Collection,Transform elements,Map,Function
+Collection,Select elements,Filter,Function
+Collection,Aggregate elements,Reduce,Function
+Function,Preserve referential transparency,Enforce,Purity
+User,Verify identity,Authenticate,Credential
+User,Grant access,Authorize,Resource
+Input,Prevent malicious data,Validate,Input
+Data,Protect confidentiality,Encrypt,Data
+Data,Ensure integrity,Sign,Data
+Data,Store securely,Hash,Data
+System,Record security events,Log,Event
+System,Track access,Audit,Action
+Code,Prevent vulnerabilities,Sanitize,Input
+Code,Mitigate attacks,Patch,Vulnerability
+Code,Hide implementation details,Encapsulate,Code
+Code,Reduce dependencies,Decouple,Component

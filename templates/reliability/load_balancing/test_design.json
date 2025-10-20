@@ -1,0 +1,9 @@
+{
+    "edge_conditions": [
+        "Test even distribution of requests across all servers.",
+        "Test routing skips unavailable servers.",
+        "Test all servers healthy and available.",
+        "Test with only one server in the pool.",
+        "Test with empty server pool (should handle gracefully)."
+    ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Rate Limiting Design Pattern",
+  "problem": "Define a function to preserve usage of resources based on client requests. Preserving the usage should be based on the timing bucket and maximum requests allowed; if resources are overloaded then reject all incoming requests.",
+  "steps": [
+    "Identify the resource or API to protect with rate limiting.",
+    "Implement a rate limiter using timing buckets and request limits.",
+    "Reject requests that exceed the defined limits.",
+    "Monitor and log rate limit violations.",
+    "Test the rate limiter under normal and burst traffic scenarios."
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Circuit Breaker Design Pattern",
+  "problem": "Define threshold algorithm to call function and measure failures through a period of time. Once it reaches the threshold, it falls back to another function, providing a subset of functionalities compared to the default function.",
+  "steps": [
+    "Identify the critical service or component that requires protection.",
+    "Implement a circuit breaker that monitors the service's health and failure rates.",
+    "Define thresholds for failures within a time window.",
+    "Configure fallback logic to activate when the threshold is reached.",
+    "Test the circuit breaker for rapid failures and recovery scenarios."
+  ]
+}

@@ -1,0 +1,9 @@
+{
+    "edge_conditions": [
+        "Test client requests are blocked when the rate limit is reached.",
+        "Test requests are allowed again after the time window resets.",
+        "Test multiple clients are rate limited independently.",
+        "Test burst of requests at the window boundary.",
+        "Test zero or negative rate limit value."
+    ]
+}

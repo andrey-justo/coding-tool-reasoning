@@ -1,0 +1,11 @@
+{
+  "name": "Load Balancing Design Pattern",
+  "problem": "Define a function which routes requests through servers. The routing should be decided by the round-robin algorithm.",
+  "steps": [
+    "Identify the set of servers or resources to balance.",
+    "Implement a load balancer that distributes requests using a round-robin or other balancing algorithm.",
+    "Monitor server health and remove unhealthy servers from the pool.",
+    "Ensure requests are routed efficiently and fairly.",
+    "Test the load balancer under various load and failure scenarios."
+  ]
+}

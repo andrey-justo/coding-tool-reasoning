@@ -1,0 +1,9 @@
+{
+    "edge_conditions": [
+        "Test event rate changes over time are reflected in simulation output.",
+        "Test no events occur when intensity function is zero.",
+        "Test simulation matches expected statistical properties (e.g., mean time between events).",
+        "Test negative or undefined intensity function is handled.",
+        "Test very high event rate (stress test)."
+    ]
+}

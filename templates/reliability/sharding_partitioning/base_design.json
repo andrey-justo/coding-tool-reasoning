@@ -1,0 +1,11 @@
+{
+  "name": "Sharding and Partitioning Design Pattern",
+  "problem": "Efficiently distribute and manage data or workload across multiple partitions (shards) to improve scalability, fault isolation, and reliability. Ensures that failures in one shard do not affect others and enables parallel processing.",
+  "steps": [
+    "Identify the data or workload to partition.",
+    "Define partitioning (sharding) strategy based on keys or ranges.",
+    "Implement logic to route requests to the correct shard.",
+    "Monitor shard health and rebalance data if necessary.",
+    "Test partitioning under normal and failure scenarios."
+  ]
+}

@@ -1,0 +1,5 @@
+# List of available models and their configuration
+- model_name: gpt-4o
+  provider: AzureOpenAI
+  endpoint: https://test-graph-rag.openai.azure.com/
+  api_version: 2024-12-01-preview
