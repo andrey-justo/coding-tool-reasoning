@@ -21,3 +21,7 @@ Given a natural language description, extract the following information as a JSO
 - Only output the JSON object, with all fields filled if possible.
 - If a field cannot be determined, leave it as an empty string or an empty array as appropriate.
 - Do not include any explanations or extra text, only the JSON object.
+
+# Input
+
+{{input}}

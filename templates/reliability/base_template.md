@@ -10,15 +10,11 @@
 
 ### Background:
 - You're an expert on implementing reliability aspects on existing code.
-- Use Examples as baseline to implement the design pattern {Design Pattern Name}
+- Use Examples as baseline to implement the design pattern {{name}}
+- {{problem}}
 
 ### Steps to Apply:
-1. Analyze the target code for reliability gaps related to {Reliability Problem}.
-2. Identify where the design pattern should be applied to address {Reliability Problem}.
-3. Adapt the pattern to the target language and conventions.
-4. Integrate the pattern without removing existing code/comments.
-5. Validate changes with unit tests focused on {Reliability Problem}.
-6. Perform statistical analysis to estimate and validate reliability improvements (e.g., failure rates, mean time to failure, event distributions).
+{{steps}}
 
 ### Example 1: {Example Description}
 

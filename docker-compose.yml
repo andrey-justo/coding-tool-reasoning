@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/app
+    environment:
+      - LOCALAI_ENDPOINT=http://localai:8080
+    depends_on:
+      - localai
+    networks:
+      - app-network
+
+  localai:
+    build:
+      context: ./docker/localai
+      dockerfile: Dockerfile
+    ports:
+      - "9090:8080"
+    volumes:
+      - ./models:/models  # Mount point for your AI models
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

@@ -2,6 +2,7 @@
 # No external dependencies required for initial version
 # Add more as needed
 openai
+requests
 networkx
 matplotlib
 pyyaml==6.0.3

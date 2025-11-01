@@ -20,3 +20,7 @@ For each input, output a JSON object in the following format:
 If the pattern does not match any of the above, return the original name and set "formatted_design_pattern_name" to "Unknown".
 
 Only output the JSON object, and do not include any explanations or additional text.
+
+# Input
+
+{{input}}

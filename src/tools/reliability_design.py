@@ -1,9 +1,11 @@
-from agent_framework import ToolProtocol
+import json
+from typing import Any
+from agent_framework import AgentRunResponse, AgentThread, BaseAgent, ChatMessage, ToolProtocol
 from llm_client.multi_model_llm_client import MultiModelLLMClient
 import os
 
 
-class ReliabilityDesignTool(ToolProtocol):
+class ReliabilityDesignTool(BaseAgent):
     """
     Tool for analyzing and generating reliability design code.
     Workflow:
@@ -13,10 +15,11 @@ class ReliabilityDesignTool(ToolProtocol):
     4. Output new code
     """
 
-    def __init__(self, llm_client=None):
-        self.name = "ReliabilityDesignTool"
-        self.description = (
-            "Tool for designing and generating reliability design patterns in code."
+    def __init__(self, **kwargs: Any):
+        super().__init__(
+            name="ReliabilityDesignTool",
+            description="Tool for designing and generating reliability design patterns in code.",
+            **kwargs,
         )
         self.extract_prompt_path = os.path.join(
             "templates", "utils", "extract_reliability_input.md"
@@ -24,7 +27,20 @@ class ReliabilityDesignTool(ToolProtocol):
         self.identify_prompt_path = os.path.join(
             "templates", "reliability", "utils", "identify_reliability_design.md"
         )
-        self.llm_client = llm_client or MultiModelLLMClient()
+        self.add_design_pattern_template = os.path.join(
+            "templates", "reliability", "base_template.md"
+        )
+        self.tests_template = os.path.join(
+            "templates", "reliability", "test_base_template.md"
+        )
+        self.llm_client = kwargs['llm_client'] or MultiModelLLMClient()
+
+    def read_templates(self):
+        with open(self.add_design_pattern_template, "r", encoding="utf-8") as f:
+            self.add_design_pattern_template_content = f.read()
+        
+        with open(self.tests_template, "r", encoding="utf-8") as f:
+            self.tests_template_content = f.read()
 
     def extract_input(self, input: str, models=None):
         # Use LLM to extract input from natural language
@@ -53,9 +69,9 @@ class ReliabilityDesignTool(ToolProtocol):
             if models
             else self.llm_client.chat(prompt)
         )
-        return {"llm_response": llm_response}
+        return self.get_raw_response(llm_response)
 
-    def select_and_execute_template(self, design_pattern):
+    def select_and_execute_template(self, design_pattern, models=None):
         # Strategy selector for template execution
         print(f"Selecting template for: {design_pattern}")
         template_dir = os.path.join(
@@ -66,17 +82,41 @@ class ReliabilityDesignTool(ToolProtocol):
             print(f"Executing template: {base_template_path}")
             with open(base_template_path, "r", encoding="utf-8") as f:
                 template_content = f.read()
+
+            variables = json.loads(template_content)
+            new_prompt = self.add_design_pattern_template_content
+            for key, value in variables.items():
+                new_prompt = new_prompt.replace(f"{{{{{key}}}}}", value)
+
+            llm_response = (
+                self.llm_client.chat(new_prompt, model=models)
+                if models
+                else self.llm_client.chat(new_prompt)
+            )
             # Simulate code generation using template
-            new_code = f"// Generated code for {design_pattern}\n{template_content}"
+            new_code = self.get_raw_response(llm_response)
         else:
             new_code = f"// No template found for {design_pattern}"
         return new_code
 
-    def protocol(self, input: str) -> ToolProtocol:
-        extracted = self.extract_input(input)
+    async def run(
+        self,
+        messages: str | ChatMessage | list[str] | list[ChatMessage] | None = None,
+        *,
+        thread: AgentThread | None = None,
+        **kwargs: Any,
+    ) -> AgentRunResponse:
+        raw_message = self.get_raw_response(messages) if isinstance(messages, ChatMessage) else messages
+        extracted = self.extract_input(raw_message)
         design_info = self.identify_design(extracted["selected_design_pattern"])
         new_code = self.select_and_execute_template(
             design_info["formatted_design_pattern_name"]
         )
-        print("\n--- Output New Code ---")
-        print(new_code)
+
+        return AgentRunResponse(messages=new_code)
+    
+    def get_raw_response(self, message: ChatMessage) -> str:
+        response = ""
+        for m in message.contents:
+            response += m.text
+        return response

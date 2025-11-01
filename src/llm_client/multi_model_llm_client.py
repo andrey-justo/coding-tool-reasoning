@@ -1,6 +1,7 @@
 from agent_framework.openai import OpenAIChatClient
 from agent_framework.azure import AzureOpenAIAssistantsClient
 from azure.identity import AzureCliCredential
+from .localai_client import LocalAIClient
 
 
 class MultiModelLLMClient:
@@ -8,7 +9,7 @@ class MultiModelLLMClient:
     Wrapper for OpenAIChatClient to support multiple model selection.
     """
 
-    def __init__(self, api_key=None, default_model="gpt-4o"):
+    def __init__(self, api_key=None, default_model="localai"):
         import yaml
         import os
         from dotenv import load_dotenv
@@ -50,6 +51,11 @@ class MultiModelLLMClient:
                         credential=AzureCliCredential(),
                         api_version=api_version,
                     )
+            elif provider == "LocalAI":
+                # Instantiate the LocalAI HTTP client wrapper
+                self.clients[model_name] = LocalAIClient(
+                    endpoint=endpoint, api_key=self.api_key
+                )
 
     def get_client(self, model=None):
         model = model or self.default_model

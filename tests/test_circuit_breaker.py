@@ -30,7 +30,6 @@ async def test_add_circuit_breaker():
         f"Add a circuit breaker design pattern to the following C# code:\n{cs_code}"
     )
     response = await agent.run(prompt)
-    # print("Agent response:\n", response)
 
     # Evaluate agent response using ReliabilityEvaluationTool
     # Use the real circuit breaker reference code
