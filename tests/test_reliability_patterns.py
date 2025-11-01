@@ -42,13 +42,8 @@ for pattern_dir in pattern_dirs:
 async def test_add_reliability_pattern(pattern_name, code_example, reference_code):
     llm_client = MultiModelLLMClient()
     reliability_tool = ReliabilityDesignTool(llm_client=llm_client)
-    agent = ChatAgent(
-        name=f"Reliability Design Agent - {pattern_name}",
-        chat_client=llm_client.openai_client(),
-        tools=[reliability_tool],
-    )
     prompt = f"Add a {pattern_name.replace('_', ' ')} design pattern to the following code:\n{code_example}"
-    response = await agent.run(prompt)
+    response = await reliability_tool.run(prompt)
     # Normalize agent response (strip, unify line endings)
     evaluator = ReliabilityEvaluationTool()
     normalized_response = evaluator.extract_code_from_agent_response(response)

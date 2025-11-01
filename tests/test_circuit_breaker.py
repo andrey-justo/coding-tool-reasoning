@@ -11,11 +11,6 @@ async def test_add_circuit_breaker():
     # Initialize components
     llm_client = MultiModelLLMClient()
     reliability_tool = ReliabilityDesignTool(llm_client=llm_client)
-    agent = ChatAgent(
-        name="Reliability Design Agent",
-        chat_client=llm_client.openai_client(),
-        tools=[reliability_tool],
-    )
 
     # Random C# code sample
     cs_samples = [
@@ -29,7 +24,7 @@ async def test_add_circuit_breaker():
     prompt = (
         f"Add a circuit breaker design pattern to the following C# code:\n{cs_code}"
     )
-    response = await agent.run(prompt)
+    response = await reliability_tool.run(prompt)
 
     # Evaluate agent response using ReliabilityEvaluationTool
     # Use the real circuit breaker reference code
