@@ -1,10 +1,11 @@
 from typing import Any
 from agent_framework import AgentRunResponse, AgentThread, BaseAgent, ChatMessage
-from llm_client.multi_model_llm_client import MultiModelLLMClient
+from ..llm_client.multi_model_llm_client import MultiModelLLMClient
 
 
 class JudgeCodeChangesStep(BaseAgent):
     def __init__(self, llm_client=None):
+        super().__init__()
         self.llm_client = llm_client or MultiModelLLMClient()
 
     async def run(

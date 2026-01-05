@@ -1,0 +1,2 @@
+class TextLLMException(Exception):
+    pass

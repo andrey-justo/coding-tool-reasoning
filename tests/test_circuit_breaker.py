@@ -1,9 +1,10 @@
+import logging
 import random
 from agent_framework import ChatAgent
 import pytest
-from llm_client.multi_model_llm_client import MultiModelLLMClient
-from tools.reliability_design import ReliabilityDesignTool
-from evaluation.reliability_evaluation import ReliabilityEvaluationTool
+from src.llm_client.multi_model_llm_client import MultiModelLLMClient
+from src.tools.reliability_design import ReliabilityDesignTool
+from src.evaluation.reliability_evaluation import ReliabilityEvaluationTool
 
 
 @pytest.mark.asyncio
@@ -35,7 +36,7 @@ async def test_add_circuit_breaker():
     scores = evaluator.evaluate(
         generated_code=generated_code, reference_code=reference_code
     )
-    print("Reliability Evaluation Scores:", scores)
+    logging.info("Reliability Evaluation Scores:", scores)
 
 
 if __name__ == "__main__":

@@ -1,18 +1,18 @@
 version: '3.8'
 
 services:
-  app:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/app
-    environment:
-      - LOCALAI_ENDPOINT=http://localai:8080
-    depends_on:
-      - localai
-    networks:
-      - app-network
+#  app:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile
+#    volumes:
+#      - .:/app
+#    environment:
+#      - LOCALAI_ENDPOINT=http://localai:9090
+#    depends_on:
+#      - localai
+#    networks:
+#      - app-network
 
   localai:
     build:
@@ -20,6 +20,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "9090:8080"
+    environment:
+      - API_KEY=your_secret_api_key
     volumes:
       - ./models:/models  # Mount point for your AI models
     networks:

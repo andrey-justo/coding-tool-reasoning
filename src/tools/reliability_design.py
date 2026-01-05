@@ -1,7 +1,8 @@
 import json
+import logging
 from typing import Any
 from agent_framework import AgentRunResponse, AgentThread, BaseAgent, ChatMessage, ToolProtocol
-from llm_client.multi_model_llm_client import MultiModelLLMClient
+from ..llm_client.multi_model_llm_client import MultiModelLLMClient
 import os
 
 
@@ -44,7 +45,7 @@ class ReliabilityDesignTool(BaseAgent):
 
     def extract_input(self, input: str, models=None):
         # Use LLM to extract input from natural language
-        print("Extracting input using LLM and extract_reliability_input.md prompt...")
+        logging.debug("Extracting input using LLM and extract_reliability_input.md prompt...")
         with open(self.extract_prompt_path, "r", encoding="utf-8") as f:
             prompt_template = f.read()
         prompt = prompt_template.replace("{{input}}", input)
@@ -73,13 +74,13 @@ class ReliabilityDesignTool(BaseAgent):
 
     def select_and_execute_template(self, design_pattern, models=None):
         # Strategy selector for template execution
-        print(f"Selecting template for: {design_pattern}")
+        logging.debug(f"Selecting template for: {design_pattern}")
         template_dir = os.path.join(
             "templates", "reliability", design_pattern.lower().replace(" ", "_")
         )
         base_template_path = os.path.join(template_dir, "base_design.json")
         if os.path.exists(base_template_path):
-            print(f"Executing template: {base_template_path}")
+            logging.debug(f"Executing template: {base_template_path}")
             with open(base_template_path, "r", encoding="utf-8") as f:
                 template_content = f.read()
 

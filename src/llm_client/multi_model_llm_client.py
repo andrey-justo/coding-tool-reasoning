@@ -1,28 +1,19 @@
-from agent_framework.openai import OpenAIChatClient
 from agent_framework.azure import AzureOpenAIAssistantsClient
 from azure.identity import AzureCliCredential
 from .localai_client import LocalAIClient
+import yaml
+import os
+from dotenv import load_dotenv
 
 
 class MultiModelLLMClient:
     """
     Wrapper for OpenAIChatClient to support multiple model selection.
     """
-
-    def __init__(self, api_key=None, default_model="localai"):
-        import yaml
-        import os
-        from dotenv import load_dotenv
-
-        # Try to load api_key from .env if not provided
-        if api_key is None:
-            env_path = os.path.join(os.path.dirname(__file__), "../../.env")
-            if os.path.exists(env_path):
-                load_dotenv(env_path)
-                api_key = os.getenv("API_KEY")
-
-        self.api_key = api_key
-        self.default_model = default_model
+    def __init__(self):
+        self.default_model = None
+        self.api_key = None
+        self.load_env()
         self.clients = {}
         # Load model configuration from available_models.yaml
         config_path = os.path.join(
@@ -54,8 +45,17 @@ class MultiModelLLMClient:
             elif provider == "LocalAI":
                 # Instantiate the LocalAI HTTP client wrapper
                 self.clients[model_name] = LocalAIClient(
-                    endpoint=endpoint, api_key=self.api_key
+                    endpoint=endpoint, default_model=model_name, api_key=self.api_key
                 )
+
+    def load_env(self):
+        env_path = os.path.join(os.path.dirname(__file__), "../../.env")
+        if not os.path.exists(env_path):
+            return
+
+        load_dotenv(env_path)
+        self.api_key = os.getenv("API_KEY")
+        self.default_model = os.getenv("DEFAULT_MODEL")
 
     def get_client(self, model=None):
         model = model or self.default_model

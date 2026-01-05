@@ -55,6 +55,8 @@ pip install torch torchvision
 
 This project supports LocalAI as an LLM provider. The LocalAI server runs locally (default HTTP port 8080) and the project will use the `API_KEY` from the project's `.env` file when present.
 
+Visit http://localhost:9090 to check localai WEB UI
+
 ### Quick Start with Docker Compose
 
 Use the provided script to set up models and start the LocalAI server with Docker Compose:

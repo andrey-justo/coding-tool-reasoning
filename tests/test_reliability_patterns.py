@@ -1,10 +1,12 @@
 import os
 import glob
+
+import logging
 import pytest
 from agent_framework import ChatAgent
-from llm_client.multi_model_llm_client import MultiModelLLMClient
-from tools.reliability_design import ReliabilityDesignTool
-from evaluation.reliability_evaluation import ReliabilityEvaluationTool
+from src.llm_client.multi_model_llm_client import MultiModelLLMClient
+from src.tools.reliability_design import ReliabilityDesignTool
+from src.evaluation.reliability_evaluation import ReliabilityEvaluationTool
 
 # Collect all design pattern folders under templates/reliability
 TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "../templates/reliability")
@@ -47,10 +49,10 @@ async def test_add_reliability_pattern(pattern_name, code_example, reference_cod
     # Normalize agent response (strip, unify line endings)
     evaluator = ReliabilityEvaluationTool()
     normalized_response = evaluator.extract_code_from_agent_response(response)
-    print(f"Agent response for {pattern_name}:\n", normalized_response)
+    logging.debug(f"Agent response for {pattern_name}:\n", normalized_response)
     # Evaluate agent response against reference code
 
     scores = evaluator.evaluate(
         generated_code=normalized_response, reference_code=reference_code
     )
-    print(f"Reliability Evaluation Scores for {pattern_name}:", scores)
+    logging.info(f"Reliability Evaluation Scores for {pattern_name}:", scores)

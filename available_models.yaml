@@ -4,7 +4,7 @@
 #   endpoint: https://test-graph-rag.openai.azure.com/
 #   api_version: 2024-12-01-preview
 
-- model_name: localai
+- model_name: gpt-4
   provider: LocalAI
-  endpoint: http://localhost:8080
+  endpoint: http://localhost:9090
   api_version: ""
