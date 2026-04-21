@@ -119,7 +119,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Rationale**: Ensure objective measurement that does not rely on LLM self-reporting.
 - **Source**: `docs/experiments/experiment-design.md`, `docs/risks/rq-scope-falsifiability.md`.
 - **Priority**: Must.
-- **Dependencies**: NFR-2.
+- **Dependencies**: Versioned metrics specification exists in [`docs/requirements/metrics.md`](metrics.md).
 
 ### FR-7 — Testability gate
 

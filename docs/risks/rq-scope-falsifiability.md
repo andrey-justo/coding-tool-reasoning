@@ -67,7 +67,7 @@ analysis planning. Each has a null hypothesis, effect threshold, and baseline.
 
 - **H₀¹**: Taxonomy-guided generation does not produce lower SOLID violation count than the prompt-engineering-only baseline (d < 0.5).
 - **Baseline**: Same LLM prompt with `nfr_focus=[]`, `relationship_depth=0`, `temperature=0` — no taxonomy enrichment.
-- **Measurement**: Static-analysis smell count (SonarQube + Roslyn Analyzers for C#) before and after the generated change. Delta = (before − after) / before.
+- **Measurement**: Static-analysis smell count (SonarQube + Roslyn Analyzers for C#) before and after the generated change. Delta = (before − after) / before. For the zero-baseline edge case (`before = 0`), apply the handling defined in [`docs/requirements/metrics.md`](../requirements/metrics.md): treat `before = 0, after = 0` as no change (`Delta = 0`), and `before = 0, after > 0` as regression rather than computing the ratio.
 
 **RQ2 – SOLID Violation Reduction**
 > Does the taxonomy-based supervisor agent produce LLM-generated legacy code

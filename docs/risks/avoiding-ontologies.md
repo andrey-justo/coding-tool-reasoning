@@ -29,9 +29,10 @@ thesis implicitly claims ontology-like benefits.
 
 ---
 
-## Revaluation Criteria
+## Re-evaluation Criteria
 
-- **Revaluated level = Low** once Related Work contains an explicit justification
+- **Re-evaluated level = Low** once Related Work contains an explicit justification
+  and the contribution statement no longer implies ontology-grade reasoning.
   and the contribution statement no longer implies ontology-grade reasoning.
 
 ---

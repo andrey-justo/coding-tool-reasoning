@@ -12,8 +12,8 @@ Run-level comparison tracking (baseline vs supervised vs human studies): [`data/
 | RQ | Method | Baseline | Primary Metric | Statistical Test | Min N | Pass Criterion |
 |---|---|---|---|---|---|---|
 | RQ1 | Within-subjects (paired supervised vs. zero-shot per issue) | `IntentPlanner` with `nfr_focus=[]`, `relationship_depth=0`, same LLM, `temperature=0` | SOLID violation count delta (static analysis) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 paired runs = 30-50 pairs | median paired improvement > 0; target p < 0.05 |
-| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM, same seed schedule | SOLID violation count reduction (%) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 paired runs = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
-| RQ3a | Within-subjects (10 repeated trials per set) | Zero-shot, same LLM, same seed schedule | Std-dev of SOLID violation count delta | Wilcoxon signed-rank on per-set variance | 3-5 sets × 10 repeats per condition = 30-50 | ≥ 20 % std-dev reduction |
+| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | SOLID violation count reduction (%) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 paired runs = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
+| RQ3a | Within-subjects (10 repeated trials per set) | Zero-shot, same LLM and run protocol | Std-dev of SOLID violation count delta | Wilcoxon signed-rank on per-set variance | 3-5 sets × 10 repeats per condition = 30-50 | ≥ 20 % std-dev reduction |
 | RQ3b | Within-subjects (10 paraphrases per set) | Zero-shot, same 10 paraphrases | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 paraphrases = 30-50 | Consistency ≥ 0.80 and supervised > baseline |
 | RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Strangler Fig / ACL pattern adoption rate + SRP/OCP/DIP violation delta | Fisher's exact test (pattern rate) + Wilcoxon (paired violation delta) | 3-5 legacy sets × 10 paired runs = 30-50 pairs | pattern adoption higher and median violation delta improvement > 0 |
 
@@ -23,7 +23,7 @@ To keep execution feasible, v1 uses a low-cost repeated-set protocol:
 
 - A **set** is a fixed bundle of 10 paired comparisons (same issues/intents across supervised and baseline).
 - Run **3 sets minimum**; run **up to 5 sets** if time/compute allows.
-- Within each set, use a fixed seed schedule (e.g., seeds 1..10) shared by both conditions.
+- Within each set, keep prompt order, model configuration, and evaluation pipeline identical across conditions.
 - Report both per-set results and pooled results (30-50 paired observations total).
 
 ---
@@ -45,7 +45,7 @@ violation smell count than zero-shot generation (Cohen's d < 0.5).
 5. Apply Wilcoxon signed-rank test on paired deltas across the pooled 30-50 pairs; also report per-set medians.
 
 **Confound controls**:
-- Fix `temperature=0` and `seed=42` in both conditions.
+- Fix `temperature=0` in both conditions.
 - Same LLM model and version; document exact model hash/tag.
 - Run static analysis with identical ruleset and threshold in both conditions; disable rules unrelated to SOLID.
 - Blind scoring: SOLID count computed by automated tool, not human judgment.
@@ -85,7 +85,7 @@ violation smell count than zero-shot generation (Cohen's d < 0.5).
 4. Compute verdict consistency ratio = (trials agreeing with majority verdict) / 10 per intent.
 5. Apply McNemar's test on paraphrase-level paired verdict agreement (supervised vs. baseline), and report the consistency-ratio gap descriptively per set.
 
-**Paraphrase methodology**: Eger et al. (2019).
+**Paraphrase methodology**: internal paraphrase protocol (WIP).
 
 ---
 
