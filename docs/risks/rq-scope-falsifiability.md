@@ -21,7 +21,7 @@ science (Popper, 1959).
 A falsifiable RQ must satisfy:
 1. **Null hypothesis** — the default assumption that could be disproven.
 2. **Effect threshold** — the minimum effect size that is practically meaningful.
-3. **Comparison condition** — the named baPseline.
+3. **Comparison condition** — the named baseline.
 
 ---
 

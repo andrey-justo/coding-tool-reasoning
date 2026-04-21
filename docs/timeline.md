@@ -85,16 +85,19 @@ Related documents:
 **Goal**: Collect the full empirical dataset for RQ1–RQ4a.
 
 ### Tasks
-- [ ] Run full RQ1 experiment: 5 repos × 30 issues, supervised vs. zero-shot (150 pairs).
-- [ ] Run full RQ2 experiment: 30 issues × 30 trials, supervised vs. zero-shot (900 + 900 runs).
-- [ ] Construct prompt-variation corpus: 30 intents × 5 paraphrases = 150 prompts (see paraphrase methodology in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md)).
-- [ ] Run full RQ3 experiment: 150 supervised + 150 baseline runs.
-- [ ] Run RQ4a experiment: 30 issues × 2 configs (`strictness=0.2` vs `strictness=0.8`) = 60 runs.
+- [ ] Execute the **practical v1 run budget** from [`docs/experiments/experiment-design.md`](experiments/experiment-design.md): 3 sets minimum (up to 5), each set with 10 paired supervised vs. baseline runs.
+- [ ] Run full RQ1 experiment (paired): 3–5 sets × 10 issue pairs = 30–50 paired observations.
+- [ ] Run full RQ2 experiment (paired): reuse the same 3–5 sets × 10 issue pairs = 30–50 paired observations.
+- [ ] Run full RQ3a experiment (repeated-trial robustness): 3–5 sets × 10 repeated trials per condition = 30–50 runs per condition.
+- [ ] Construct prompt-variation corpus for RQ3b: 3–5 intents (one per set) × 10 paraphrases = 30–50 prompts.
+- [ ] Run full RQ3b experiment (paraphrase robustness): 30–50 supervised + 30–50 baseline runs.
+- [ ] Run RQ4 legacy paired experiment: 3–5 legacy sets × 10 paired runs = 30–50 pairs.
+- [ ] Run RQ4a configuration experiment on the same sets: compare `strictness=0.2` vs `strictness=0.8` with 3–5 sets × 10 paired runs = 30–50 pairs.
 - [ ] Store all raw results in versioned JSON files under `data/experiments/`.
 - [ ] Capture and store metric provenance for static analysis and any enriched metrics (ruleset/version, scope, timestamps).
 
 ### Deliverables
-- Raw experiment data (versioned, anonymized)
+- Raw experiment data (versioned, anonymized) for RQ1, RQ2, RQ3a, RQ3b, RQ4, and RQ4a using the 3–5 set protocol
 - Data quality report (missing values, outliers, LLM failures)
 
 ---
@@ -105,9 +108,11 @@ Related documents:
 **Goal**: Produce statistical evidence for or against each null hypothesis.
 
 ### Tasks
-- [ ] Run Wilcoxon signed-rank test + Cohen's d for RQ1; apply Bonferroni correction across metrics.
-- [ ] Run paired tests for RQ2/RQ3 reproducibility as defined in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md).
-- [ ] Run McNemar's test on verdict agreement matrices for prompt-variation robustness.
+- [ ] Run Wilcoxon signed-rank (paired) for RQ1 and RQ2 on pooled 30–50 paired observations; report per-set medians.
+- [ ] Run RQ3a robustness analysis using paired variance comparisons across sets (as defined in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md)).
+- [ ] Run McNemar's test on paraphrase-level verdict agreement for RQ3b and report consistency-ratio gaps.
+- [ ] Run RQ4 tests as specified in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md): Fisher's exact test for pattern adoption rate + Wilcoxon (paired) for violation delta.
+- [ ] Apply multiple-comparison correction where applicable across metrics.
 - [ ] Run κ-based annotation validation:
   - (a) validate `overall_verdict` label agreement on a sampled set of outputs
   - (b) validate pattern adoption labels (Strangler Fig / ACL) when applicable

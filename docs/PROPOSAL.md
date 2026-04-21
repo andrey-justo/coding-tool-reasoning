@@ -27,8 +27,10 @@ generation context: *reproducibility*, *robustness to prompt variations*, and
 
 **RQ1 – Quality Alignment**: Does taxonomy-guided prompt enrichment (Stage 1)
 produce LLM-generated code that better aligns with ISO 25010 quality
-attributes (maintainability, reliability, security) compared to zero-shot,
-unsupervised generation?
+objectives compared to zero-shot, unsupervised generation? For scoped v1,
+this is operationalized as ISO 25010 maintainability/modifiability in C#
+using SOLID-focused static analysis (SRP, OCP, DIP) as the primary metric;
+reliability and security are treated as secondary qualitative signals.
 
 **RQ2 – Reproducibility**: Does the supervisor agent reduce output variance
 when the same software engineering intent is submitted repeatedly to an LLM,
@@ -297,6 +299,9 @@ relevant files from the repository.
 Metric definitions are centralized in [`docs/requirements/metrics.md`](requirements/metrics.md).
 This proposal keeps metric discussion high-level; the metrics document defines
 primary vs. secondary metrics, collection rules, and provenance requirements.
+For v1, the primary quantitative quality metric is C# SOLID alignment
+(SRP/OCP/DIP) as the scoped operationalization of ISO 25010
+maintainability/modifiability.
 
 # Tool & Skill Integrations
 

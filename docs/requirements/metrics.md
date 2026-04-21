@@ -52,7 +52,14 @@ currently implements it end-to-end**.
 - **Recorded fields (minimum)**:
   - `violations_before`
   - `violations_after`
-  - `delta` (definition must be recorded; commonly $\Delta = (before - after) / before$)
+  - `delta` (definition must be recorded; normalized improvement ratio)
+    - Standard case (`violations_before > 0`):
+      $\Delta = (violations_before - violations_after) / violations_before$
+    - Zero-baseline edge cases (`violations_before = 0`):
+      - if `violations_after = 0`, define `delta = 0.0` (no change from a clean baseline)
+      - if `violations_after > 0`, define `delta = -1.0` (maximal regression from a clean baseline)
+    - `delta` is therefore bounded to `[-1.0, 1.0]` under this definition.
+  - `absolute_delta` (`violations_after - violations_before`) must also be recorded to preserve raw-count interpretability, especially for zero-baseline cases.
   - `ruleset_id` / `ruleset_version`
   - `scope` (what was analyzed)
 - **Notes**: the exact rule keys/smell identifiers used to operationalize SRP/OCP/DIP
