@@ -1,0 +1,63 @@
+# Risk Register (Summary)
+
+| # | Risk | Level | Status | Remediation | Revaluation | Novelty Impact | Order | Deadline | Milestone |
+|---|---|---|---|---|---|---|---:|---|---|
+| R1 | Design Science framing / novelty | High | In Progress | Add DSR methodology section to the proposal; keep Hevner guideline mapping and 3-cycle description aligned with RQ1–RQ4. See [docs/risks/design-science-framing.md](design-science-framing.md). | Medium | High | 1 | Phase 1 | Qualification |
+| R2 | Novelty claim unsupported / contradicted by literature | High → Medium | **SLR Done** | Integrate SLR results into Related Work: (a) define the closest prior art, (b) state the exact delta, (c) narrow novelty claim wording to what is actually missing in prior work, (d) add a “negative result” fallback framing if overlap exists. | Low | High | 2 | Phase 1 | Qualification |
+| R3 | RQ scope and falsifiability | High → Medium | In Progress | Keep null hypotheses, effect thresholds, and named baselines for each RQ. Ensure primary DV is objective (static analysis for SOLID violations) and not LLM self-reporting. See [docs/risks/rq-scope-falsifiability.md](rq-scope-falsifiability.md). | Low | Medium | 3 | Phase 1 | Qualification |
+| R4 | Experiment data privacy (public vs. private) | High | Open | Use only public repos for primary corpus; if any private case study: ethics/IRB (if required), anonymization, access control, publish only aggregate metrics. See [docs/risks/experiment-data-privacy.md](experiment-data-privacy.md). | Medium | None | 4 | Phase 1 | Qualification |
+| R5 | Avoiding ontologies | Medium | In Progress | Justify CSV taxonomies as a deliberate DSR trade-off; clarify “taxonomy ≠ ontology inference”; strengthen positioning. See [docs/risks/avoiding-ontologies.md](avoiding-ontologies.md). | Low | None | 5 | Phase 1 | Qualification |
+| R6 | Taxonomy graph completeness (missing edges / missing ISO25010 mapping) | High | Open | Add `ISO25010Characteristic` column to taxonomy CSVs; add edges linking SOLID principles to legacy smells in clean_code_nfr_edges.csv and legacy_code_edges.csv; add a CI check that validates CSV schema and referential integrity. | Low | Medium | 6 | Phase 1–2 | Thesis |
+| R7 | Primary metric not implemented (SOLID violation delta) | High | Open | Integrate a static analysis runner (SonarQube or Roslyn analyzers) into the evaluation harness; store per-issue before/after violation counts; validate ruleset against a 10-issue manual pilot (κ ≥ 0.6). | Low | High | 7 | Phase 2 | Thesis |
+| R8 | Reproducibility harness incomplete | High | Open | Wire `_run_supervised_trial` / `_run_baseline_trial` and ensure trial artifacts (raw LLM output + config + model tag) are persisted for audit. | Low | Medium | 8 | Phase 2 | Thesis |
+| R9 | LLM determinism controls missing | High | Open | Add `temperature=0` and `seed` support to the LLM client and persist them in trial logs; run a small pre-study to measure residual variance across restarts. | Low | Medium | 9 | Phase 2 | Thesis |
+| R10 | Scoring model mismatch (bert-base-uncased on code) | High | Open | Replace with CodeBERT-based scorer for code similarity; document scorer version and limitations. | Low | Medium | 10 | Phase 2 | Thesis |
+| R11 | Test coverage gap for core stages | Medium | Open | Add unit tests for Stage 1 (`IntentPlanner`) and Stage 2 (`ExplanationService`) using a mock LLM client; assert schema validity and deterministic parsing. | Low | Low | 11 | Phase 2 | Thesis |
+| R12 | CSV integrity / formatting drift | Medium | Open | Add a linter/validator for CSV files (no merged lines, consistent header, required columns). Gate PRs with CI. | Low | Low | 12 | Phase 1–2 | Thesis |
+| R13 | Artifact integrity (stubs / dead modules) | Low | Open | Remove or implement `src/migration/analyzer.py` stub and add minimal tests to prevent regressions. | Low | None | 13 | Phase 2 | Thesis |
+| R14 | Prompt ingestion security (issue content as untrusted input) | Medium | Open | Add sanitization and explicit “treat retrieved text as untrusted” prompt framing when injecting GitHub issue bodies/diffs; avoid tool-execution instructions from external text; log sources. | Low | Low | 14 | Phase 1–2 | Thesis |
+| R15 | Testability baseline missing (cannot validate changes) | High | Open | Treat **testability as the baseline NFR**: define a per-repo testability gate (build succeeds; unit tests run; no decrease in test pass rate; add/modify tests when behavior changes). Record a testability DV (tests-added count, pass/fail, optional coverage delta) and use it as a prerequisite for interpreting other quality gains in legacy refactoring. | Low | Medium | 15 | Phase 1–2 | Thesis |
+| R16 | Human evaluation readiness (κ + participant recruitment) | Medium | Open | Plan and run two human-data activities: (a) **annotation study** (≥ 3 senior engineers) to validate verdict labels and static-analysis signal; report Cohen’s κ ≥ 0.6; (b) **tool-use survey** (N ≥ 20) on trust/control where applicable. Pre-register rubric, pilot 10 items, and document recruitment + consent. | Low | Medium | 16 | Phase 1–3 | Thesis |
+
+---
+
+## PhD Risk Summary (Committee-facing)
+
+This table summarizes the *thesis-level* risk posture across the dimensions that
+most commonly determine PhD qualification acceptance and thesis defensibility.
+
+| Dimension | Current Assessment | Primary Risks | What closes it (definition of done) |
+|---|---|---|---|
+| **PhD novelty** | **Medium risk** (good trajectory) | R1, R2, R5 | SLR is completed (R2), but novelty must be *stated narrowly* as the delta vs. closest prior art and reflected consistently in Abstract/Intro/Contributions. DoD: one-paragraph “closest prior art + delta” + claim wording tightened + citations placed where the delta is claimed. |
+| **Research gap controlled** | **Medium risk** | R2, R1 | Even with SLR done, the gap can drift when scope changes (e.g., SOLID focus) or when related work expands. DoD: “Gap Ledger” paragraph in Related Work that lists: closest prior art, what it covers, what it does not cover, and how each contribution maps to a specific gap (1-to-1 mapping). |
+| **Scope too big** | **Medium risk** (manageable) | R3, R6 | Risk that RQs expand back into “all NFRs / all languages / all repos”, making evaluation infeasible. DoD: explicit scope boundary box (language = C#, NFR lens = SOLID SRP/OCP/DIP, repo count fixed, out-of-scope list) + every RQ has exactly one primary DV and one baseline. |
+| **Risk of failure (can the study fail scientifically?)** | **Low risk** (falsifiable) | R3, R7 | Null hypotheses + baselines exist; biggest failure mode is missing/invalid primary metric. DoD: static-analysis SOLID delta implemented + pilot validation (κ ≥ 0.6) completed + report negative/zero-effect outcomes as valid results. |
+| **Validation / verification (artifact + measurement)** | **Medium–High risk** | R7, R10, R12, R15 | Two layers must be valid: (a) the supervisor pipeline behaves deterministically and records artifacts; (b) the measurement instruments (static analysis + scorer + testability gate) are fit for purpose. DoD: end-to-end 10-issue pilot with reproducible logs, pinned tool versions, and a measurement validation subsection (ruleset versioning, FP filtering criteria, manual agreement) **plus** a testability gate report (build + tests). |
+| **Testability baseline (prerequisite NFR)** | **Medium risk** | R15, R11 | Without runnable tests (or without adding tests when behavior changes), any claim about maintainability/SOLID improvements is weak for legacy modernization. DoD: define and implement a testability DV and a gating rule (“no claims if tests fail / cannot run”); add minimal per-repo test harness instructions; require tests-added when changes are behavioral. |
+| **Human-data feasibility (κ + survey)** | **Medium risk** | R16 | κ-based validation and any survey require recruitment, rubric, consent, and time. DoD: pilot annotation (10 items) + κ computed; recruitment plan + survey instrument finalized; ethics decision documented (IRB required or not). |
+| **Deliver on time (2.5–3 years remaining)** | **Medium risk** | R6, R7, R8, R9, R10, R15, R16 | Longer runway reduces schedule risk, but the critical path is still instrumentation + evaluation harness hardening + human-data collection readiness. DoD: Phase 2 gaps closed with CI checks and a 10-issue end-to-end pilot run by the end of Year 1; pilot κ + testability gate completed; full corpus runs start early Year 2. |
+| **Lack of knowledge / skill gaps** | **Medium risk** | R1, R7, R8, R15 | Risk concentrates in experimental design + tooling integration (SonarQube/Roslyn, statistics, DSR writing) and test-harness engineering for legacy repos. DoD: documented experimental protocol + small-scale pilot with reproducible logs and analyzable outputs; statistical analysis notebook/script verified on pilot data. |
+| **Scientifically defensible** | **Medium risk** (pending metric validation) | R1, R3, R7, R10 | Defensibility requires objective DVs, validated instruments, and transparent reporting. DoD: measurement validation section written + threat mitigations traced to concrete controls (seed, temperature, pinned versions, blinded paraphrases). |
+| **Generalizable** | **Medium risk** (bounded) | R8, R12, R6 | v1 is C#-focused; generalization beyond language/domain must be claimed conservatively. DoD: explicit scope boundary + sensitivity analysis (high-debt vs low-debt subsets) + replication package that lets others rerun on a different C# repo set. |
+| **Reproducibility / replication package** | **Medium risk** | R8, R9, R12 | Without a runnable replication package, reviewers may treat results as non-reproducible even if statistically significant. DoD: pinned versions (model tag/hash, SonarQube ruleset, scorer), saved prompts/outputs, dataset schema, and one-command rerun instructions for a subset. |
+| **Dependency volatility (models + tooling)** | **Medium risk** | R9, R10 | LocalAI model tags, container images, or SonarQube rule updates can shift results over time. DoD: pin versions/hashes; archive docker images/config; record rule keys; include a “version drift” appendix describing what is pinned and what is not. |
+
+---
+
+## Legend (Terms used in this document)
+
+| Term | Meaning | Where it is used |
+|---|---|---|
+| DoD | **Definition of Done**. A concrete, checkable condition that means a risk row is “closed” (or moved to a lower level). | “What closes it (definition of done)” column in the committee-facing table. |
+| DV | **Dependent Variable**. The measured outcome used to compare conditions (e.g., supervised vs. baseline). | RQ operationalization and experiment design. |
+| IV | **Independent Variable**. The condition being manipulated (e.g., taxonomy supervision on/off). | RQ operationalization and experiment design. |
+| NFR | **Non-Functional Requirement**. Quality attributes such as maintainability, reliability, or security (ISO 25010). | Taxonomy scope, Stage 1 enrichment, Stage 2 judging. |
+| SLR | **Systematic Literature Review**. A structured, reproducible review protocol to identify and synthesize prior work. | Risk R2; novelty justification and Related Work positioning. |
+| DSR | **Design Science Research**. Research methodology for building and evaluating artifacts with explicit rigor and evaluation guidelines (Hevner et al.). | Risk R1; methodology section and evaluation framing. |
+| SOLID | Design principles (SRP, OCP, LSP, ISP, DIP) used here as an operational lens for maintainability/modifiability. | RQ scope-down and static-analysis measurement. |
+| SRP | **Single Responsibility Principle**. A module/class should have one reason to change. | SOLID lens; taxonomy nodes and smell mapping. |
+| OCP | **Open/Closed Principle**. Prefer extension by adding new code over modifying existing code. | SOLID lens; modernization pattern mapping (Strangler Fig). |
+| DIP | **Dependency Inversion Principle**. Depend on abstractions, not concretions. | SOLID lens; ACL mapping; testability coupling. |
+| κ | **Cohen’s kappa**. Inter-rater agreement metric used when humans label outputs (e.g., pattern adoption, smell validity pilot). | Metric validation and RQ4 classification reliability. |
+| Baseline | A named comparison condition that does *not* use the supervisor (e.g., prompt-only / no taxonomy injection). | RQ falsifiability; statistical testing. |
+| Static analysis | Automated code analysis tools/rules (e.g., SonarQube, Roslyn) used to detect SOLID-related smells and measure the primary DV. | RQ1/RQ2 primary metric; instrument validation. |

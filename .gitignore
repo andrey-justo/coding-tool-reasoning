@@ -7,3 +7,6 @@ __pycache__/*
 
 ## Do not commit models
 models/
+
+## Remove SLR for now
+docs/slr/*
