@@ -27,8 +27,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - Evaluation scope focuses on **C#** repositories.
 - The NFR lens for v1 is SOLID (**SRP/OCP/DIP**) as an operationalization of
   ISO 25010 Maintainability/Modifiability.
-- Minimum empirical corpus target is **5 repositories × 30 issues each** for
-  between-condition comparisons.
+- [Following experirements](docs/experiments/experiment-design.md)
 
 ---
 

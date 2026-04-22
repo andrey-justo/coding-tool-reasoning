@@ -1,6 +1,6 @@
 # Risk Register (Summary)
 
-| # | Risk | Level | Status | Remediation | Revaluation | Novelty Impact | Order | Deadline | Milestone |
+| # | Risk | Level | Status | Remediation | Re-evaluation | Novelty Impact | Order | Deadline | Milestone |
 |---|---|---|---|---|---|---|---:|---|---|
 | R1 | Design Science framing / novelty | High | In Progress | Add DSR methodology section to the proposal; keep Hevner guideline mapping and 3-cycle description aligned with RQ1–RQ4. See [docs/risks/design-science-framing.md](design-science-framing.md). | Medium | High | 1 | Phase 1 | Qualification |
 | R2 | Novelty claim unsupported / contradicted by literature | High → Medium | **SLR Done** | Integrate SLR results into Related Work: (a) define the closest prior art, (b) state the exact delta, (c) narrow novelty claim wording to what is actually missing in prior work, (d) add a “negative result” fallback framing if overlap exists. | Low | High | 2 | Phase 1 | Qualification |

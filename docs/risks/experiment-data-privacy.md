@@ -1,4 +1,4 @@
-# Experiments Data Privacy
+# Experiment Data Privacy
 
 Issue bodies, PR diffs, and logs from private or enterprise repositories can
 contain:
