@@ -20,32 +20,18 @@ must be capable of analyzing, enriching, and validating prompts so that code
 generated through natural language incorporates software engineering quality
 attributes such as maintainability, reliability, and legacy system evolution
 (ISO 25010). The tool employs attributes adapted to the AI-assisted
-generation context: *reproducibility*, *robustness to prompt variations*, and
-*code generation reliability*.
+generation context: *robustness to prompt variations*, *code generation
+reliability*, and reproducible execution traces for auditability.
 
 ## Research Questions
 
-**RQ1 – SOLID-Guided Quality Alignment**: Does taxonomy-guided prompt enrichment (Stage 1)
-produce LLM-generated code that better aligns with ISO 25010 maintainability/modifiability objectives compared to zero-shot, unsupervised generation? For scoped v1,
-this is operationalized through SOLID-focused static analysis (SRP, OCP, DIP) as the primary metric;
-reliability and security are treated as secondary qualitative signals.
+**RQ1 – Taxonomy Encoding for Planning**: How should the SWE taxonomy encode SRP/OCP/DIP and legacy-modernization patterns to support planning for AI-assisted C# legacy refactoring?
 
-**RQ2 – SOLID Violation Reduction**: For scoped v1, does the supervisor
-agent reduce SOLID violations in C# code compared to zero-shot, unsupervised generation,
-as measured through static analysis of SRP, OCP, and DIP violations?
+**RQ2 – SOLID Violation Reduction**: For AI-assisted code-generation tools, does taxonomy-guided supervision reduce SOLID violation density compared with a prompt-only baseline?
 
-**RQ3a – Reproducibility**: Does the supervisor agent reduce output variance
-when the same software engineering intent is submitted repeatedly to an LLM,
-compared to an unsupervised baseline?
+**RQ3 – Prompt-Variation Robustness**: For AI-assisted code-generation tools, does taxonomy-guided supervision improve consistency across semantically equivalent prompt paraphrases for the same repository/issue-anchored software engineering task?
 
-**RQ3b – Prompt-Variation Robustness**: Does the supervisor agent produce
-consistent NFR-alignment verdicts and plans across semantically equivalent
-but syntactically different natural language requests?
-
-**RQ4 – Developer Control**: Can developers effectively configure the
-supervisor's NFR focus and strictness to steer code generation toward their
-intended quality profile, and does this configuration produce measurably
-different outputs?
+**RQ4 – Legacy-Corpus Effectiveness**: For AI-assisted code-generation tools applied to legacy software tasks, does taxonomy-guided supervision lower SOLID violation density compared with a prompt-only baseline?
 
 ## Contributions
 
@@ -60,16 +46,15 @@ different outputs?
    with explicit mappings to ISO 25010 sub-characteristics, designed for
    extension without code changes.
 
-3. **New Evaluation Dimensions** – Two evaluation dimensions for LLM-assisted
-   SE not previously systematized: (a) *output reproducibility* — variance
-   across repeated generation with identical prompts — and (b)
-   *prompt-variation robustness* — consistency across semantically equivalent
-   but differently phrased prompts.
+3. **New Evaluation Dimension** – A prompt-variation robustness evaluation for
+  LLM-assisted SE that measures whether verdicts remain consistent when the
+  same software engineering task is expressed through semantically equivalent
+  but differently phrased prompts.
 
 4. **Empirical Evaluation Framework** – An issue-centric experiment schema
-   binding natural-language requests to real GitHub issues and pull requests,
-   enabling reproducible, large-scale studies across legacy and actively
-   maintained codebases.
+  centered on a software engineering task anchored to a real GitHub issue or
+  pull request, enabling controlled studies across legacy and actively
+  maintained codebases while varying prompt phrasing over the same task.
 
 ## Requirements (v1)
 
@@ -283,15 +268,19 @@ support for NFR-aware planning and explanation:
 
 # Evaluation Experiments
 
-For each experiment, the primary input is an **issue-centric prompt** that
-binds the natural-language request to a concrete GitHub artifact:
+For each experiment, the primary dataset unit is a **software engineering
+task anchored to a repository/issue context**:
 
-- `natural_prompt` – high-level description (bug report or feature request).
+- `task_prompt` – high-level natural-language description of the task.
 - `github_repo` – URL or `owner/repo` identifier of the target repository.
 - `github_issue_id` – numeric issue or pull-request identifier providing
 	additional context (discussion, logs, screenshots).
 
-The MCP client uses this triple to construct prompts passed through
+For RQ3, each anchored task includes multiple semantically equivalent prompt
+variants that preserve the same repository/issue context while changing only
+the phrasing.
+
+The MCP client uses this task record to construct prompts passed through
 `plan_swe_code_change`, `build_swe_code_context`, and
 `judge_swe_code_change`, optionally enriching them with issue content and
 relevant files from the repository.
@@ -391,10 +380,10 @@ into Stage 2:
 ## Internal Validity
 
 - **LLM non-determinism** – all experiments must fix `temperature=0` in `LocalAIClient` to isolate the effect of taxonomy
-  supervision from stochastic output variation. Without this, RQ3a and RQ3b
-  results cannot be attributed to the supervisor.
+  supervision from stochastic output variation. Without this, RQ3 results
+  cannot be attributed to the supervisor.
 - **Prompt confounding** – prompt phrasing in Stages 1 and 2 may inadvertently
-  encode quality preferences. Addressed by RQ3b (prompt-variation robustness)
+  encode quality preferences. Addressed by RQ3 (prompt-variation robustness)
   and by blind prompt authorship (prompts written by authors not involved in
   taxonomy design).
 - **Reference code subjectivity** – `tests/reference_code/` examples were not
@@ -427,9 +416,10 @@ into Stage 2:
 
 ## Conclusion Validity
 
-- **Sample size** – a minimum of 30 issues per repository and 5 repeated
-  trials per issue (for RQ2) is required for Wilcoxon signed-rank tests
-  ($\alpha = 0.05$, effect size Cohen's $d \geq 0.5$).
+- **Sample size** – a minimum of 30 paired repository/issue-anchored tasks is
+  required for RQ1/RQ2, and 30-50 task-level prompt-variation observations are
+  required for RQ3, to support the planned paired tests at
+  ($\alpha = 0.05$, effect size Cohen's $d \geq 0.5$ where applicable).
 - **Multiple comparisons** – testing across multiple NFR categories requires
   Bonferroni or Benjamini-Hochberg correction to control the family-wise
   error rate.
@@ -440,7 +430,7 @@ into Stage 2:
 |---|---|---|
 | 1 | Literature review; ISO 25010 taxonomy mapping; RQ refinement and operationalization | 3 months |
 | 2 | Prototype hardening: CodeBERT scorer, reproducible LLM calls (`temperature=0`, `seed`), `Literal` verdict, baseline (no-taxonomy) implementation | 2 months |
-| 3 | Empirical data collection: issue corpus (5 repos × 30 issues × 5 trials), prompt-variation set construction | 3 months |
+| 3 | Empirical data collection: task corpus (5 repos × 30 issues), prompt-variation set construction | 3 months |
 | 4 | Statistical analysis (RQ1–RQ4), developer trust survey design and execution (N ≥ 20 participants) | 3 months |
 | 5 | Paper writing, internal review, and conference submission | 3 months |
 
@@ -464,7 +454,7 @@ steps for Plan4Code:
   developers can edit or approve Stage 1 plans before execution and provide
   feedback on Stage 2 explanations for future tuning.
 - **Evaluation harness** – build a reusable benchmark suite that replays
-  issue-centric prompts across repositories, collecting metrics on plan
+  repository/issue-anchored software engineering tasks across repositories, collecting metrics on plan
   quality, explanation usefulness, and developer trust.
 - **Taxonomy evolution pipeline** – establish a process to refine and extend
   the SWE taxonomies based on empirical data (e.g., frequently occurring
@@ -484,10 +474,10 @@ steps for Plan4Code:
 
 | Remaining Gap | Blocks | Priority |
 |---|---|---|
-| Wire `_run_supervised_trial` and `_run_baseline_trial` in `reproducibility_experiment.py` | RQ1, RQ3a data collection | **High** |
+| Wire `_run_supervised_trial` and `_run_baseline_trial` in `reproducibility_experiment.py` | RQ1, RQ2, RQ3 data collection | **High** |
 | Replace `bert-base-uncased` with `microsoft/codebert-base` in `ReliabilityEvaluationTool` | Construct validity (Threats §) | **High** |
-| Add `temperature=0` parameter to `LocalAIClient.chat()` | RQ1, RQ3a, RQ3b determinism | **High** |
+| Add `temperature=0` parameter to `LocalAIClient.chat()` | RQ1, RQ2, RQ3 determinism | **High** |
 | Add `ISO25010Characteristic` column to all taxonomy CSV files | Contribution 2; RQ1 operationalization | **High** |
-| Write prompt-variation robustness experiment (RQ3b counterpart to `reproducibility_experiment.py`) | RQ3b data collection | **Medium** |
+| Write prompt-variation robustness experiment over repository/issue-anchored tasks | RQ3 data collection | **Medium** |
 | Add unit tests for `IntentPlanner` and `ExplanationService` with mock `MultiModelLLMClient` | Test coverage; CI gate | **Medium** |
 | Remove or implement `src/migration/analyzer.py` stub | Artifact integrity | **Low** |

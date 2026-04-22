@@ -65,7 +65,7 @@ Related documents:
 - [ ] Integrate static analysis for the primary DV using **SonarQube and/or Roslyn analyzers** with pinned rulesets.
 - [ ] Add collection of additional quality metrics where available (cyclomatic complexity, test coverage, duplication, conventions, security) and record provenance when fetched from external systems.
 - [ ] Implement **testability gate + logging** in the evaluation harness (build/test execution status, tests-added count, optional coverage delta) and make it a prerequisite for interpreting other DVs.
-- [ ] Write prompt-variation robustness experiment (RQ3 counterpart to `reproducibility_experiment.py`).
+- [ ] Write prompt-variation robustness experiment over repository/issue-anchored software engineering tasks.
 - [ ] Add unit tests for `IntentPlanner` and `ExplanationService` with mock `MultiModelLLMClient`.
 - [ ] Remove or implement `src/migration/analyzer.py` stub.
 - [ ] Run end-to-end pilot (10 issues) to validate: determinism controls, SOLID metric collection, and testability gate.
@@ -88,16 +88,15 @@ Related documents:
 - [ ] Execute the **practical v1 run budget** from [`docs/experiments/experiment-design.md`](experiments/experiment-design.md): 3 sets minimum (up to 5), each set with 10 paired supervised vs. baseline runs.
 - [ ] Run full RQ1 experiment (paired): 3–5 sets × 10 issue pairs = 30–50 paired observations.
 - [ ] Run full RQ2 experiment (paired): reuse the same 3–5 sets × 10 issue pairs = 30–50 paired observations.
-- [ ] Run full RQ3a experiment (repeated-trial robustness): 3–5 sets × 10 repeated trials per condition = 30–50 runs per condition.
-- [ ] Construct prompt-variation corpus for RQ3b: 3–5 intents (one per set) × 10 paraphrases = 30–50 prompts.
-- [ ] Run full RQ3b experiment (paraphrase robustness): 30–50 supervised + 30–50 baseline runs.
+- [ ] Construct prompt-variation corpus for RQ3: 3–5 task sets × 10 anchored tasks × 10 paraphrases per task.
+- [ ] Run full RQ3 experiment (paraphrase robustness over anchored tasks): 30–50 supervised + 30–50 baseline task-level observations.
 - [ ] Run RQ4 legacy paired experiment: 3–5 legacy sets × 10 paired runs = 30–50 pairs.
 - [ ] Run RQ4a configuration experiment on the same sets: compare `strictness=0.2` vs `strictness=0.8` with 3–5 sets × 10 paired runs = 30–50 pairs.
 - [ ] Store all raw results in versioned JSON files under `data/experiments/`.
 - [ ] Capture and store metric provenance for static analysis and any enriched metrics (ruleset/version, scope, timestamps).
 
 ### Deliverables
-- Raw experiment data (versioned, anonymized) for RQ1, RQ2, RQ3a, RQ3b, RQ4, and RQ4a using the 3–5 set protocol
+- Raw experiment data (versioned, anonymized) for RQ1, RQ2, RQ3, RQ4, and RQ4a using the 3–5 set protocol
 - Data quality report (missing values, outliers, LLM failures)
 
 ---
@@ -108,10 +107,9 @@ Related documents:
 **Goal**: Produce statistical evidence for or against each null hypothesis.
 
 ### Tasks
-- [ ] Run Wilcoxon signed-rank (paired) for RQ1 and RQ2 on pooled 30–50 paired observations; report per-set medians.
-- [ ] Run RQ3a robustness analysis using paired variance comparisons across sets (as defined in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md)).
-- [ ] Run McNemar's test on paraphrase-level verdict agreement for RQ3b and report consistency-ratio gaps.
-- [ ] Run RQ4 tests as specified in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md): Fisher's exact test for pattern adoption rate + Wilcoxon (paired) for violation delta.
+- [ ] Run Wilcoxon signed-rank (paired) for RQ1 and RQ2 on pooled 30–50 paired observations; report per-set medians (TBD).
+- [ ] Run McNemar's test on paraphrase-level verdict agreement for RQ3 and report consistency-ratio gaps.
+- [ ] Run RQ4 tests as specified in [`docs/experiments/experiment-design.md`](experiments/experiment-design.md): Wilcoxon signed-rank on the legacy-only subset and report effect size for SOLID violation reduction.
 - [ ] Apply multiple-comparison correction where applicable across metrics.
 - [ ] Run κ-based annotation validation:
   - (a) validate `overall_verdict` label agreement on a sampled set of outputs

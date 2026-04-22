@@ -94,10 +94,10 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: None.
 
-### FR-4 — Issue-centric evaluation inputs
+### FR-4 — Repository/issue-anchored task inputs
 
-- **Statement**: The evaluation workflow shall support issue-centric prompts bound to a concrete repository artifact (issue or pull request) to provide authoritative context.
-- **Fit Criterion**: Each evaluation record includes a stable link/identifier to the underlying artifact and the prompt used.
+- **Statement**: The evaluation workflow shall support software engineering tasks anchored to a concrete repository artifact (issue or pull request) to provide authoritative context.
+- **Fit Criterion**: Each evaluation record includes a stable link/identifier to the underlying artifact, the task description, and any prompt variants used for that same anchored task.
 - **Rationale**: Ensure experimental inputs are concrete and reviewable.
 - **Source**: `docs/PROPOSAL.md` (Empirical Experiments), `docs/experiments/experiment-design.md`.
 - **Priority**: Must.

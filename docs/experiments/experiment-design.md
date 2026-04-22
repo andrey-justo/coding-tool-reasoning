@@ -11,17 +11,16 @@ Run-level comparison tracking (baseline vs supervised vs human studies): [`data/
 
 | RQ | Method | Baseline | Primary Metric | Statistical Test | Min N | Pass Criterion |
 |---|---|---|---|---|---|---|
-| RQ1 | Within-subjects (paired supervised vs. zero-shot per issue) | `IntentPlanner` with `nfr_focus=[]`, `relationship_depth=0`, same LLM, `temperature=0` | SOLID violation count delta (static analysis) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median paired improvement > 0; target p < 0.05 |
+| RQ1 | Artifact design + planning-output review | None | Taxonomy traceability + plan-field coverage | Design review / pilot assessment | Pilot task sample | Plans expose SRP/OCP/DIP or legacy-pattern constraints with linked taxonomy entities |
 | RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | SOLID violation count reduction (%) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
-| RQ3a | Within-subjects (10 repeated trials per set) | Zero-shot, same LLM and run protocol | Std-dev of SOLID violation count delta | Wilcoxon signed-rank on per-set variance | 3-5 sets × 10 issues (10 repeats per condition) = 30-50 observations | ≥ 20 % std-dev reduction |
-| RQ3b | Within-subjects (10 paraphrases per set) | Zero-shot, same 10 paraphrases | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 intents (10 paraphrases per intent) = 30-50 observations | Consistency ≥ 0.80 and supervised > baseline |
-| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Strangler Fig / ACL pattern adoption rate + SRP/OCP/DIP violation delta | Fisher's exact test (pattern rate) + Wilcoxon (paired violation delta) | 3-5 legacy sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | pattern adoption higher and median violation delta improvement > 0 |
+| RQ3 | Within-subjects (10 paraphrases per task set) | Zero-shot, same 10 paraphrases over the same repository/issue-anchored task | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 anchored tasks = 30-50 observations | Consistency ≥ 0.80 and supervised > baseline |
+| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | SOLID violation count reduction (%) on legacy-only subset | Wilcoxon signed-rank (paired) | 3-5 legacy sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement > 0 on legacy corpus; target p < 0.05 |
 
 ### Practical v1 Run Budget (Simplified)
 
 To keep execution feasible, v1 uses a low-cost repeated-set protocol:
 
-- A **set** is a fixed bundle of 10 paired comparisons (same issues/intents across supervised and baseline).
+- A **set** is a fixed bundle of 10 paired comparisons over the same repository/issue-anchored software engineering tasks across supervised and baseline.
 - Run **3 sets minimum**; run **up to 5 sets** if time/compute allows.
 - Within each set, keep prompt order, model configuration, and evaluation pipeline identical across conditions.
 - Report both per-set results and pooled results (30-50 paired observations total).
@@ -30,25 +29,20 @@ To keep execution feasible, v1 uses a low-cost repeated-set protocol:
 
 ## RQ1 — SOLID-Guided NFR Representation
 
-**Null hypothesis H₀¹**: Taxonomy-guided generation does not produce lower SOLID
-violation smell count than zero-shot generation.
+RQ1 is the **design question** for the artifact rather than a null-hypothesis
+comparison.
 
 **Procedure**:
-1. Select **3-5 issue sets**, each with 10 issues (30-50 total paired observations). Reuse the same set definitions across RQ1/RQ2 for comparability. Prioritize repositories with known SOLID debt (high LCOM4, high concrete dependency count).
-2. For each issue, run two conditions in the same session:
-   - *Supervised*: `plan_swe_code_change` → `build_swe_code_context` → LLM code generation → `judge_swe_code_change`.
-   - *Baseline*: same LLM prompt with no taxonomy injection (`nfr_focus=[]`, `relationship_depth=0`).
-3. For each generated output, run static analysis on the diff:
-   - **SonarQube** (open source) or **Roslyn Analyzers** (C#-specific): count SRP, OCP, DIP violation rules triggered.
-   - Compute `delta` using the M-1 definition in `docs/requirements/metrics.md` (including the `violations_before = 0` edge cases), and record `absolute_delta`.
-4. Secondary metric: Score each output with `ExplanationService` NFR coverage metric (fraction of ISO 25010 sub-characteristics covered in `nfr_impacts`).
-5. Apply Wilcoxon signed-rank test on paired deltas across the pooled 30-50 pairs; also report per-set medians.
+1. Define the taxonomy schema so SRP, OCP, DIP, and legacy-modernization patterns are represented as explicit nodes and relations.
+2. Map the relevant nodes to ISO 25010 Maintainability/Modifiability where appropriate.
+3. Run `plan_swe_code_change` on a pilot sample of repository/issue-anchored C# legacy refactoring tasks.
+4. Inspect whether each `CodeGenPlan` exposes: (a) explicit design constraints, (b) high-level refactoring steps, and (c) linked taxonomy entities relevant to the task.
+5. Record coverage gaps and revise the taxonomy structure until the planning output consistently surfaces the intended constraints.
 
-**Confound controls**:
-- Fix `temperature=0` in both conditions.
-- Same LLM model and version; document exact model hash/tag.
-- Run static analysis with identical ruleset and threshold in both conditions; disable rules unrelated to SOLID.
-- Blind scoring: SOLID count computed by automated tool, not human judgment.
+**Success criteria**:
+- Plans expose SRP/OCP/DIP or legacy-pattern constraints explicitly rather than only implicitly.
+- Linked taxonomy entities are traceable from the plan back to the taxonomy dataset.
+- The planning output is specific enough to guide downstream code generation for the pilot tasks.
 
 ---
 
@@ -74,15 +68,15 @@ violation smell count than zero-shot generation.
 **Null hypothesis H₀³**: Verdict consistency ratio under supervised generation ≤ verdict consistency ratio under zero-shot generation.
 
 **Procedure**:
-1. Select **3-5 intents** (one per set).
-2. For each intent, produce **10 human-authored paraphrases**:
+1. Select **3-5 task sets**, each composed of 10 software engineering tasks anchored to a specific repository/issue pair.
+2. For each anchored task, produce **10 human-authored paraphrases** that preserve the same repository/issue context and requested change:
    - Formal specification style ("The system shall…")
    - Casual bug report ("This thing breaks when…")
    - Imperative command ("Refactor X to do Y")
    - Passive description ("X is not working because…")
    - Non-native speaker phrasing (simplified vocabulary, direct translation patterns)
-3. Run each paraphrase through the supervised agent and the zero-shot baseline.
-4. Compute verdict consistency ratio = (trials agreeing with majority verdict) / 10 per intent.
+3. Run each paraphrase through the supervised agent and the zero-shot baseline while keeping repository, issue, code revision, and evaluation pipeline fixed.
+4. Compute verdict consistency ratio = (trials agreeing with majority verdict) / 10 per anchored task.
 5. Apply McNemar's test on paraphrase-level paired verdict agreement (supervised vs. baseline), and report the consistency-ratio gap descriptively per set.
 
 **Paraphrase methodology**: internal paraphrase protocol (WIP).
@@ -121,22 +115,18 @@ violation smell count than zero-shot generation.
 
 ---
 
-## RQ4 — Legacy System Modifiability Impact
+## RQ4 — Legacy-Corpus Effectiveness
 
-**Null hypothesis H₀⁴**: Strangler Fig / Anti-Corruption Layer pattern adoption rate is not higher under supervised generation than under prompt-only generation, and SRP/OCP/DIP violation delta is not greater.
+**Null hypothesis H₀⁴**: On the legacy-only corpus, SOLID violation count reduction under supervised generation is not greater than under prompt-only generation.
 
 **Procedure**:
 1. Curate **3-5 legacy sets**, each with 10 issues from repositories with SOLID debt indicators (age ≥ 5 years, ≤ 40 % test coverage, ≥ 10 SOLID violation smells per KLOC from SonarQube baseline scan).
 2. For each issue, run supervised and prompt-only conditions as paired comparisons.
-3. **Pattern detection**: classify each generated output using a structural rubric:
-   - *Strangler Fig*: new facade class introduced that delegates to existing legacy module while intercepting new behavior.
-   - *Anti-Corruption Layer*: new translation interface between legacy subsystem and caller, preventing propagation of legacy contracts.
-   - Classification is binary (applied / not applied), performed by two independent reviewers (Cohen's κ ≥ 0.7 required).
-4. **Violation delta**: run the same SonarQube SOLID ruleset as RQ1; record SRP, OCP, DIP deltas per issue using the M-1 definition in `docs/requirements/metrics.md`.
-5. **Correlation**: test whether pattern application correlates with SOLID violation reduction (Spearman ρ).
-6. Statistical tests: Fisher's exact test for pattern adoption rate; Wilcoxon for violation delta; compute Cohen's d on violation delta.
+3. Run the same SonarQube or Roslyn SOLID ruleset used in RQ2 and record SRP, OCP, and DIP deltas per issue using the M-1 definition in `docs/requirements/metrics.md`.
+4. Apply Wilcoxon signed-rank test on paired `delta` values over the legacy-only subset; report median improvement in percentage points and Cohen's d.
+5. Compare the legacy-only effect size against the broader RQ2 corpus descriptively to determine whether legacy tasks appear more or less responsive to taxonomy-guided supervision.
 
-**Rationale**: Strangler Fig operationalizes OCP at the system level (you extend by adding a new facade, not by modifying the legacy module). ACL operationalizes DIP (new code depends on the abstraction, not the concrete legacy subsystem). Their adoption is therefore a concrete proxy for OCP+DIP compliance — detectable structurally without requiring expert code review for every line.
+**Rationale**: RQ4 treats legacy software as a domain-focused subset of study subjects. This keeps the question distinct from RQ2 by asking whether the supervisor remains effective when evaluation is restricted to legacy codebases with known SOLID debt.
 
 ---
 

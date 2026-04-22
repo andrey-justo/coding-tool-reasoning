@@ -2,10 +2,6 @@
 
 This document defines the **evaluation metrics** used by the project.
 
-It is referenced by:
-- `PROPOSAL.md` (methods + evaluation overview)
-- `docs/requirements/requirements.md` (FR-6, FR-14, FR-15; NFR-2)
-
 The intent is to keep the proposal and requirements **high-level** while this
 file captures the metric definitions and what must be recorded for
 reproducibility.

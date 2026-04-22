@@ -1,11 +1,4 @@
-# Risk: Experiment Data — Public vs. Private
-
-**Severity**: High  
-**Blocks**: dataset release; reproducibility; ethics/IRB; paper submission  
-
----
-
-## Why This Risk Exists
+# Experiments Data Privacy
 
 Issue bodies, PR diffs, and logs from private or enterprise repositories can
 contain:
