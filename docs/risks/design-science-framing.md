@@ -39,9 +39,9 @@ DSR defines seven guidelines. The table below maps each one to this project:
 |---|---|
 | **G1 – Design as an Artifact** | The artifact is the `SWE-NFR-MCP` supervisor agent: a two-stage MCP server with configurable SWE taxonomies that mediates between natural language and LLM code generation. |
 | **G2 – Problem Relevance** | LLM code generators produce syntactically correct but SOLID-violating code when applied to legacy systems; SOLID violations (SRP, OCP, DIP) are directly correlated with change risk, regression probability, and inability to apply Strangler Fig / ACL modernization patterns. Developers lack a tool to enforce SOLID-adherent generation in AI-assisted legacy refactoring (documented in Introduction / Problem Statement). |
-| **G3 – Design Evaluation** | RQ1–RQ4 operationalize evaluation. RQ1 and RQ2 measure SOLID violation count delta (static analysis primary) and NFR coverage score (secondary) vs. zero-shot baseline. RQ3 measures verdict consistency across paraphrased prompts. RQ4 measures Strangler Fig / ACL pattern adoption rate and violation delta on a curated legacy corpus. Statistical tests: Wilcoxon signed-rank, Cohen's *d*, Fisher's exact, Bonferroni correction. |
+| **G3 – Design Evaluation** | RQ1–RQ4 operationalize evaluation. RQ1 measures SOLID violation alignment (primary: static analysis; secondary: NFR coverage) vs. zero-shot baseline. RQ2 measures SOLID violation reduction through static analysis of SRP/OCP/DIP violations. RQ3a measures reproducibility (output variance reduction across repeated trials). RQ3b measures verdict consistency across paraphrased prompts. RQ4 measures Strangler Fig / ACL pattern adoption rate and violation delta on a curated legacy corpus. Statistical tests: Wilcoxon signed-rank (paired), Cohen's *d*, Fisher's exact, Bonferroni correction. |
 | **G4 – Research Contributions** | Four new artifacts: (a) the supervisor agent architecture, (b) the plug-in SOLID-aligned SWE taxonomy framework, (c) the SOLID violation static-analysis evaluation methodology (decoupling quality measurement from LLM self-reporting), (d) the reproducibility and prompt-robustness evaluation dimensions for LLM-assisted SE. |
-| **G5 – Research Rigor** | Empirical study: 5 repositories × 30 issues × 5 trials. Scorers: CodeBERTScore + CodeBLEU. Survey: N ≥ 20 developers. Analysis: statistical hypothesis testing at α = 0.05. |
+| **G5 – Research Rigor** | Empirical study: 3–5 sets × 10 issues/PRs all analysing metrics for each RQ (30–50 observations per RQ). Metrics: M-1 (SOLID violation delta), M-2 (testability gate), cyclomatic complexity, test coverage, duplication, security findings. Survey: N ≥ 20 developers for RQ4 trust/control validation. Analysis: paired statistical hypothesis testing at α = 0.05 with Bonferroni correction. |
 | **G6 – Design as a Search Process** | Three design cycles (see below). Each cycle refines the artifact based on evaluation feedback. |
 | **G7 – Communication of Research** | Dual audience: (a) researchers — positioned against SWE-bench, SWE-agent, Plan4Code; (b) practitioners — VS Code MCP integration, CI/CD hooks, configurable YAML. |
 
@@ -65,8 +65,8 @@ corpus of 5 open-source repositories.
 **Input**: Cycle 1 problem statement; ISO 25010 taxonomy mapping.  
 **Activity**: Build Stage 1 (IntentPlanner) → evaluate plan quality and NFR
 coverage (RQ1 pilot) → refine taxonomy depth and `relationship_depth` config
-→ build Stage 2 (ExplanationService) → evaluate verdict consistency (RQ2
-pilot) → fix `temperature=0` / `seed` / CodeBERT scorer → iterate.  
+→ build Stage 2 (ExplanationService) → evaluate verdict consistency (RQ3b
+pilot) → fix `temperature=0` / CodeBERT scorer → iterate.  
 **Output**: Stable `SWE-NFR-MCP` prototype with reproducible experiments.  
 **Deliverable**: Implementation Gaps resolved (Phase 2 of Timeline).
 
@@ -106,8 +106,8 @@ This project is inspired by Plan4Code but makes distinct contributions:
 |---|---|---|
 | Knowledge representation | Static OWL/RDF ontologies | Configurable CSV taxonomies; plug-in by directory drop |
 | Supervisor configurability | Not addressed | `swe_mcp_config.yaml` with strictness, depth, stage control |
-| Reproducibility evaluation | Not measured | RQ2: variance across N repeated trials; `ReproducibilityReport` |
-| Prompt-variation robustness | Not measured | RQ3: consistency across paraphrased requests |
+| Reproducibility evaluation | Not measured | RQ3a: output variance reduction across repeated trials; `ReproducibilityReport` |
+| Prompt-variation robustness | Not measured | RQ3b: verdict consistency across paraphrased requests |
 | Integration interface | Standalone | MCP stdio server; composable with GitHub MCP, filesystem tools, VS Code Copilot |
 | Legacy system focus | Not addressed | SOLID-violation smells in legacy taxonomy (`legacy_god_service`, `legacy_missing_abstraction`, `legacy_concrete_dependency`, `legacy_change_cascade`); Strangler Fig (OCP), ACL (DIP) patterns; violation delta as primary metric |
 

@@ -25,18 +25,20 @@ generation context: *reproducibility*, *robustness to prompt variations*, and
 
 ## Research Questions
 
-**RQ1 – Quality Alignment**: Does taxonomy-guided prompt enrichment (Stage 1)
-produce LLM-generated code that better aligns with ISO 25010 quality
-objectives compared to zero-shot, unsupervised generation? For scoped v1,
-this is operationalized as ISO 25010 maintainability/modifiability in C#
-using SOLID-focused static analysis (SRP, OCP, DIP) as the primary metric;
+**RQ1 – SOLID-Guided Quality Alignment**: Does taxonomy-guided prompt enrichment (Stage 1)
+produce LLM-generated code that better aligns with ISO 25010 maintainability/modifiability objectives compared to zero-shot, unsupervised generation? For scoped v1,
+this is operationalized through SOLID-focused static analysis (SRP, OCP, DIP) as the primary metric;
 reliability and security are treated as secondary qualitative signals.
 
-**RQ2 – Reproducibility**: Does the supervisor agent reduce output variance
+**RQ2 – SOLID Violation Reduction**: For scoped v1, does the supervisor
+agent reduce SOLID violations in C# code compared to zero-shot, unsupervised generation,
+as measured through static analysis of SRP, OCP, and DIP violations?
+
+**RQ3a – Reproducibility**: Does the supervisor agent reduce output variance
 when the same software engineering intent is submitted repeatedly to an LLM,
 compared to an unsupervised baseline?
 
-**RQ3 – Prompt-Variation Robustness**: Does the supervisor agent produce
+**RQ3b – Prompt-Variation Robustness**: Does the supervisor agent produce
 consistent NFR-alignment verdicts and plans across semantically equivalent
 but syntactically different natural language requests?
 
@@ -388,12 +390,11 @@ into Stage 2:
 
 ## Internal Validity
 
-- **LLM non-determinism** – all experiments must fix `temperature=0` and a
-  constant random `seed` in `LocalAIClient` to isolate the effect of taxonomy
-  supervision from stochastic output variation. Without this, RQ2 and RQ3
+- **LLM non-determinism** – all experiments must fix `temperature=0` in `LocalAIClient` to isolate the effect of taxonomy
+  supervision from stochastic output variation. Without this, RQ3a and RQ3b
   results cannot be attributed to the supervisor.
 - **Prompt confounding** – prompt phrasing in Stages 1 and 2 may inadvertently
-  encode quality preferences. Addressed by RQ3 (prompt-variation robustness)
+  encode quality preferences. Addressed by RQ3b (prompt-variation robustness)
   and by blind prompt authorship (prompts written by authors not involved in
   taxonomy design).
 - **Reference code subjectivity** – `tests/reference_code/` examples were not
@@ -483,10 +484,10 @@ steps for Plan4Code:
 
 | Remaining Gap | Blocks | Priority |
 |---|---|---|
-| Wire `_run_supervised_trial` and `_run_baseline_trial` in `reproducibility_experiment.py` | RQ2 data collection | **High** |
+| Wire `_run_supervised_trial` and `_run_baseline_trial` in `reproducibility_experiment.py` | RQ1, RQ3a data collection | **High** |
 | Replace `bert-base-uncased` with `microsoft/codebert-base` in `ReliabilityEvaluationTool` | Construct validity (Threats §) | **High** |
-| Add `temperature=0` and `seed` parameters to `LocalAIClient.chat()` | RQ2, RQ3 reproducibility | **High** |
+| Add `temperature=0` parameter to `LocalAIClient.chat()` | RQ1, RQ3a, RQ3b determinism | **High** |
 | Add `ISO25010Characteristic` column to all taxonomy CSV files | Contribution 2; RQ1 operationalization | **High** |
-| Write prompt-variation robustness experiment (RQ3 counterpart to `reproducibility_experiment.py`) | RQ3 data collection | **Medium** |
+| Write prompt-variation robustness experiment (RQ3b counterpart to `reproducibility_experiment.py`) | RQ3b data collection | **Medium** |
 | Add unit tests for `IntentPlanner` and `ExplanationService` with mock `MultiModelLLMClient` | Test coverage; CI gate | **Medium** |
 | Remove or implement `src/migration/analyzer.py` stub | Artifact integrity | **Low** |

@@ -11,11 +11,11 @@ Run-level comparison tracking (baseline vs supervised vs human studies): [`data/
 
 | RQ | Method | Baseline | Primary Metric | Statistical Test | Min N | Pass Criterion |
 |---|---|---|---|---|---|---|
-| RQ1 | Within-subjects (paired supervised vs. zero-shot per issue) | `IntentPlanner` with `nfr_focus=[]`, `relationship_depth=0`, same LLM, `temperature=0` | SOLID violation count delta (static analysis) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 paired runs = 30-50 pairs | median paired improvement > 0; target p < 0.05 |
-| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | SOLID violation count reduction (%) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 paired runs = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
-| RQ3a | Within-subjects (10 repeated trials per set) | Zero-shot, same LLM and run protocol | Std-dev of SOLID violation count delta | Wilcoxon signed-rank on per-set variance | 3-5 sets × 10 repeats per condition = 30-50 | ≥ 20 % std-dev reduction |
-| RQ3b | Within-subjects (10 paraphrases per set) | Zero-shot, same 10 paraphrases | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 paraphrases = 30-50 | Consistency ≥ 0.80 and supervised > baseline |
-| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Strangler Fig / ACL pattern adoption rate + SRP/OCP/DIP violation delta | Fisher's exact test (pattern rate) + Wilcoxon (paired violation delta) | 3-5 legacy sets × 10 paired runs = 30-50 pairs | pattern adoption higher and median violation delta improvement > 0 |
+| RQ1 | Within-subjects (paired supervised vs. zero-shot per issue) | `IntentPlanner` with `nfr_focus=[]`, `relationship_depth=0`, same LLM, `temperature=0` | SOLID violation count delta (static analysis) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median paired improvement > 0; target p < 0.05 |
+| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | SOLID violation count reduction (%) | Wilcoxon signed-rank (paired) | 3-5 sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
+| RQ3a | Within-subjects (10 repeated trials per set) | Zero-shot, same LLM and run protocol | Std-dev of SOLID violation count delta | Wilcoxon signed-rank on per-set variance | 3-5 sets × 10 issues (10 repeats per condition) = 30-50 observations | ≥ 20 % std-dev reduction |
+| RQ3b | Within-subjects (10 paraphrases per set) | Zero-shot, same 10 paraphrases | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 intents (10 paraphrases per intent) = 30-50 observations | Consistency ≥ 0.80 and supervised > baseline |
+| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Strangler Fig / ACL pattern adoption rate + SRP/OCP/DIP violation delta | Fisher's exact test (pattern rate) + Wilcoxon (paired violation delta) | 3-5 legacy sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | pattern adoption higher and median violation delta improvement > 0 |
 
 ### Practical v1 Run Budget (Simplified)
 
@@ -31,7 +31,7 @@ To keep execution feasible, v1 uses a low-cost repeated-set protocol:
 ## RQ1 — SOLID-Guided NFR Representation
 
 **Null hypothesis H₀¹**: Taxonomy-guided generation does not produce lower SOLID
-violation smell count than zero-shot generation (Cohen's d < 0.5).
+violation smell count than zero-shot generation.
 
 **Procedure**:
 1. Select **3-5 issue sets**, each with 10 issues (30-50 total paired observations). Reuse the same set definitions across RQ1/RQ2 for comparability. Prioritize repositories with known SOLID debt (high LCOM4, high concrete dependency count).
@@ -54,7 +54,7 @@ violation smell count than zero-shot generation (Cohen's d < 0.5).
 
 ## RQ2 — SOLID Violation Reduction
 
-**Null hypothesis H₀²**: SOLID violation count reduction under supervised generation is not greater than under zero-shot generation (Cohen's d < 0.5).
+**Null hypothesis H₀²**: SOLID violation count reduction under supervised generation is not greater than under zero-shot generation.
 
 **Procedure**:
 1. Select the same 3-5 sets × 10 issues from RQ1.
@@ -91,11 +91,39 @@ violation smell count than zero-shot generation (Cohen's d < 0.5).
 
 ## RQ4a — Configuration Effectiveness
 
-**Null hypothesis H₀⁴ᵃ**: Verdict distribution is independent of the `strictness` configuration value.
+**Null hypothesis H₀⁴ᵃ**: Verdict distribution and SOLID-violation reduction are independent of the `strictness` configuration value.
+
+**Conditions / levels**:
+- `strictness=low`: permissive supervisor; emits guidance with minimal rejection/escalation.
+- `strictness=medium`: default supervisor setting and **reference baseline** for the configuration study.
+- `strictness=high`: conservative supervisor; applies the strongest rejection/escalation thresholds before allowing a generation to proceed.
+
+**Outcome measures**:
+1. **Primary**: verdict distribution across `{accept, revise, reject}` per run.
+2. **Secondary**: SOLID violation count delta relative to the issue's pre-change baseline, using the same static-analysis ruleset and M-1 delta definition referenced in `docs/requirements/metrics.md`.
+3. **Secondary**: acceptance rate (`accept` / total runs) and escalation rate (`reject` / total runs).
+
+**Procedure**:
+1. Select **3-5 issue sets**, one intent per set, reusing the same issue-selection criteria as the main supervised study (RQ1).
+2. For each set, execute the supervised pipeline under all three `strictness` levels: `low`, `medium`, and `high`.
+3. Run **10 repeated trials per set per level** using the same seed schedule and LLM configuration, varying only `strictness`.
+4. Record the final supervisor verdict (`accept`, `revise`, `reject`) and the resulting SOLID violation delta for each run.
+5. Treat `strictness=medium` as the pre-declared baseline for pairwise follow-up comparisons (`low` vs `medium`, `high` vs `medium`).
+
+**Sample size**: **3-5 sets × 10 repeated runs × 3 levels = 90-150 total runs**; for pairwise repeated-measures comparisons against the `medium` baseline, this yields **30-50 paired observations** per comparison.
+
+**Planned statistical tests**:
+- For the 3-level verdict distribution: **chi-square test of independence** on the aggregated contingency table of verdict × `strictness`; if any expected cell count is < 5, use **Fisher's exact test** instead.
+- For repeated-measures comparison of SOLID violation delta across the three levels: **Friedman test** by set/run block.
+- If the Friedman test is significant, run post-hoc **Wilcoxon signed-rank** tests for `low` vs `medium` and `high` vs `medium`, with Holm correction.
+
+**Pass criterion**: reject H₀⁴ᵃ only if verdict distribution differs significantly by `strictness` and at least one non-default level shows a practically meaningful change versus `medium` (≥ 10 percentage-point change in acceptance rate or a positive median SOLID-delta improvement).
+
+---
 
 ## RQ4 — Legacy System Modifiability Impact
 
-**Null hypothesis H₀⁴**: Strangler Fig / Anti-Corruption Layer pattern adoption rate is not higher under supervised generation than under prompt-only generation (d < 0.5), and SRP/OCP/DIP violation delta is not greater.
+**Null hypothesis H₀⁴**: Strangler Fig / Anti-Corruption Layer pattern adoption rate is not higher under supervised generation than under prompt-only generation, and SRP/OCP/DIP violation delta is not greater.
 
 **Procedure**:
 1. Curate **3-5 legacy sets**, each with 10 issues from repositories with SOLID debt indicators (age ≥ 5 years, ≤ 40 % test coverage, ≥ 10 SOLID violation smells per KLOC from SonarQube baseline scan).
