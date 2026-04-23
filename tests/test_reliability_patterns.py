@@ -3,7 +3,6 @@ import glob
 
 import logging
 import pytest
-from agent_framework import ChatAgent
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.tools.reliability_design import ReliabilityDesignTool
 from src.evaluation.reliability_evaluation import ReliabilityEvaluationTool
@@ -46,7 +45,7 @@ async def test_add_reliability_pattern(pattern_name, code_example, reference_cod
     reliability_tool = ReliabilityDesignTool(llm_client=llm_client)
     prompt = f"Add a {pattern_name.replace('_', ' ')} design pattern to the following code:\n{code_example}"
     response = await reliability_tool.run(prompt)
-    # Normalize agent response (strip, unify line endings)
+    # Normalize response (strip, unify line endings)
     evaluator = ReliabilityEvaluationTool()
     normalized_response = evaluator.extract_code_from_agent_response(response)
     logging.debug(f"Agent response for {pattern_name}:\n", normalized_response)
@@ -56,3 +55,10 @@ async def test_add_reliability_pattern(pattern_name, code_example, reference_cod
         generated_code=normalized_response, reference_code=reference_code
     )
     logging.info(f"Reliability Evaluation Scores for {pattern_name}:", scores)
+    # Minimum guard: F1 >= 0.3 ensures non-trivial output was produced.
+    # Calibrate this threshold once bert-base-uncased is replaced with
+    # microsoft/codebert-base (see Threats to Validity).
+    assert scores["f1"] >= 0.3, (
+        f"BERTScore F1 below minimum threshold (0.30) for pattern '{pattern_name}': "
+        f"{scores['f1']:.4f}. Verify LLM output is non-empty and structurally valid."
+    )

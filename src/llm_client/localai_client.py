@@ -1,4 +1,3 @@
-from agent_framework import ChatClientProtocol
 import requests
 import json
 from requests.adapters import HTTPAdapter
@@ -7,7 +6,7 @@ from urllib3.util.retry import Retry
 from src.errors.TextLLMException import TextLLMException
 
 
-class LocalAIClient(ChatClientProtocol):
+class LocalAIClient:
     """
     Simple HTTP client for a LocalAI server.
     Assumes LocalAI chat completions endpoint at {endpoint}/v1/chat/completions

@@ -20,11 +20,16 @@ class ReliabilityEvaluationTool:
         return text  # Return original text if no code block found
 
     def extract_code_from_agent_response(self, response) -> str:
-        generated_code = ""
-        for message in response.messages:
-            for m in message.contents:
-                generated_code += m.text + "\n"
-        return self.extract_csharp_code(generated_code)
+        """Extract code from a plain string response.
+
+        The previous implementation expected an AgentRunResponse from
+        agent_framework; now we treat the response as a simple string.
+        """
+
+        if not isinstance(response, str):
+            response = str(response)
+
+        return self.extract_csharp_code(response)
 
     def evaluate(self, generated_code: str, reference_code: str):
         """

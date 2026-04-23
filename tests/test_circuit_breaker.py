@@ -1,6 +1,5 @@
 import logging
 import random
-from agent_framework import ChatAgent
 import pytest
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.tools.reliability_design import ReliabilityDesignTool
@@ -37,7 +36,10 @@ async def test_add_circuit_breaker():
         generated_code=generated_code, reference_code=reference_code
     )
     logging.info("Reliability Evaluation Scores:", scores)
-
-
-if __name__ == "__main__":
-    test_add_circuit_breaker()
+    # Minimum guard: F1 >= 0.3 ensures the LLM returned non-empty,
+    # structurally valid code. Calibrate this threshold once bert-base-uncased
+    # is replaced with microsoft/codebert-base (see Threats to Validity).
+    assert scores["f1"] >= 0.3, (
+        f"BERTScore F1 below minimum threshold (0.30): {scores['f1']:.4f}. "
+        "Verify that the LLM returned non-empty, structurally valid C# code."
+    )

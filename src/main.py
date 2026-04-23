@@ -1,22 +1,23 @@
-import asyncio
-from agent_framework import ChatAgent
-from agent_framework.devui import serve
+"""Simple CLI entry point for the migration helper app.
 
+Previously this used agent_framework's dev UI; it now exposes a
+minimal command-line interface around ReliabilityDesignTool.
 """
-Main entry point for the migration helper app.
-"""
+
+import asyncio
 
 from llm_client.multi_model_llm_client import MultiModelLLMClient
 from tools.reliability_design import ReliabilityDesignTool
 
 
-def main():
+async def main() -> None:
     llm_client = MultiModelLLMClient()
-    reliability_tool_agent = ReliabilityDesignTool(llm_client=llm_client)
+    reliability_tool = ReliabilityDesignTool(llm_client=llm_client)
 
-    # Launch debug UI - that's it!
-    serve(entities=[reliability_tool_agent], auto_open=True)
-    # → Opens browser to http://localhost:8080
+    prompt = input("Enter a reliability design request: ")
+    result = await reliability_tool.run(prompt)
+    print("\nGenerated code:\n")
+    print(result)
 
 
 if __name__ == "__main__":

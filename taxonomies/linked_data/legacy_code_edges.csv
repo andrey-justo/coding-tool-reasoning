@@ -1,0 +1,9 @@
+SourceId,Relation,TargetId,Description
+legacy_system,has_hotspot,legacy_hotspot,Legacy systems often contain hotspots that concentrate change and defects.
+legacy_system,exhibits,tech_debt_cluster,Legacy systems frequently accumulate clusters of technical debt.
+legacy_system,mitigated_by,pattern_strangler_fig,Use the Strangler Fig pattern to gradually replace legacy components.
+legacy_system,protected_by,pattern_anti_corruption_layer,Place an anti-corruption layer between new code and legacy subsystems.
+legacy_hotspot,increases,regression_risk,Changes in hotspots are more likely to introduce regressions.
+tech_debt_cluster,increases,regression_risk,Technical debt clusters make safe changes harder and more error-prone.
+pattern_strangler_fig,reduces,regression_risk,Incremental replacement with clear seams reduces regression risk.
+pattern_anti_corruption_layer,reduces,regression_risk,Isolating legacy behavior behind adapters reduces the blast radius of changes.

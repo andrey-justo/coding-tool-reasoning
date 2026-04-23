@@ -1,5 +1,3 @@
-from agent_framework.azure import AzureOpenAIAssistantsClient
-from azure.identity import AzureCliCredential
 from .localai_client import LocalAIClient
 import yaml
 import os
@@ -26,22 +24,15 @@ class MultiModelLLMClient:
             provider = model_info.get("provider")
             endpoint = model_info.get("endpoint")
             api_version = model_info.get("api_version")
+
             if provider == "AzureOpenAI":
-                # Use api_key if available, otherwise fallback to AzureCliCredential
-                if self.api_key:
-                    self.clients[model_name] = AzureOpenAIAssistantsClient(
-                        deployment_name=model_name,
-                        endpoint=endpoint,
-                        api_key=self.api_key,
-                        api_version=api_version,
-                    )
-                else:
-                    self.clients[model_name] = AzureOpenAIAssistantsClient(
-                        deployment_name=model_name,
-                        endpoint=endpoint,
-                        credential=AzureCliCredential(),
-                        api_version=api_version,
-                    )
+                # AzureOpenAI via agent_framework is no longer supported here.
+                # If you need Azure support, extend this client using the
+                # official Azure/OpenAI Python SDKs instead of agent_framework.
+                raise ValueError(
+                    "AzureOpenAI provider is not supported without agent_framework; "
+                    "please switch to LocalAI or implement Azure support."
+                )
             elif provider == "LocalAI":
                 # Instantiate the LocalAI HTTP client wrapper
                 self.clients[model_name] = LocalAIClient(

@@ -1,0 +1,11 @@
+Id,Type,Name,NFRCategory,Description
+nfr_security,NFR,Security,Security,How well the system protects data and behavior from unauthorized access or misuse.
+sec_input_validation,Principle,Input Validation,Security,All external inputs are validated and sanitized before use.
+sec_least_privilege,Principle,Least Privilege,Security,Components and users operate with the minimum privileges required.
+sec_authentication,Principle,Authentication,Security,Verify the identity of users and services before granting access.
+sec_authorization,Principle,Authorization,Security,Enforce fine-grained access control based on roles and permissions.
+sec_audit_logging,Principle,Security Audit Logging,Security,Record security-relevant events for investigations and compliance.
+sec_secrets_management,Practice,Secrets Management,Security,Safely store and rotate credentials API keys and certificates.
+sec_secure_defaults,Practice,Secure Defaults,Security,Ship with conservative settings that favor security over convenience.
+sec_injection,Smell,Injection Risk,Security,Dynamic queries or commands built from untrusted input without proper escaping.
+sec_insecure_deserialization,Smell,Insecure Deserialization,Security,Deserializing untrusted data without validation or type checks.

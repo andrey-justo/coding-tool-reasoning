@@ -136,6 +136,52 @@ If you prefer to run LocalAI manually (no docker-compose), you can still follow 
 2. Enter the path to the target code file
 3. Enter the path to the migration prompt file
 
+## MCP server for SWE / NFR context
+
+This repo also provides an MCP server that exposes software-engineering taxonomies
+for clean code and NFR-aware code generation.
+
+- Server entry point: `src/swe_mcp_server.py`
+- Taxonomy sources: `taxonomies/ground_data` and `taxonomies/linked_data`
+
+### Running the MCP server
+
+From the project root, after installing dependencies via the setup script or Poetry:
+
+```bash
+python src/swe_mcp_server.py
+```
+
+This starts a FastMCP server on stdio that can be registered with any MCP‑aware
+client (e.g., via `mcp dev` / `mcp install`).
+
+### Available tools
+
+- `plan_swe_code_change(problem_description, target_language=None, nfr_focus=None)`
+	- Stage 1 – planning. Returns a structured `CodeGenPlan` and **must be
+		called first** to create a high‑level plan for the code change, guided
+		by the SWE taxonomy.
+- `build_swe_code_context(plan, include_templates=True)`
+	- Stage 2a – context building. Takes a `CodeGenPlan` and returns a
+		`SweContext` containing:
+		- A text summary (`swe_summary`) built from the SWE taxonomies
+		- Optional reliability templates loaded from `templates/reliability` for
+			additional requirements.
+- `judge_swe_code_change(swe_context, original_code, modified_code)`
+	- Stage 2b – explainable code changes. Uses the SWE taxonomy plus the
+		Stage 1 plan/context to return a structured `SweCodeChangeExplanation`
+		(overall verdict, rationale, per‑NFR impacts, risks, and recommended
+		tests) comparing original vs. modified code.
+
+The intended agentic flow is:
+
+1. Call `plan_swe_code_change` to show the user a taxonomy‑guided plan.
+2. Once approved, call `build_swe_code_context` and inject the returned
+	`swe_summary` and templates into your LLM prompts for code generation.
+3. After applying the changes in your own agent or tool, call
+	`judge_swe_code_change` with the original and modified code to obtain an
+	explainable assessment of the change.
+
 ## Structure
 - `src/main.py`: Entry point
 - `src/migration/`: Migration logic
