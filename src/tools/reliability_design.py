@@ -36,6 +36,24 @@ class ReliabilityDesignTool(BaseAgent):
         )
         self.llm_client = kwargs['llm_client'] or MultiModelLLMClient()
 
+    def _parse_to_dict(self, data: Any, default_key: str) -> dict[str, str]:
+        """Best-effort conversion from LLM response payload to a dictionary."""
+        if isinstance(data, dict):
+            return data
+
+        if isinstance(data, ChatMessage):
+            data = self.get_raw_response(data)
+
+        if isinstance(data, str):
+            try:
+                parsed = json.loads(data)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                return {default_key: data.strip()}
+
+        return {default_key: str(data).strip()}
+
     def read_templates(self):
         with open(self.add_design_pattern_template, "r", encoding="utf-8") as f:
             self.add_design_pattern_template_content = f.read()
@@ -108,15 +126,28 @@ class ReliabilityDesignTool(BaseAgent):
         **kwargs: Any,
     ) -> AgentRunResponse:
         raw_message = self.get_raw_response(messages) if isinstance(messages, ChatMessage) else messages
+        self.read_templates()
+
         extracted = self.extract_input(raw_message)
-        design_info = self.identify_design(extracted["selected_design_pattern"])
+        extracted_info = self._parse_to_dict(extracted.get("llm_response"), "selected_design_pattern")
+        selected_design = extracted_info.get("selected_design_pattern", str(raw_message))
+
+        identified = self.identify_design(selected_design)
+        design_info = self._parse_to_dict(identified, "formatted_design_pattern_name")
+        formatted_design = design_info.get("formatted_design_pattern_name", selected_design)
+
         new_code = self.select_and_execute_template(
-            design_info["formatted_design_pattern_name"]
+            formatted_design
         )
 
         return AgentRunResponse(messages=new_code)
     
-    def get_raw_response(self, message: ChatMessage) -> str:
+    def get_raw_response(self, message: ChatMessage | str | None) -> str:
+        if message is None:
+            return ""
+        if isinstance(message, str):
+            return message
+
         response = ""
         for m in message.contents:
             response += m.text

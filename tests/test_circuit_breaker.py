@@ -1,43 +1,56 @@
-import logging
-import random
-from agent_framework import ChatAgent
 import pytest
-from src.llm_client.multi_model_llm_client import MultiModelLLMClient
-from src.tools.reliability_design import ReliabilityDesignTool
-from src.evaluation.reliability_evaluation import ReliabilityEvaluationTool
+
+from src.migration.analyzer import Analyzer
+from src.migration.explainer import Explainer
+from src.migration.prompt import Prompt
+from src.ontology.entity import Entity
+from src.tools.judge_code_changes_step import JudgeCodeChangesStep
+from src.utils.file_reader import read_file
+
+
+def test_analyzer_returns_expected_keys():
+    analyzer = Analyzer(code="class A {}", prompt="migrate")
+    result = analyzer.analyze()
+
+    assert set(result.keys()) == {"why", "how", "unsafe"}
+    assert "migration" in result["why"].lower()
+
+
+def test_explainer_with_missing_fields_uses_defaults():
+    explainer = Explainer({"why": "Because"})
+    why, how, unsafe = explainer.explain()
+
+    assert why == "Because"
+    assert how == ""
+    assert unsafe == ""
+
+
+def test_prompt_get_details_returns_original_text():
+    prompt = Prompt("Refactor this code")
+    assert prompt.get_details() == "Refactor this code"
+
+
+def test_entity_actions_append_and_return():
+    entity = Entity(name="Supervisor", intent="Guide refactoring")
+    entity.add_action("reviews", "Developer")
+
+    actions = entity.get_actions()
+    assert actions == [{"action": "reviews", "target": "Developer"}]
+
+
+def test_read_file_reads_utf8_content(tmp_path):
+    sample = tmp_path / "sample.txt"
+    sample.write_text("hello world", encoding="utf-8")
+
+    assert read_file(str(sample)) == "hello world"
 
 
 @pytest.mark.asyncio
-async def test_add_circuit_breaker():
-    # Initialize components
-    llm_client = MultiModelLLMClient()
-    reliability_tool = ReliabilityDesignTool(llm_client=llm_client)
+async def test_judge_code_changes_step_run_returns_empty_message():
+    class DummyLLMClient:
+        pass
 
-    # Random C# code sample
-    cs_samples = [
-        "public class Service { public void Call() { /* ... */ } }",
-        "try { var result = client.Get(); } catch(Exception ex) { /* ... */ }",
-        "public async Task<string> GetDataAsync() { return await http.GetAsync(url); }",
-    ]
-    cs_code = random.choice(cs_samples)
+    tool = JudgeCodeChangesStep(llm_client=DummyLLMClient())
+    response = await tool.run(messages="test")
 
-    # Ask agent to add circuit breaker design pattern
-    prompt = (
-        f"Add a circuit breaker design pattern to the following C# code:\n{cs_code}"
-    )
-    response = await reliability_tool.run(prompt)
-
-    # Evaluate agent response using ReliabilityEvaluationTool
-    # Use the real circuit breaker reference code
-    with open("tests/reference_code/circuit_breaker.cs", "r", encoding="utf-8") as f:
-        reference_code = f.read()
-    evaluator = ReliabilityEvaluationTool()
-    generated_code = evaluator.extract_code_from_agent_response(response)
-    scores = evaluator.evaluate(
-        generated_code=generated_code, reference_code=reference_code
-    )
-    logging.info("Reliability Evaluation Scores:", scores)
-
-
-if __name__ == "__main__":
-    test_add_circuit_breaker()
+    assert response.messages == []

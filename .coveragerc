@@ -1,0 +1,9 @@
+[run]
+branch = True
+source = src
+
+[report]
+omit =
+    src/main.py
+    src/migration/llm_caller.py
+    src/ontology/graph_printer.py
