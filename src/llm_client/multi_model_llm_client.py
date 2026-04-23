@@ -8,6 +8,7 @@ class MultiModelLLMClient:
     """
     Wrapper for OpenAIChatClient to support multiple model selection.
     """
+
     def __init__(self):
         self.default_model = None
         self.api_key = None
