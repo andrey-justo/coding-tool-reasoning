@@ -5,5 +5,8 @@
 __pycache__/*
 *.pyc
 
+## Do not commit models (root-level only; src/models/ is not ignored)
+/models/
+
 ## Remove SLR for now
 docs/slr/*

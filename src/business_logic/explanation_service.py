@@ -1,12 +1,12 @@
 import json
 from typing import List, Optional
 
-from business_logic.swe_taxonomy_service import SweKnowledgeBase
-from llm_client.multi_model_llm_client import MultiModelLLMClient
-from models.code_gen_plan import CodeGenPlan
-from models.swe_config import SweMcpConfig
-from models.swe_context import SweContext
-from models.swe_explanation import NfrImpact, SweCodeChangeExplanation
+from .swe_taxonomy_service import SweKnowledgeBase
+from ..llm_client.multi_model_llm_client import MultiModelLLMClient
+from ..models.code_gen_plan import CodeGenPlan
+from ..models.swe_config import SweMcpConfig
+from ..models.swe_context import SweContext
+from ..models.swe_explanation import NfrImpact, SweCodeChangeExplanation
 
 
 class ExplanationService:

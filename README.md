@@ -1,5 +1,8 @@
 # Python Code Reasoning Tools
 
+[![CI](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/ci.yml)
+[![CD](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/cd.yml/badge.svg?branch=master)](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/cd.yml)
+
 ## Setting up the Environment
 
 The project includes setup scripts for both PowerShell (Windows) and bash (Unix-like systems) environments.
@@ -181,6 +184,32 @@ The intended agentic flow is:
 3. After applying the changes in your own agent or tool, call
 	`judge_swe_code_change` with the original and modified code to obtain an
 	explainable assessment of the change.
+## Testing and Coverage
+
+Run the full test suite locally:
+
+```shell
+pytest
+```
+
+The project enforces a minimum of 80% coverage via `pytest.ini` (`--cov-fail-under=80`).
+
+## CI
+
+GitHub Actions workflow: `.github/workflows/ci.yml`
+
+- Runs on push to `master` and on pull requests
+- Installs dependencies with Poetry
+- Runs `pytest` with coverage gate
+- Uploads `coverage.xml` as a build artifact
+
+## CD
+
+GitHub Actions workflow: `.github/workflows/cd.yml`
+
+- Runs on push to `master`
+- Builds Docker image from the repository Dockerfile
+- Pushes image to GitHub Container Registry as `ghcr.io/<owner>/<repo>`
 
 ## Structure
 - `src/main.py`: Entry point

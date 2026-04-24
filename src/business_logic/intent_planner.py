@@ -2,9 +2,9 @@ import json
 from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
-from business_logic.swe_taxonomy_service import SweKnowledgeBase
-from llm_client.multi_model_llm_client import MultiModelLLMClient
-from models.swe_config import SweMcpConfig
+from .swe_taxonomy_service import SweKnowledgeBase
+from ..llm_client.multi_model_llm_client import MultiModelLLMClient
+from ..models.swe_config import SweMcpConfig
 
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]

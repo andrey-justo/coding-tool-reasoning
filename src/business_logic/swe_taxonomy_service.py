@@ -2,8 +2,8 @@ import csv
 import os
 from typing import Dict, List, Optional
 
-from models.swe_edge import SweEdge
-from models.swe_node import SweNode
+from ..models.swe_edge import SweEdge
+from ..models.swe_node import SweNode
 
 
 class SweKnowledgeBase:
@@ -20,7 +20,7 @@ class SweKnowledgeBase:
         linked_data_dir: Optional[str] = None,
     ) -> None:
         self.repo_root = repo_root or os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..")
+            os.path.join(os.path.dirname(__file__), "..", "..")
         )
         # Optional directory overrides allow new or alternative SWE taxonomies
         # to be plugged in via configuration.

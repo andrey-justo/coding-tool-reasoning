@@ -21,7 +21,7 @@ class ReliabilityDesignTool:
             "templates", "utils", "extract_reliability_input.md"
         )
         self.identify_prompt_path = os.path.join(
-            "templates", "reliability", "utils", "identify_reliability_design.md"
+            "templates", "utils", "identify_reliability_design.md"
         )
         self.add_design_pattern_template = os.path.join(
             "templates", "reliability", "base_template.md"
@@ -42,6 +42,21 @@ class ReliabilityDesignTool:
         if isinstance(llm_response, str):
             return llm_response
         return str(llm_response)
+
+    def _parse_to_dict(self, data: Any, default_key: str) -> dict[str, str]:
+        """Best-effort conversion from LLM response payload to a dictionary."""
+        if isinstance(data, dict):
+            return data
+
+        if isinstance(data, str):
+            try:
+                parsed = json.loads(data)
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                return {default_key: data.strip()}
+
+        return {default_key: str(data).strip()}
 
     def read_templates(self):
         with open(self.add_design_pattern_template, "r", encoding="utf-8") as f:
@@ -101,7 +116,11 @@ class ReliabilityDesignTool:
             variables = json.loads(template_content)
             new_prompt = self.add_design_pattern_template_content
             for key, value in variables.items():
-                new_prompt = new_prompt.replace(f"{{{{{key}}}}}", value)
+                if isinstance(value, list):
+                    replacement = "\n".join(str(item) for item in value)
+                else:
+                    replacement = str(value)
+                new_prompt = new_prompt.replace(f"{{{{{key}}}}}", replacement)
 
             llm_response = (
                 self.llm_client.chat(new_prompt, model=models)

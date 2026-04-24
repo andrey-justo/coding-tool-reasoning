@@ -1,10 +1,10 @@
 from typing import Any, Callable, List, Optional
 
-from business_logic.explanation_service import ExplanationService
-from business_logic.intent_planner import IntentPlanner
-from models.code_gen_plan import CodeGenPlan
-from models.swe_context import SweContext
-from models.swe_explanation import SweCodeChangeExplanation
+from ..business_logic.explanation_service import ExplanationService
+from ..business_logic.intent_planner import IntentPlanner
+from ..models.code_gen_plan import CodeGenPlan
+from ..models.swe_context import SweContext
+from ..models.swe_explanation import SweCodeChangeExplanation
 
 
 def register_swe_mcp_tools(
