@@ -10,3 +10,8 @@ __pycache__/*
 
 ## Remove SLR for now
 docs/slr/*
+
+# Coverage
+coverage.xml
+htmlcov/
+.coverage

@@ -47,18 +47,22 @@ def create_swe_server_context(force_reload: bool = False) -> SweServerContext:
     # workflow stages, etc.).
     config = SweMcpConfig.load(repo_root=repo_root)
 
-    # Allow configuration to override taxonomy locations so that new SWE
-    # taxonomies can be plugged in without changing code.
-    ground_dir = config.taxonomy.ground_data_dir
-    if ground_dir and not os.path.isabs(ground_dir):
+    # Resolve taxonomy directory paths: use config values if provided,
+    # otherwise default to taxonomies/ under repo_root. Convert relative
+    # paths to absolute.
+    ground_dir = config.taxonomy.ground_data_dir or os.path.join(
+        repo_root, "taxonomies", "ground_data"
+    )
+    if not os.path.isabs(ground_dir):
         ground_dir = os.path.join(repo_root, ground_dir)
 
-    linked_dir = config.taxonomy.linked_data_dir
-    if linked_dir and not os.path.isabs(linked_dir):
+    linked_dir = config.taxonomy.linked_data_dir or os.path.join(
+        repo_root, "taxonomies", "linked_data"
+    )
+    if not os.path.isabs(linked_dir):
         linked_dir = os.path.join(repo_root, linked_dir)
 
     kb = SweKnowledgeBase(
-        repo_root=repo_root,
         ground_data_dir=ground_dir,
         linked_data_dir=linked_dir,
     )

@@ -21,8 +21,20 @@ class JudgeCodeChangesStep:
         kb: Optional[SweKnowledgeBase] = None,
         llm_client: Optional[MultiModelLLMClient] = None,
         config: Optional[SweMcpConfig] = None,
+        ground_data_dir: Optional[str] = None,
+        linked_data_dir: Optional[str] = None,
     ) -> None:
-        self.kb = kb or SweKnowledgeBase()
+        if kb is None:
+            if not ground_data_dir or not linked_data_dir:
+                raise ValueError(
+                    "Either 'kb' must be provided or both 'ground_data_dir' "
+                    "and 'linked_data_dir' must be specified."
+                )
+            kb = SweKnowledgeBase(
+                ground_data_dir=ground_data_dir,
+                linked_data_dir=linked_data_dir,
+            )
+        self.kb = kb
         self.kb.load()
         self.llm_client = llm_client or MultiModelLLMClient()
         self.config = config or SweMcpConfig()

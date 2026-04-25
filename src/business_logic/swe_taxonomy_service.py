@@ -1,74 +1,120 @@
 import csv
+import logging
 import os
-from typing import Dict, List, Optional
+from typing import Dict, Iterator, List, Optional, TextIO
 
 from ..models.swe_edge import SweEdge
 from ..models.swe_node import SweNode
 
+logger = logging.getLogger(__name__)
+
 
 class SweKnowledgeBase:
-    """Loads SWE taxonomy nodes and edges from taxonomies/ground_data and linked_data.
+    """Loads SWE taxonomy nodes and edges from configurable directories.
 
-    This is intentionally generic: it will load all CSVs in those folders that
-    match the expected column names, so you can add more taxonomies later.
+    Directory paths must be provided explicitly via constructor arguments,
+    environment variables, or configuration. This is intentionally generic:
+    it will load all CSVs in those folders that match the expected column
+    names, so you can add more taxonomies later.
     """
 
     def __init__(
         self,
-        repo_root: Optional[str] = None,
         ground_data_dir: Optional[str] = None,
         linked_data_dir: Optional[str] = None,
     ) -> None:
-        self.repo_root = repo_root or os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..", "..")
+        # Allow directory paths to be provided explicitly, or read from
+        # environment variables as a fallback.
+        self._ground_data_dir = ground_data_dir or os.environ.get(
+            "SWE_GROUND_DATA_DIR"
         )
-        # Optional directory overrides allow new or alternative SWE taxonomies
-        # to be plugged in via configuration.
-        self._ground_data_dir = ground_data_dir
-        self._linked_data_dir = linked_data_dir
+        self._linked_data_dir = linked_data_dir or os.environ.get(
+            "SWE_LINKED_DATA_DIR"
+        )
         self.nodes: Dict[str, SweNode] = {}
         self.edges: List[SweEdge] = []
 
     @property
-    def ground_data_dir(self) -> str:
-        if self._ground_data_dir:
-            return self._ground_data_dir
-        return os.path.join(self.repo_root, "taxonomies", "ground_data")
+    def ground_data_dir(self) -> Optional[str]:
+        return self._ground_data_dir
 
     @property
-    def linked_data_dir(self) -> str:
-        if self._linked_data_dir:
-            return self._linked_data_dir
-        return os.path.join(self.repo_root, "taxonomies", "linked_data")
+    def linked_data_dir(self) -> Optional[str]:
+        return self._linked_data_dir
+
+    @staticmethod
+    def _iter_csv_lines(file_obj: TextIO) -> Iterator[str]:
+        for line in file_obj:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#"):
+                continue
+            yield line
+
+    @staticmethod
+    def _clean_cell(value: Optional[str]) -> str:
+        return (value or "").strip()
 
     def load(self) -> None:
-        """Load all known node and edge CSVs into memory."""
+        """Load all known node and edge CSVs into memory.
+
+        Raises:
+            ValueError: If taxonomy directories are not configured.
+            FileNotFoundError: If configured directories do not exist.
+        """
+        if not self.ground_data_dir:
+            raise ValueError(
+                "ground_data_dir not configured. Provide it via constructor, "
+                "SWE_GROUND_DATA_DIR environment variable, or configuration file."
+            )
+        if not self.linked_data_dir:
+            raise ValueError(
+                "linked_data_dir not configured. Provide it via constructor, "
+                "SWE_LINKED_DATA_DIR environment variable, or configuration file."
+            )
+
+        if not os.path.isdir(self.ground_data_dir):
+            raise FileNotFoundError(
+                f"ground_data_dir does not exist: {self.ground_data_dir}"
+            )
+        if not os.path.isdir(self.linked_data_dir):
+            raise FileNotFoundError(
+                f"linked_data_dir does not exist: {self.linked_data_dir}"
+            )
+
+        # Rebuild in-memory state on each call so repeated loads are idempotent.
+        self.nodes.clear()
+        self.edges.clear()
 
         self._load_nodes()
         self._load_edges()
+        logger.info(
+            f"Loaded {len(self.nodes)} nodes and {len(self.edges)} edges "
+            f"from {self.ground_data_dir} and {self.linked_data_dir}"
+        )
 
     def _load_nodes(self) -> None:
         expected_cols = {"Id", "Type", "Name", "NFRCategory", "Description"}
         if not os.path.isdir(self.ground_data_dir):
+            logger.warning(f"ground_data_dir does not exist: {self.ground_data_dir}")
             return
         for name in os.listdir(self.ground_data_dir):
             if not name.lower().endswith(".csv"):
                 continue
             path = os.path.join(self.ground_data_dir, name)
             with open(path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
+                reader = csv.DictReader(self._iter_csv_lines(f))
                 if not expected_cols.issubset(reader.fieldnames or []):
                     continue
                 for row in reader:
-                    node_id = row["Id"].strip()
+                    node_id = self._clean_cell(row.get("Id"))
                     if not node_id:
                         continue
                     self.nodes[node_id] = SweNode(
                         id=node_id,
-                        type=row.get("Type", "").strip(),
-                        name=row.get("Name", "").strip(),
-                        nfr_category=row.get("NFRCategory", "").strip(),
-                        description=row.get("Description", "").strip(),
+                        type=self._clean_cell(row.get("Type")),
+                        name=self._clean_cell(row.get("Name")),
+                        nfr_category=self._clean_cell(row.get("NFRCategory")),
+                        description=self._clean_cell(row.get("Description")),
                     )
 
     def _load_edges(self) -> None:
@@ -80,22 +126,22 @@ class SweKnowledgeBase:
                 continue
             path = os.path.join(self.linked_data_dir, name)
             with open(path, newline="", encoding="utf-8") as f:
-                reader = csv.DictReader(f)
+                reader = csv.DictReader(self._iter_csv_lines(f))
                 if not reader.fieldnames or not set(reader.fieldnames).issuperset(
                     expected_cols
                 ):
                     continue
                 for row in reader:
-                    source = row.get("SourceId", "").strip()
-                    target = row.get("TargetId", "").strip()
+                    source = self._clean_cell(row.get("SourceId"))
+                    target = self._clean_cell(row.get("TargetId"))
                     if not source or not target:
                         continue
                     self.edges.append(
                         SweEdge(
                             source_id=source,
-                            relation=row.get("Relation", "").strip(),
+                            relation=self._clean_cell(row.get("Relation")),
                             target_id=target,
-                            description=row.get("Description", "").strip(),
+                            description=self._clean_cell(row.get("Description")),
                         )
                     )
 

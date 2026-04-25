@@ -39,11 +39,23 @@ def test_prompt_get_details_returns_original_text():
     assert prompt.get_details() == "Refactor this code"
 
 
-def test_swe_knowledge_base_uses_repo_taxonomy_paths():
+def test_swe_knowledge_base_requires_explicit_paths():
+    # Without paths, SweKnowledgeBase should fail on load()
     kb = SweKnowledgeBase()
 
-    assert kb.ground_data_dir.replace("\\", "/").endswith("taxonomies/ground_data")
-    assert kb.linked_data_dir.replace("\\", "/").endswith("taxonomies/linked_data")
+    with pytest.raises(ValueError, match="not configured"):
+        kb.load()
+
+
+def test_swe_knowledge_base_validates_directory_existence():
+    # With non-existent paths, SweKnowledgeBase should fail
+    kb = SweKnowledgeBase(
+        ground_data_dir="/nonexistent/ground",
+        linked_data_dir="/nonexistent/linked",
+    )
+
+    with pytest.raises(FileNotFoundError):
+        kb.load()
 
 
 def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
@@ -66,7 +78,10 @@ def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
         encoding="utf-8",
     )
 
-    kb = SweKnowledgeBase(repo_root=str(tmp_path))
+    kb = SweKnowledgeBase(
+        ground_data_dir=str(ground_dir),
+        linked_data_dir=str(linked_dir),
+    )
     kb.load()
 
     assert kb.find_nfr_ids(["Reliability"]) == ["NFR-1"]
@@ -76,6 +91,74 @@ def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
     summary = kb.summarize_for_prompt(["NFR-1"], depth=1)
     assert "NFR: Reliability" in summary
     assert "related_to: Retry Logic" in summary
+
+
+def test_swe_knowledge_base_load_is_idempotent(tmp_path):
+    ground_dir = tmp_path / "taxonomies" / "ground_data"
+    linked_dir = tmp_path / "taxonomies" / "linked_data"
+    ground_dir.mkdir(parents=True)
+    linked_dir.mkdir(parents=True)
+
+    (ground_dir / "nodes.csv").write_text(
+        "Id,Type,Name,NFRCategory,Description\n"
+        "NFR-1,NFR,Reliability,Reliability,Improves uptime\n",
+        encoding="utf-8",
+    )
+    (linked_dir / "edges.csv").write_text(
+        "SourceId,Relation,TargetId,Description\n"
+        "NFR-1,related_to,NFR-1,Self relation\n",
+        encoding="utf-8",
+    )
+
+    kb = SweKnowledgeBase(
+        ground_data_dir=str(ground_dir),
+        linked_data_dir=str(linked_dir),
+    )
+
+    kb.load()
+    first_nodes_count = len(kb.nodes)
+    first_edges_count = len(kb.edges)
+
+    kb.load()
+
+    assert len(kb.nodes) == first_nodes_count
+    assert len(kb.edges) == first_edges_count
+
+
+def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
+    ground_dir = tmp_path / "taxonomies" / "ground_data"
+    linked_dir = tmp_path / "taxonomies" / "linked_data"
+    ground_dir.mkdir(parents=True)
+    linked_dir.mkdir(parents=True)
+
+    (ground_dir / "nodes.csv").write_text(
+        "# taxonomy nodes\n"
+        "\n"
+        "Id,Type,Name,NFRCategory,Description\n"
+        "\n"
+        "# section break\n"
+        "NFR-1,NFR,Reliability,Reliability,Improves uptime\n",
+        encoding="utf-8",
+    )
+    (linked_dir / "edges.csv").write_text(
+        "# taxonomy edges\n"
+        "SourceId,Relation,TargetId,Description\n"
+        "\n"
+        "# section break\n"
+        "NFR-1,related_to,NFR-1,Supports reliability\n",
+        encoding="utf-8",
+    )
+
+    kb = SweKnowledgeBase(
+        ground_data_dir=str(ground_dir),
+        linked_data_dir=str(linked_dir),
+    )
+
+    kb.load()
+
+    assert list(kb.nodes) == ["NFR-1"]
+    assert len(kb.edges) == 1
+    assert kb.edges[0].relation == "related_to"
 
 
 def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
@@ -108,7 +191,10 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
 def test_swe_models_reexports_and_server_context_fields():
     plan = swe_models.CodeGenPlan(problem_description="Refactor controller")
     context = swe_models.SweContext(plan=plan, swe_summary="summary")
-    kb = SweKnowledgeBase(repo_root="repo")
+    kb = SweKnowledgeBase(
+        ground_data_dir="/tmp/ground",
+        linked_data_dir="/tmp/linked",
+    )
     server_context = SweServerContext(
         repo_root="repo",
         config=SweMcpConfig(),
