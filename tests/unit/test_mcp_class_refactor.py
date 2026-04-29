@@ -28,7 +28,9 @@ def test_tool_registry_direct_method_usage(tmp_path):
             self.kb = kb
             self.config = config
 
-        def plan(self, problem_description, target_language, nfr_focus, user_prompt_data):
+        def plan(
+            self, problem_description, target_language, nfr_focus, user_prompt_data
+        ):
             return SimpleNamespace(
                 inferred_target_language=target_language or "python",
                 nfr_focus=nfr_focus or ["Maintainability"],
@@ -62,7 +64,9 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
 
     templates_dir = repo_root / "templates" / "data" / "reliability"
     templates_dir.mkdir(parents=True)
-    (templates_dir / "base_template.md").write_text("Template content", encoding="utf-8")
+    (templates_dir / "base_template.md").write_text(
+        "Template content", encoding="utf-8"
+    )
 
     data_dir = repo_root / "knowledge" / "data" / "reliability" / "group_a"
     data_dir.mkdir(parents=True)
@@ -78,7 +82,9 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
         def load(self):
             return None
 
-    monkeypatch.setattr("src.mcp.swe_mcp_server.SweMcpConfig.load", lambda repo_root: config)
+    monkeypatch.setattr(
+        "src.mcp.swe_mcp_server.SweMcpConfig.load", lambda repo_root: config
+    )
     monkeypatch.setattr("src.mcp.swe_mcp_server.SweKnowledgeBase", FakeKnowledgeBase)
 
     provider = SweMcpServerContextProvider(repo_root=str(repo_root))

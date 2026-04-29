@@ -30,7 +30,9 @@ def test_intent_planner_falls_back_to_default_steps_on_invalid_llm_json():
         def chat(self, prompt):
             return "this is not json"
 
-    planner = IntentPlanner(kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=SweMcpConfig())
+    planner = IntentPlanner(
+        kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=SweMcpConfig()
+    )
     result = planner.plan(problem_description="Improve maintainability")
 
     assert len(result.high_level_steps) == 6
@@ -54,7 +56,9 @@ def test_intent_planner_truncates_llm_steps_to_configured_max_steps():
     config = SweMcpConfig()
     config.planning.max_steps = 2
 
-    planner = IntentPlanner(kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config)
+    planner = IntentPlanner(
+        kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config
+    )
     result = planner.plan(problem_description="Improve maintainability")
 
     assert result.high_level_steps == ["Step 1", "Step 2"]
@@ -68,7 +72,9 @@ def test_intent_planner_can_disable_language_inference():
     config = SweMcpConfig()
     config.planning.infer_target_language_when_missing = False
 
-    planner = IntentPlanner(kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config)
+    planner = IntentPlanner(
+        kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config
+    )
     result = planner.plan(problem_description="Refactor this Python API")
 
     assert result.inferred_target_language is None
@@ -143,7 +149,9 @@ def test_explanation_service_uses_fallback_when_llm_response_is_invalid():
     )
     context = SweContext(plan=plan, swe_summary="summary")
 
-    service = ExplanationService(kb=FakeKB(), llm_client=FakeLLMClient(), config=SweMcpConfig())
+    service = ExplanationService(
+        kb=FakeKB(), llm_client=FakeLLMClient(), config=SweMcpConfig()
+    )
     explanation = service.explain_change(
         swe_context=context,
         original_code="before",
@@ -212,8 +220,18 @@ def test_swe_knowledge_base_summary_depth_controls_expansion():
         ),
     }
     kb.edges = [
-        SweEdge(source_id="NFR-1", relation="related_to", target_id="PRA-1", description="nfr to practice"),
-        SweEdge(source_id="PRA-1", relation="avoids", target_id="SMELL-1", description="practice to smell"),
+        SweEdge(
+            source_id="NFR-1",
+            relation="related_to",
+            target_id="PRA-1",
+            description="nfr to practice",
+        ),
+        SweEdge(
+            source_id="PRA-1",
+            relation="avoids",
+            target_id="SMELL-1",
+            description="practice to smell",
+        ),
     ]
 
     summary_depth_1 = kb.summarize_for_prompt(["NFR-1"], depth=1)

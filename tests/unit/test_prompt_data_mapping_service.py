@@ -26,7 +26,9 @@ def test_extract_prompt_data_map_parses_flat_json_payload():
     items = [
         {
             "kind": "swe_concern_data",
-            "content": json.dumps({"title": "Circuit Breaker", "summary": "Resilience pattern"}),
+            "content": json.dumps(
+                {"title": "Circuit Breaker", "summary": "Resilience pattern"}
+            ),
         }
     ]
     result = service.extract_prompt_data_map(items)

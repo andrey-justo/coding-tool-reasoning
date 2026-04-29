@@ -27,7 +27,12 @@ class PromptTemplateExecutionService:
         templates: List[dict],
         security_extra_context: Optional[str],
     ) -> str:
-        sections: List[str] = ["# SWE Prompt Context", "", "## SWE Summary", swe_summary]
+        sections: List[str] = [
+            "# SWE Prompt Context",
+            "",
+            "## SWE Summary",
+            swe_summary,
+        ]
 
         if security_extra_context:
             sections.extend(["", "## Security Extra Context", security_extra_context])
@@ -36,7 +41,9 @@ class PromptTemplateExecutionService:
             sections.append("")
             sections.append("## Concern Templates")
             for template in templates:
-                title = template.get("name") or template.get("concern_group") or "template"
+                title = (
+                    template.get("name") or template.get("concern_group") or "template"
+                )
                 sections.extend(["", f"### {title}", str(template.get("content", ""))])
 
         return "\n".join(sections).strip() + "\n"
@@ -51,7 +58,9 @@ class PromptTemplateExecutionService:
             if item.get("kind") != "swe_concern_template":
                 continue
 
-            template_name = str(item.get("name") or item.get("concern_group") or "template")
+            template_name = str(
+                item.get("name") or item.get("concern_group") or "template"
+            )
             if template_name == "test_base_template" and not has_unit_test_example:
                 self._logger.info(
                     "Skipping prompt template '%s' because no unit test example data was found",
@@ -60,7 +69,9 @@ class PromptTemplateExecutionService:
                 continue
 
             template_content = str(item.get("content", ""))
-            rendered, missing = self._render_template_content(template_content, data_map)
+            rendered, missing = self._render_template_content(
+                template_content, data_map
+            )
             if missing:
                 self._logger.info(
                     "Skipping prompt template '%s' due to missing placeholders: %s",
@@ -92,7 +103,9 @@ class PromptTemplateExecutionService:
     ) -> Tuple[str, List[str]]:
         placeholders = self._placeholder_pattern.findall(content)
         if not placeholders:
-            return self._replace_single_brace_example_placeholders(content, data_map), []
+            return self._replace_single_brace_example_placeholders(
+                content, data_map
+            ), []
 
         missing = [name for name in placeholders if name not in data_map]
         if missing:

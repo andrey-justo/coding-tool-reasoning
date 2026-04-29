@@ -209,6 +209,8 @@ def test_render_template_content_returns_missing_keys():
 def test_render_template_content_replaces_multiple_distinct_placeholders():
     service = _make_service()
     content = "{{A}} and {{B}}"
-    rendered, missing = service._render_template_content(content, {"A": "alpha", "B": "beta"})
+    rendered, missing = service._render_template_content(
+        content, {"A": "alpha", "B": "beta"}
+    )
     assert rendered == "alpha and beta"
     assert missing == []

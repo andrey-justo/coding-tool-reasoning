@@ -76,15 +76,23 @@ def _persist_generated_prompt_assets(
         templates=templates,
         security_extra_context=security_extra_context,
     )
-    with open(os.path.join(run_folder, "prompt_context.md"), "w", encoding="utf-8") as f:
+    with open(
+        os.path.join(run_folder, "prompt_context.md"), "w", encoding="utf-8"
+    ) as f:
         f.write(prompt_context)
 
     if templates:
         templates_folder = os.path.join(run_folder, "templates")
         os.makedirs(templates_folder, exist_ok=True)
         for index, template in enumerate(templates, start=1):
-            template_name = template.get("name") or template.get("concern_group") or f"template-{index}"
-            template_file = f"{index:02d}-{_slugify_for_filename(str(template_name))}.md"
+            template_name = (
+                template.get("name")
+                or template.get("concern_group")
+                or f"template-{index}"
+            )
+            template_file = (
+                f"{index:02d}-{_slugify_for_filename(str(template_name))}.md"
+            )
             template_content = str(template.get("content", ""))
             with open(
                 os.path.join(templates_folder, template_file),
@@ -171,7 +179,9 @@ def register_swe_mcp_tools(
         templates: List[dict] = []
         if include_templates:
             templates = ctx.templates
-            LOGGER.info("Loaded %d concern template/data assets into context", len(templates))
+            LOGGER.info(
+                "Loaded %d concern template/data assets into context", len(templates)
+            )
 
         if prompt_output_folder:
             try:

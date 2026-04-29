@@ -203,11 +203,6 @@ ruff check src tests
 ruff format --check src tests
 ```
 
-**Import consistency** – custom script that enforces top-level, non-try imports across `src/` and `tests/`:
-```shell
-python scripts/lint_import_consistency.py
-```
-
 Exit code is non-zero when violations are found, so both commands are suitable for CI gates.
 
 ## Testing and Coverage

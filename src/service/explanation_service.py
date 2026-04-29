@@ -96,7 +96,9 @@ class ExplanationService:
         strictness_text = (
             "lenient"
             if strictness < 0.33
-            else "strict" if strictness > 0.66 else "balanced"
+            else "strict"
+            if strictness > 0.66
+            else "balanced"
         )
 
         header = (

@@ -34,7 +34,6 @@ def _load_test_data(test_file: Path) -> dict:
     return json.loads(test_file.read_text(encoding="utf-8"))
 
 
-
 class _FakeLlmClient:
     def chat(self, prompt: str) -> str:
         return json.dumps({"high_level_steps": ["Inspect related NFR trade-offs"]})
@@ -155,22 +154,22 @@ def test_robust_prompt_smoke_skips_unit_test_template_when_example_missing(
 
     # Save original load method before patching
     original_config_load = SweMcpConfig.load
-    
+
     # Wrapper that strips UNIT_TEST_EXAMPLE from loaded concern data
     def load_config_without_unit_tests(repo_root):
         cfg = original_config_load(repo_root)
         cfg.concern_assets.swe_concern = "reliability"
         cfg.concern_assets.swe_subject = subject
         return cfg
-    
+
     monkeypatch.setattr(
         "src.mcp.swe_mcp_server.SweMcpConfig.load",
         load_config_without_unit_tests,
     )
-    
+
     # Also patch the provider's method to remove UNIT_TEST_EXAMPLE from concern data
     original_create_context = SweMcpServerContextProvider.create_swe_server_context
-    
+
     def create_context_without_unit_tests(self, *args, **kwargs):
         context = original_create_context(self, *args, **kwargs)
         # Remove UNIT_TEST_EXAMPLE from templates' concern data
@@ -183,7 +182,7 @@ def test_robust_prompt_smoke_skips_unit_test_template_when_example_missing(
                 except (json.JSONDecodeError, TypeError):
                     pass
         return context
-    
+
     monkeypatch.setattr(
         SweMcpServerContextProvider,
         "create_swe_server_context",

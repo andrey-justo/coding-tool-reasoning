@@ -171,7 +171,9 @@ def test_persist_uses_absolute_output_folder_directly(tmp_path):
 
 
 def test_slugify_replaces_spaces_and_special_chars():
-    result = PromptAssetWriterService._slugify_for_filename("Improve: reliability & resiliency!")
+    result = PromptAssetWriterService._slugify_for_filename(
+        "Improve: reliability & resiliency!"
+    )
     assert " " not in result
     assert ":" not in result
     assert "&" not in result

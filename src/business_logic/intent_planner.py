@@ -9,6 +9,7 @@ from src.models.swe_config import SweMcpConfig
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]
 
+
 class IntentPlanner:
     """Stage 1 planner: intent extraction + action planning.
 
@@ -140,7 +141,9 @@ class IntentPlanner:
                     new_ids.append(neighbor.id)
 
                     # Keep focus labels human-readable while preserving order.
-                    preferred_label = neighbor.name or neighbor.nfr_category or neighbor.id
+                    preferred_label = (
+                        neighbor.name or neighbor.nfr_category or neighbor.id
+                    )
                     label_key = preferred_label.lower()
                     if label_key not in focus_seen:
                         focus.append(preferred_label)

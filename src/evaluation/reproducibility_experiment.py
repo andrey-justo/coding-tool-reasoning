@@ -213,9 +213,9 @@ class ReproducibilityExperiment:
     def _run_baseline_trial(self, index: int, prompt: str) -> TrialResult:
         """Baseline path: raw LLM call, no taxonomy enrichment.
 
-                TODO: Replace placeholder with a direct llm_client.chat call using
-                    temperature=self.temperature and seed=self.seed, then evaluate via
-                    ReliabilityEvaluationTool.
+        TODO: Replace placeholder with a direct llm_client.chat call using
+            temperature=self.temperature and seed=self.seed, then evaluate via
+            ReliabilityEvaluationTool.
         """
         raise NotImplementedError(
             "Baseline trial not yet wired. See TODO in _run_baseline_trial."
@@ -227,7 +227,9 @@ class ReproducibilityExperiment:
 # ---------------------------------------------------------------------------
 
 
-def parse_reproducibility_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+def parse_reproducibility_args(
+    argv: Optional[Sequence[str]] = None,
+) -> argparse.Namespace:
     def _positive_float(value: str) -> float:
         parsed = float(value)
         if parsed <= 0:

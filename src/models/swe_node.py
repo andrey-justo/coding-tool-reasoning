@@ -8,4 +8,3 @@ class SweNode:
     name: str
     nfr_category: str
     description: str
-

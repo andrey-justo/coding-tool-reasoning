@@ -25,12 +25,16 @@ class PromptAssetWriterService:
         executed_prompts: Optional[List[dict]] = None,
     ) -> str:
         resolved_output_root = self._resolve_output_root(repo_root, output_folder)
-        run_folder = self._build_run_folder(resolved_output_root, plan.problem_description)
+        run_folder = self._build_run_folder(
+            resolved_output_root, plan.problem_description
+        )
         os.makedirs(run_folder, exist_ok=True)
 
         self._write_plan_json(run_folder, plan)
         self._write_text_file(os.path.join(run_folder, "swe_summary.md"), swe_summary)
-        self._write_text_file(os.path.join(run_folder, "prompt_context.md"), prompt_context)
+        self._write_text_file(
+            os.path.join(run_folder, "prompt_context.md"), prompt_context
+        )
 
         self._write_templates_folder(run_folder, templates, executed_prompts)
         self._write_executed_prompts_file(run_folder, executed_prompts)
@@ -44,7 +48,9 @@ class PromptAssetWriterService:
 
     def _build_run_folder(self, output_root: str, problem_description: str) -> str:
         run_id = self._now_provider().strftime("%Y%m%dT%H%M%SZ")
-        return os.path.join(output_root, f"{run_id}-{self._slugify_for_filename(problem_description)}")
+        return os.path.join(
+            output_root, f"{run_id}-{self._slugify_for_filename(problem_description)}"
+        )
 
     def _write_plan_json(self, run_folder: str, plan) -> None:
         plan_payload = plan.model_dump()
@@ -61,17 +67,27 @@ class PromptAssetWriterService:
         templates: List[dict],
         executed_prompts: Optional[List[dict]],
     ) -> None:
-        templates_to_persist = executed_prompts if executed_prompts is not None else templates
+        templates_to_persist = (
+            executed_prompts if executed_prompts is not None else templates
+        )
         if not templates_to_persist:
             return
 
         templates_folder = os.path.join(run_folder, "templates")
         os.makedirs(templates_folder, exist_ok=True)
         for index, template in enumerate(templates_to_persist, start=1):
-            template_name = template.get("name") or template.get("concern_group") or f"template-{index}"
-            template_file = f"{index:02d}-{self._slugify_for_filename(str(template_name))}.md"
+            template_name = (
+                template.get("name")
+                or template.get("concern_group")
+                or f"template-{index}"
+            )
+            template_file = (
+                f"{index:02d}-{self._slugify_for_filename(str(template_name))}.md"
+            )
             template_content = str(template.get("content", ""))
-            self._write_text_file(os.path.join(templates_folder, template_file), template_content)
+            self._write_text_file(
+                os.path.join(templates_folder, template_file), template_content
+            )
 
     def _write_executed_prompts_file(
         self,

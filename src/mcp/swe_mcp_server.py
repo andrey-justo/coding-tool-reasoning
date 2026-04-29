@@ -19,6 +19,7 @@ from src.models.swe_config import SweMcpConfig
 from src.models.swe_server_context import SweServerContext
 from src.service.swe_taxonomy_service import SweKnowledgeBase
 
+
 class SweMcpServerContextProvider:
     """Class-based context provider and MCP wiring for SWE tools."""
 
@@ -97,7 +98,9 @@ class SweMcpServerContextProvider:
                         {
                             "kind": "swe_concern_template",
                             "concern": swe_concern,
-                            "name": os.path.splitext(os.path.basename(template_path))[0],
+                            "name": os.path.splitext(os.path.basename(template_path))[
+                                0
+                            ],
                             "path": template_path,
                             "content": f.read(),
                         }
@@ -111,11 +114,15 @@ class SweMcpServerContextProvider:
                 ]
             )
             if swe_subject:
-                subject_dirs = [folder for folder in subject_dirs if folder == swe_subject]
+                subject_dirs = [
+                    folder for folder in subject_dirs if folder == swe_subject
+                ]
 
             for subject in subject_dirs:
                 subject_dir = os.path.join(concern_templates_dir, subject)
-                concern_data_path = os.path.join(data_root, swe_concern, subject, "data.json")
+                concern_data_path = os.path.join(
+                    data_root, swe_concern, subject, "data.json"
+                )
 
                 code_example = self._resolve_code_example(subject=subject)
                 unit_test_example = self._resolve_unit_test_example(concern_data_path)
@@ -146,7 +153,9 @@ class SweMcpServerContextProvider:
         if os.path.isdir(concern_data_dir):
             concern_groups = sorted(os.listdir(concern_data_dir))
             if swe_subject:
-                concern_groups = [group for group in concern_groups if group == swe_subject]
+                concern_groups = [
+                    group for group in concern_groups if group == swe_subject
+                ]
 
             for concern_group in concern_groups:
                 group_dir = os.path.join(concern_data_dir, concern_group)
@@ -241,7 +250,9 @@ _DEFAULT_CONTEXT_PROVIDER = SweMcpServerContextProvider()
 def create_swe_server_context(force_reload: bool = False) -> SweServerContext:
     """Backwards-compatible function wrapper for creating shared context."""
 
-    return _DEFAULT_CONTEXT_PROVIDER.create_swe_server_context(force_reload=force_reload)
+    return _DEFAULT_CONTEXT_PROVIDER.create_swe_server_context(
+        force_reload=force_reload
+    )
 
 
 def register_swe_tools_on_mcp(mcp: Any) -> None:

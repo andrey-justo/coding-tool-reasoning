@@ -17,7 +17,6 @@ from src.evaluation.reproducibility_experiment import (
 from src.mcp.swe_mcp_server import register_swe_tools_on_mcp
 
 
-
 def _run_mcp_server() -> None:
     mcp = FastMCP("SWE-NFR-MCP", json_response=True)
     register_swe_tools_on_mcp(mcp)

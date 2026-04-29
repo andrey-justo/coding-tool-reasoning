@@ -7,4 +7,3 @@ class SweEdge:
     relation: str
     target_id: str
     description: str
-

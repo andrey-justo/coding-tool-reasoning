@@ -9,6 +9,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_SMOKE_PROMPT_LOG_DIR = REPO_ROOT / "tests" / ".artifacts" / "prompt-logs"
 
+
 def resolve_prompt_output_root(env_var: str, default: Path) -> Path:
     configured = os.environ.get(env_var)
     if configured:

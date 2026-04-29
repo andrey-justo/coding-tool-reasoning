@@ -25,12 +25,8 @@ class SweKnowledgeBase:
     ) -> None:
         # Allow directory paths to be provided explicitly, or read from
         # environment variables as a fallback.
-        self._ground_data_dir = ground_data_dir or os.environ.get(
-            "SWE_GROUND_DATA_DIR"
-        )
-        self._linked_data_dir = linked_data_dir or os.environ.get(
-            "SWE_LINKED_DATA_DIR"
-        )
+        self._ground_data_dir = ground_data_dir or os.environ.get("SWE_GROUND_DATA_DIR")
+        self._linked_data_dir = linked_data_dir or os.environ.get("SWE_LINKED_DATA_DIR")
         self.nodes: Dict[str, SweNode] = {}
         self.edges: List[SweEdge] = []
 
