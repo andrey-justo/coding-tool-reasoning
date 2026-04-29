@@ -152,7 +152,7 @@ for clean code and NFR-aware code generation.
 From the project root, after installing dependencies via the setup script or Poetry:
 
 ```bash
-python src/swe_mcp_server.py
+python -m src.main mcp-server
 ```
 
 This starts a FastMCP server on stdio that can be registered with any MCP‑aware
@@ -164,12 +164,16 @@ client (e.g., via `mcp dev` / `mcp install`).
 	- Stage 1 – planning. Returns a structured `CodeGenPlan` and **must be
 		called first** to create a high‑level plan for the code change, guided
 		by the SWE taxonomy.
-- `build_swe_code_context(plan, include_templates=True)`
+- `build_swe_code_context(plan, include_templates=True, security_extra_context=None, prompt_output_folder=None, write_executed_prompts=False)`
 	- Stage 2a – context building. Takes a `CodeGenPlan` and returns a
 		`SweContext` containing:
 		- A text summary (`swe_summary`) built from the SWE taxonomies
-		- Optional reliability templates loaded from `templates/reliability` for
-			additional requirements.
+		- Optional concern assets loaded from:
+			- `templates/data/<swe_concern>/*.md`
+			- `knowledge/data/<swe_concern>/<concern_group>/data.json`
+		- Optional persisted prompt artifacts when `prompt_output_folder` is set
+		- Optional `executed_prompts.md` with timestamp-ordered rendered prompts when `write_executed_prompts=True`
+			(useful for auditing/debugging generated prompt bundles)
 - `judge_swe_code_change(swe_context, original_code, modified_code)`
 	- Stage 2b – explainable code changes. Uses the SWE taxonomy plus the
 		Stage 1 plan/context to return a structured `SweCodeChangeExplanation`

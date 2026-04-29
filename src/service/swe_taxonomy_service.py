@@ -3,8 +3,8 @@ import logging
 import os
 from typing import Dict, Iterator, List, Optional, TextIO
 
-from ..models.swe_edge import SweEdge
-from ..models.swe_node import SweNode
+from src.models.swe_edge import SweEdge
+from src.models.swe_node import SweNode
 
 logger = logging.getLogger(__name__)
 

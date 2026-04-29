@@ -1,0 +1,11 @@
+{
+  "subject": "rate_limiting",
+  "problem_description": "Protect API endpoints from abuse by enforcing request rate limits and rejecting excess requests gracefully.",
+  "target_language": "java",
+  "nfr_focus": ["Availability", "Security"],
+  "high_level_steps": ["Define rate limit thresholds", "Track request counts per user", "Implement rejection logic"],
+  "expectations": {
+    "expected_code_snippet": "public class RateLimiter",
+    "expected_unit_test_snippet": "AllowRequest"
+  }
+}

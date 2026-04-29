@@ -45,6 +45,21 @@ class PlanningConfig(BaseModel):
         default_factory=lambda: ["Maintainability", "Readability"],
         description="Fallback NFR focus when none can be inferred from the request.",
     )
+    max_intent_inference_loops: int = Field(
+        default=2,
+        ge=0,
+        description=(
+            "Maximum taxonomy-expansion passes used to infer additional intent "
+            "NFR candidates from already resolved NFR nodes."
+        ),
+    )
+    infer_target_language_when_missing: bool = Field(
+        default=True,
+        description=(
+            "When true, infer target language from the user request if "
+            "target_language is not explicitly provided."
+        ),
+    )
 
 
 class JudgingConfig(BaseModel):
@@ -93,6 +108,42 @@ class WorkflowConfig(BaseModel):
     )
 
 
+class ConcernAssetsConfig(BaseModel):
+    """Configuration for concern-specific data and prompt templates.
+
+    Files are loaded from:
+    - templates/data/<swe_concern>/*.md
+    - templates/data/<swe_concern>/<swe_subject>/(base_design.json|test_design.json)
+    - knowledge/data/<swe_concern>/<swe_subject>/data.json
+    """
+
+    swe_concern: str = Field(
+        default="reliability",
+        description="Concern name used under knowledge/data and templates/data.",
+    )
+    swe_subject: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional subject/pattern folder under the selected concern. "
+            "When set, only this subject is loaded."
+        ),
+    )
+    data_root_dir: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional absolute or repo-relative root for concern data. "
+            "Defaults to knowledge/data."
+        ),
+    )
+    templates_root_dir: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional absolute or repo-relative root for concern templates. "
+            "Defaults to templates/data."
+        ),
+    )
+
+
 class SweMcpConfig(BaseModel):
     """Top‑level configuration object for the SWE MCP server and tools."""
 
@@ -100,6 +151,7 @@ class SweMcpConfig(BaseModel):
     planning: PlanningConfig = Field(default_factory=PlanningConfig)
     judging: JudgingConfig = Field(default_factory=JudgingConfig)
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
+    concern_assets: ConcernAssetsConfig = Field(default_factory=ConcernAssetsConfig)
 
     @classmethod
     def load(cls, repo_root: str) -> "SweMcpConfig":

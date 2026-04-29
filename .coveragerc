@@ -6,5 +6,3 @@ source = src
 omit =
     src/main.py
     src/swe_mcp_server.py
-    src/migration/llm_caller.py
-    src/ontology/graph_printer.py

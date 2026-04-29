@@ -1,0 +1,13 @@
+{
+  "name": "Non-homogeneous Poisson Process (NHPP) Design Pattern",
+  "problem": "Model and simulate time-dependent event arrivals (e.g., failures, requests) where the rate (intensity) varies over time. Useful for reliability analysis and predicting system behavior under dynamic conditions.",
+  "steps": [
+    "Define the event type and time-dependent rate function.",
+    "Implement NHPP simulation logic to generate events over time.",
+    "Collect and analyze event data for reliability metrics.",
+    "Use results to inform reliability improvements or system design.",
+    "Test NHPP model with different rate functions and scenarios."
+  ],
+  "CODE_EXAMPLE": "public class NHPP {\n  public double GetRate(double t) {\n    // Time-dependent rate function\n    return 2.0 + 3.0 * Math.Sin(t / 10.0);\n  }\n  \n  public int SimulateArrivals(double timeWindow) {\n    int count = 0;\n    for (double t = 0; t < timeWindow; t += 0.1) {\n      if (Random.Shared.NextDouble() < GetRate(t) * 0.01) count++;\n    }\n    return count;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void GetRate_ReturnsPositiveRate() {\n  var nhpp = new NHPP();\n  double rate = nhpp.GetRate(5.0);\n  Assert.IsTrue(rate > 0);\n}\n\n[TestMethod]\npublic void SimulateArrivals_ReturnsNonNegativeCount() {\n  var nhpp = new NHPP();\n  int count = nhpp.SimulateArrivals(100.0);\n  Assert.IsTrue(count >= 0);\n}"
+}

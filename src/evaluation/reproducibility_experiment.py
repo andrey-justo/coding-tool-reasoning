@@ -9,7 +9,7 @@ software engineering intent is submitted repeatedly to an LLM,
 compared to an unsupervised baseline?
 
 Usage (CLI):
-    python -m src.evaluation.reproducibility_experiment \\
+    python -m src.main reproducibility \\
         --prompt "Refactor the authentication service to improve maintainability." \\
         --trials 10 \\
         --output reproducibility_results.json
@@ -25,7 +25,7 @@ import argparse
 import json
 import statistics
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 
 # ---------------------------------------------------------------------------
@@ -149,18 +149,25 @@ class ReproducibilityExperiment:
     2. Baseline path: raw LLM call with the same prompt but without taxonomy
        enrichment (no IntentPlanner, no ExplanationService taxonomy context).
 
-    The two paths are run for n_trials iterations each.  Both use
-    temperature=0 and a fixed seed to ensure that variance comes from
-    the LLM's stochastic process, not from prompt differences across runs.
+    The two paths are run for n_trials iterations each using the same
+    configured temperature and seed for both conditions. Keep temperature
+    above zero so controlled stochasticity can be observed while prompt
+    construction remains fixed across runs.
     """
 
     def __init__(
         self,
         n_trials: int = 10,
         reference_code: Optional[str] = None,
+        temperature: float = 0.2,
+        seed: int = 42,
     ) -> None:
+        if temperature <= 0:
+            raise ValueError("temperature must be greater than 0 for RQ2 trials.")
         self.n_trials = n_trials
         self.reference_code = reference_code
+        self.temperature = temperature
+        self.seed = seed
 
     def run(self, prompt: str) -> ReproducibilityReport:
         """Execute all trials and return a filled ReproducibilityReport.
@@ -189,9 +196,13 @@ class ReproducibilityExperiment:
         """Supervised path: IntentPlanner → ExplanationService.
 
         TODO: Replace placeholders with real MCP tool invocations:
-          1. plan  = IntentPlanner(...).plan(prompt)
-          2. ctx   = build_swe_code_context(plan, ...)
-          3. code  = llm_client.chat(ctx.swe_summary + prompt, temperature=0, seed=42)
+        1. plan  = IntentPlanner(...).plan(prompt)
+        2. ctx   = build_swe_code_context(plan, ...)
+        3. code  = llm_client.chat(
+                        ctx.swe_summary + prompt,
+                        temperature=self.temperature,
+                        seed=self.seed,
+                )
           4. expl  = ExplanationService(...).explain_change(ctx, original_code, code)
           5. Return TrialResult populated from expl and BERTScore evaluation.
         """
@@ -202,8 +213,9 @@ class ReproducibilityExperiment:
     def _run_baseline_trial(self, index: int, prompt: str) -> TrialResult:
         """Baseline path: raw LLM call, no taxonomy enrichment.
 
-        TODO: Replace placeholder with a direct llm_client.chat call at
-          temperature=0 and seed=42, then evaluate via ReliabilityEvaluationTool.
+                TODO: Replace placeholder with a direct llm_client.chat call using
+                    temperature=self.temperature and seed=self.seed, then evaluate via
+                    ReliabilityEvaluationTool.
         """
         raise NotImplementedError(
             "Baseline trial not yet wired. See TODO in _run_baseline_trial."
@@ -215,7 +227,13 @@ class ReproducibilityExperiment:
 # ---------------------------------------------------------------------------
 
 
-def _parse_args() -> argparse.Namespace:
+def parse_reproducibility_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
+    def _positive_float(value: str) -> float:
+        parsed = float(value)
+        if parsed <= 0:
+            raise argparse.ArgumentTypeError("temperature must be greater than 0")
+        return parsed
+
     parser = argparse.ArgumentParser(
         description="RQ2 reproducibility experiment for the SWE-NFR supervisor agent."
     )
@@ -238,26 +256,64 @@ def _parse_args() -> argparse.Namespace:
         default="reproducibility_results.json",
         help="Path to write the JSON report.",
     )
-    return parser.parse_args()
+    parser.add_argument(
+        "--temperature",
+        type=_positive_float,
+        default=0.2,
+        help="Sampling temperature for both conditions (must be > 0; default: 0.2).",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=42,
+        help="Random seed used for both conditions (default: 42).",
+    )
+    return parser.parse_args(argv)
 
 
-def main() -> None:
-    args = _parse_args()
+def run_reproducibility_experiment(
+    prompt: str,
+    n_trials: int = 10,
+    reference_code: Optional[str] = None,
+    output_path: str = "reproducibility_results.json",
+    temperature: float = 0.2,
+    seed: int = 42,
+) -> dict:
+    """Run reproducibility trials and persist a JSON report.
+
+    Returns the summary dict that is also written to ``output_path``.
+    """
+    experiment = ReproducibilityExperiment(
+        n_trials=n_trials,
+        reference_code=reference_code,
+        temperature=temperature,
+        seed=seed,
+    )
+    report = experiment.run(prompt=prompt)
+    summary = report.summary()
+
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+
+    return summary
+
+
+def run_reproducibility_from_args(args: argparse.Namespace) -> dict:
+    """Run the reproducibility experiment from parsed CLI arguments."""
 
     reference_code: Optional[str] = None
     if args.reference:
         with open(args.reference, "r", encoding="utf-8") as f:
             reference_code = f.read()
 
-    experiment = ReproducibilityExperiment(
+    summary = run_reproducibility_experiment(
+        prompt=args.prompt,
         n_trials=args.trials,
         reference_code=reference_code,
+        output_path=args.output,
+        temperature=args.temperature,
+        seed=args.seed,
     )
-    report = experiment.run(prompt=args.prompt)
-    summary = report.summary()
-
-    with open(args.output, "w", encoding="utf-8") as f:
-        json.dump(summary, f, indent=2)
 
     print(f"Report written to {args.output}")
     print(
@@ -269,6 +325,4 @@ def main() -> None:
         f"{summary['baseline']['verdict_consistency_ratio']:.2%}"
     )
 
-
-if __name__ == "__main__":
-    main()
+    return summary

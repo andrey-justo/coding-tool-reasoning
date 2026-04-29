@@ -1,4 +1,4 @@
-from .localai_client import LocalAIClient
+from src.llm_client.localai_client import LocalAIClient
 import yaml
 import os
 from dotenv import load_dotenv

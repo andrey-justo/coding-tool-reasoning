@@ -21,7 +21,7 @@
 
 ## Example 1: {Example Description}
 
-```{UNIT TEST EXAMPLE}
+```{UNIT_TEST_EXAMPLE}
 ```
 
 ## Target Code: {Code changed from previous prompt}

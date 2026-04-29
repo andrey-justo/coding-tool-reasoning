@@ -2,7 +2,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
-from .code_gen_plan import CodeGenPlan
+from src.models.code_gen_plan import CodeGenPlan
 
 
 class SweContext(BaseModel):

@@ -1,0 +1,11 @@
+{
+  "subject": "load_balancing",
+  "problem_description": "Distribute incoming requests across multiple backend instances to improve throughput and prevent single-server bottlenecks.",
+  "target_language": "python",
+  "nfr_focus": ["Performance", "Scalability"],
+  "high_level_steps": ["Analyze traffic patterns", "Design distribution strategy", "Implement health checks"],
+  "expectations": {
+    "expected_code_snippet": "public class LoadBalancer",
+    "expected_unit_test_snippet": "GetServer"
+  }
+}

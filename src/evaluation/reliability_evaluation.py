@@ -1,3 +1,5 @@
+import re
+
 from bert_score import BERTScorer
 
 
@@ -12,8 +14,6 @@ class ReliabilityEvaluationTool:
         self.scorer = BERTScorer(model_type="bert-base-uncased", lang="en")
 
     def extract_csharp_code(self, text: str) -> str:
-        import re
-
         match = re.search(r"```csharp(.*?)```", text, re.DOTALL)
         if match:
             return match.group(1).strip()

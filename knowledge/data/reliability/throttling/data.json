@@ -1,0 +1,13 @@
+{
+  "name": "Throttling Design Pattern",
+  "problem": "Define a function to preserve usage of resources based on client requests. Preserving the usage should be based on the timing bucket and maximum requests allowed; if resources are overloaded then slow requests until it cannot receive any other requests.",
+  "steps": [
+    "Identify the resource or service to throttle.",
+    "Implement a throttling mechanism using timing buckets and request limits.",
+    "Monitor request rates and slow down requests when limits are approached.",
+    "Block or queue requests when the system is overloaded.",
+    "Test throttling under normal and peak load conditions."
+  ],
+  "CODE_EXAMPLE": "public class Throttler {\n  private long lastCallTime = 0;\n  private long minInterval = 100;\n  \n  public void Throttle() {\n    long now = DateTime.UtcNow.Ticks;\n    if (now - lastCallTime < minInterval) {\n      Thread.Sleep((int)((minInterval - (now - lastCallTime)) / 10000));\n    }\n    lastCallTime = DateTime.UtcNow.Ticks;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Throttle_DelaysRequests_WhenNeeded() {\n  var throttler = new Throttler();\n  var sw = Stopwatch.StartNew();\n  throttler.Throttle();\n  throttler.Throttle();\n  sw.Stop();\n  Assert.IsTrue(sw.ElapsedMilliseconds >= 100);\n}\n\n[TestMethod]\npublic void Throttle_DoesNotThrow() {\n  var throttler = new Throttler();\n  throttler.Throttle();\n}"
+}

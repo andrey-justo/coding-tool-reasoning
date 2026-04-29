@@ -1,0 +1,11 @@
+{
+  "subject": "circuit_breaker",
+  "problem_description": "Implement fault-tolerant pattern to prevent cascading failures when downstream service becomes unavailable.",
+  "target_language": "csharp",
+  "nfr_focus": ["Reliability", "Fault Tolerance"],
+  "high_level_steps": ["Identify failure points", "Implement circuit breaker logic", "Add fallback mechanisms"],
+  "expectations": {
+    "expected_code_snippet": "public class CircuitBreaker",
+    "expected_unit_test_snippet": "Call_DoesNotThrow"
+  }
+}

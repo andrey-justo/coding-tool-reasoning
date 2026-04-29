@@ -1,11 +1,11 @@
 from typing import Any, Optional
 
-from ..business_logic.explanation_service import ExplanationService
-from ..business_logic.swe_taxonomy_service import SweKnowledgeBase
-from ..llm_client.multi_model_llm_client import MultiModelLLMClient
-from ..models.swe_config import SweMcpConfig
-from ..models.swe_context import SweContext
-from ..models.swe_explanation import SweCodeChangeExplanation
+from src.llm_client.multi_model_llm_client import MultiModelLLMClient
+from src.models.swe_config import SweMcpConfig
+from src.models.swe_context import SweContext
+from src.models.swe_explanation import SweCodeChangeExplanation
+from src.service.explanation_service import ExplanationService
+from src.service.swe_taxonomy_service import SweKnowledgeBase
 
 
 class JudgeCodeChangesStep:

@@ -1,0 +1,13 @@
+{
+  "name": "Rate Limiting Design Pattern",
+  "problem": "Define a function to preserve usage of resources based on client requests. Preserving the usage should be based on the timing bucket and maximum requests allowed; if resources are overloaded then reject all incoming requests.",
+  "steps": [
+    "Identify the resource or API to protect with rate limiting.",
+    "Implement a rate limiter using timing buckets and request limits.",
+    "Reject requests that exceed the defined limits.",
+    "Monitor and log rate limit violations.",
+    "Test the rate limiter under normal and burst traffic scenarios."
+  ],
+  "CODE_EXAMPLE": "public class RateLimiter {\n  private int limit = 100;\n  private int requestCount = 0;\n  \n  public bool AllowRequest() {\n    if (requestCount >= limit) return false;\n    requestCount++;\n    return true;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void AllowRequest_ReturnsFalse_WhenLimitReached() {\n  var limiter = new RateLimiter();\n  for (int i = 0; i < 100; i++) Assert.IsTrue(limiter.AllowRequest());\n  Assert.IsFalse(limiter.AllowRequest());\n}\n\n[TestMethod]\npublic void AllowRequest_ReturnsTrue_ForAllowedRequests() {\n  var limiter = new RateLimiter();\n  Assert.IsTrue(limiter.AllowRequest());\n  Assert.IsTrue(limiter.AllowRequest());\n}"
+}

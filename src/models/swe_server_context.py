@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import List
 
-from ..business_logic.swe_taxonomy_service import SweKnowledgeBase
-from .swe_config import SweMcpConfig
+from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.models.swe_config import SweMcpConfig
 
 
 @dataclass
