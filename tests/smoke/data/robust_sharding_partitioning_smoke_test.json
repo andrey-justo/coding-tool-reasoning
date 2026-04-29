@@ -1,0 +1,11 @@
+{
+  "subject": "sharding_partitioning",
+  "problem_description": "Partition data across multiple shards to enable horizontal scaling and reduce per-node load while maintaining data consistency.",
+  "target_language": "rust",
+  "nfr_focus": ["Scalability", "Availability"],
+  "high_level_steps": ["Design shard key strategy", "Implement consistent hashing", "Add rebalancing logic"],
+  "expectations": {
+    "expected_code_snippet": "public class ShardManager",
+    "expected_unit_test_snippet": "GetShard"
+  }
+}

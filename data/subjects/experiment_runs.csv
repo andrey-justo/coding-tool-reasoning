@@ -1,0 +1,5 @@
+run_id,comparison_group,experiment_type,rq,condition,executed_by,subject_id,repo_owner,repo_name,issue_id,issue_comment_id,commit_sha,pull_request_number,started_at,completed_at,status,artifact_path,notes
+EXP0001,csharp_corpus_v1,automated-pipeline,RQ1,baseline,authors,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Baseline run placeholder; fill issue/commit/PR when selected
+EXP0002,csharp_corpus_v1,automated-pipeline,RQ1,supervised,authors,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Supervised run placeholder; fill issue/commit/PR when selected
+EXP0003,csharp_corpus_v1,annotation-study,RQ4,n/a,external-engineers,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,κ annotation placeholder (verdict/pattern labels)
+EXP0004,csharp_corpus_v1,survey-study,RQ4,n/a,external-engineers,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Tool-use survey placeholder (trust/control)

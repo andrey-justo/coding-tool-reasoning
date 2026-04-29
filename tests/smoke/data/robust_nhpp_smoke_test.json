@@ -1,0 +1,11 @@
+{
+  "subject": "nhpp",
+  "problem_description": "Model non-homogeneous Poisson process for workload forecasting to dynamically adjust resource allocation based on predicted demand patterns.",
+  "target_language": "typescript",
+  "nfr_focus": ["Performance", "Cost Efficiency"],
+  "high_level_steps": ["Analyze historical demand data", "Build NHPP model", "Implement auto-scaling triggers"],
+  "expectations": {
+    "expected_code_snippet": "public class NHPP",
+    "expected_unit_test_snippet": "GetRate"
+  }
+}

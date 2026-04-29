@@ -1,0 +1,10 @@
+SourceId,Relation,TargetId,Description
+nfr_security,supported_by,sec_input_validation,Validating external input reduces the risk of injection and other attacks.
+nfr_security,supported_by,sec_least_privilege,Limiting privileges reduces the impact of compromised accounts or components.
+nfr_security,supported_by,sec_authentication,Strong authentication prevents unauthorized access.
+nfr_security,supported_by,sec_authorization,Proper authorization enforces who can perform which actions.
+nfr_security,supported_by,sec_audit_logging,Audit logs help detect and investigate security incidents.
+nfr_security,supported_by,sec_secrets_management,Proper secrets management prevents credential leakage.
+sec_input_validation,mitigates,sec_injection,Input validation and parameterized queries mitigate injection risks.
+sec_secure_defaults,mitigates,sec_insecure_deserialization,Secure defaults discourage unsafe deserialization options.
+sec_injection,increases,regression_risk,Security fixes around injection vulnerabilities are high-risk in legacy systems.

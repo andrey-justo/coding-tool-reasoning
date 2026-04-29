@@ -5,5 +5,4 @@ source = src
 [report]
 omit =
     src/main.py
-    src/migration/llm_caller.py
-    src/ontology/graph_printer.py
+    src/swe_mcp_server.py

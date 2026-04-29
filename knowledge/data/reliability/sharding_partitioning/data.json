@@ -1,0 +1,13 @@
+{
+  "name": "Sharding and Partitioning Design Pattern",
+  "problem": "Efficiently distribute and manage data or workload across multiple partitions (shards) to improve scalability, fault isolation, and reliability. Ensures that failures in one shard do not affect others and enables parallel processing.",
+  "steps": [
+    "Identify the data or workload to partition.",
+    "Define partitioning (sharding) strategy based on keys or ranges.",
+    "Implement logic to route requests to the correct shard.",
+    "Monitor shard health and rebalance data if necessary.",
+    "Test partitioning under normal and failure scenarios."
+  ],
+  "CODE_EXAMPLE": "public class ShardManager {\n  private int shardCount = 4;\n  \n  public int GetShard(string key) {\n    int hash = key.GetHashCode();\n    return Math.Abs(hash % shardCount);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void GetShard_ReturnsShard_WithinRange() {\n  var manager = new ShardManager();\n  int shard = manager.GetShard(\"user123\");\n  Assert.IsTrue(shard >= 0 && shard < 4);\n}\n\n[TestMethod]\npublic void GetShard_IsDeterministic() {\n  var manager = new ShardManager();\n  int shard1 = manager.GetShard(\"key\");\n  int shard2 = manager.GetShard(\"key\");\n  Assert.AreEqual(shard1, shard2);\n}"
+}

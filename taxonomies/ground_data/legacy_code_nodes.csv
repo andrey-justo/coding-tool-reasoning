@@ -1,0 +1,12 @@
+Id,Type,Name,NFRCategory,Description
+legacy_system,Context,Legacy System,Maintainability,An existing system with outdated technology stack limited tests and high change risk.
+legacy_hotspot,Context,Legacy Hotspot,Maintainability,Module or file with high change frequency and defect density.
+pattern_strangler_fig,Pattern,Strangler Fig Pattern,Maintainability,Incrementally replace legacy components by routing new behavior through a modern facade.
+pattern_anti_corruption_layer,Pattern,Anti-Corruption Layer,Maintainability,Isolate a legacy subsystem behind a translation layer to protect new code from legacy constraints.
+tech_debt_cluster,Smell,Technical Debt Cluster,Maintainability,Area with many quick fixes TODOs and workarounds that hinder safe evolution.
+regression_risk,Risk,Regression Risk,Reliability,Increased chance of breaking existing behavior when modifying legacy code.
+legacy_missing_abstraction,Smell,Missing Abstraction,Maintainability,No interface or abstract class separates the legacy module from its callers; violates OCP and DIP forcing clients to couple to concrete implementations.
+legacy_god_service,Smell,God Service,Maintainability,A service class accumulates dozens of operations across unrelated concerns; SRP violation common in legacy service layers.
+legacy_concrete_dependency,Smell,Concrete Dependency,Maintainability,Legacy code directly instantiates collaborators with new instead of receiving them via injection; DIP violation that blocks testability and substitutability.
+legacy_change_cascade,Smell,Change Cascade,Maintainability,Modifying one legacy module forces edits across many unrelated modules; OCP violation proxy measurable by co-change frequency in version history.
+legacy_anemic_domain,Smell,Anemic Domain Model,Maintainability,Domain objects carry only data with no behavior; logic leaks into service layers causing SRP and DIP violations throughout the codebase.

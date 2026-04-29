@@ -1,0 +1,11 @@
+{
+  "subject": "throttling",
+  "problem_description": "Control the rate of data flow through the system to prevent overwhelming downstream services and resource exhaustion.",
+  "target_language": "go",
+  "nfr_focus": ["Reliability", "Performance"],
+  "high_level_steps": ["Establish flow control metrics", "Implement backpressure handling", "Add adaptive throttling"],
+  "expectations": {
+    "expected_code_snippet": "public class Throttler",
+    "expected_unit_test_snippet": "Throttle_DelaysRequests"
+  }
+}

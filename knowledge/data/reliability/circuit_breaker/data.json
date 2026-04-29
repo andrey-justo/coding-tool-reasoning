@@ -1,0 +1,13 @@
+{
+  "name": "Circuit Breaker Design Pattern",
+  "problem": "Define threshold algorithm to call function and measure failures through a period of time. Once it reaches the threshold, it falls back to another function, providing a subset of functionalities compared to the default function.",
+  "steps": [
+    "Identify the critical service or component that requires protection.",
+    "Implement a circuit breaker that monitors the service's health and failure rates.",
+    "Define thresholds for failures within a time window.",
+    "Configure fallback logic to activate when the threshold is reached.",
+    "Test the circuit breaker for rapid failures and recovery scenarios."
+  ],
+  "CODE_EXAMPLE": "public class CircuitBreaker {\n  private int failureThreshold = 5;\n  private int failureCount = 0;\n  \n  public void Call() {\n    if (failureCount >= failureThreshold) {\n      throw new Exception(\"Circuit breaker is open\");\n    }\n    try {\n      // Call service\n    } catch {\n      failureCount++;\n    }\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Call_DoesNotThrow_WhenBelowThreshold() {\n  var breaker = new CircuitBreaker();\n  // Should not throw\n  breaker.Call();\n}\n\n[TestMethod]\n[ExpectedException(typeof(Exception))]\npublic void Call_ThrowsException_WhenAboveThreshold() {\n  var breaker = new CircuitBreaker();\n  for (int i = 0; i < 6; i++) breaker.Call();\n}"
+}
