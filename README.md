@@ -188,6 +188,28 @@ The intended agentic flow is:
 3. After applying the changes in your own agent or tool, call
 	`judge_swe_code_change` with the original and modified code to obtain an
 	explainable assessment of the change.
+## Linting
+
+The project uses [ruff](https://docs.astral.sh/ruff/) (replaces `flake8` + `black`) and a custom import consistency script.
+Run from the repo root after activating your virtual environment.
+
+**ruff** – lint (style, errors, import order):
+```shell
+ruff check src tests
+```
+
+**ruff** – format check (equivalent to `black --check`):
+```shell
+ruff format --check src tests
+```
+
+**Import consistency** – custom script that enforces top-level, non-try imports across `src/` and `tests/`:
+```shell
+python scripts/lint_import_consistency.py
+```
+
+Exit code is non-zero when violations are found, so both commands are suitable for CI gates.
+
 ## Testing and Coverage
 
 Run the full test suite locally:
