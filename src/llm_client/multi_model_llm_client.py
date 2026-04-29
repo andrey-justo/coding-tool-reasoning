@@ -1,7 +1,9 @@
-from src.llm_client.localai_client import LocalAIClient
-import yaml
 import os
+
+import yaml
 from dotenv import load_dotenv
+
+from src.llm_client.localai_client import LocalAIClient
 
 
 class MultiModelLLMClient:

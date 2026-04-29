@@ -1,11 +1,10 @@
 import json
 from typing import List, Optional, Tuple
 
-from src.service.swe_taxonomy_service import SweKnowledgeBase
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.intent_planning_result import IntentPlanningResult
 from src.models.swe_config import SweMcpConfig
-
+from src.service.swe_taxonomy_service import SweKnowledgeBase
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]
 

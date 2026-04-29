@@ -3,22 +3,22 @@ from types import SimpleNamespace
 
 import pytest
 
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.mcp.swe_mcp_server import SweMcpServerContextProvider
+from src.mcp.tools import judge_code_changes_step as judge_module
+from src.mcp.tools import swe_mcp_tools as swe_tools_module
+from src.mcp.tools.judge_code_changes_step import JudgeCodeChangesStep
+from src.mcp.tools.swe_mcp_tools import register_swe_mcp_tools
 from src.models import swe_models
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
-from src.models.swe_explanation import SweCodeChangeExplanation
-from src.models.swe_server_context import SweServerContext
-from src.mcp.tools import judge_code_changes_step as judge_module
-from src.mcp.tools.swe_mcp_tools import register_swe_mcp_tools
-from src.mcp.tools import swe_mcp_tools as swe_tools_module
-from src.mcp.tools.judge_code_changes_step import JudgeCodeChangesStep
-from src.mcp.swe_mcp_server import SweMcpServerContextProvider
-from src.utils.file_reader import read_file
-from src.service.intent_planner import IntentPlanner
 from src.models.swe_edge import SweEdge
+from src.models.swe_explanation import SweCodeChangeExplanation
 from src.models.swe_node import SweNode
+from src.models.swe_server_context import SweServerContext
+from src.service.intent_planner import IntentPlanner
+from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.utils.file_reader import read_file
 
 
 def test_swe_knowledge_base_requires_explicit_paths():

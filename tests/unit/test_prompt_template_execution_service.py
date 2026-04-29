@@ -1,6 +1,5 @@
 import logging
 
-from src.service.prompt_data_mapping_service import PromptDataMappingService
 from src.service.prompt_template_execution_service import PromptTemplateExecutionService
 
 

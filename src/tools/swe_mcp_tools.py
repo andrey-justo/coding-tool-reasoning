@@ -13,7 +13,6 @@ from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation
 
-
 LOGGER = logging.getLogger(__name__)
 
 

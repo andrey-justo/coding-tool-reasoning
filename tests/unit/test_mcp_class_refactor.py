@@ -1,9 +1,7 @@
 from types import SimpleNamespace
 
 from src.mcp.swe_mcp_server import SweMcpServerContextProvider
-from src.mcp.tools.swe_mcp_tools import SweMcpToolRegistry
-from src.mcp.tools.swe_mcp_tools import SweMcpToolsRegistrar
-from src.models.code_gen_plan import CodeGenPlan
+from src.mcp.tools.swe_mcp_tools import SweMcpToolRegistry, SweMcpToolsRegistrar
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 

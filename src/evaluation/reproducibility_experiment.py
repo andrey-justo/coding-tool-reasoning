@@ -27,7 +27,6 @@ import statistics
 from dataclasses import dataclass, field
 from typing import List, Optional, Sequence
 
-
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
