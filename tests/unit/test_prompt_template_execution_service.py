@@ -1,3 +1,4 @@
+import json
 import logging
 
 from src.service.prompt_template_execution_service import PromptTemplateExecutionService
@@ -12,8 +13,6 @@ def _template_item(name: str, content: str) -> dict:
 
 
 def _data_item(payload: dict) -> dict:
-    import json
-
     return {"kind": "swe_concern_data", "content": json.dumps(payload)}
 
 

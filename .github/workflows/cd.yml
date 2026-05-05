@@ -30,8 +30,8 @@ jobs:
       - name: Install dependencies
         run: poetry install --with dev --no-interaction --no-ansi
 
-      - name: Lint import placement (flake8)
-        run: poetry run flake8 src tests
+      - name: Lint import placement (ruff E402)
+        run: poetry run ruff check --select E402 src tests
 
       - name: Lint import consistency (no try/except imports)
         run: poetry run python scripts/lint_import_consistency.py
