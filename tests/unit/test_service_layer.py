@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
@@ -161,6 +162,59 @@ def test_explanation_service_uses_fallback_when_llm_response_is_invalid():
     assert explanation.overall_verdict == "manual-review-required"
     assert explanation.risks
     assert "Automated explanation failed" in explanation.risks[0]
+
+
+def test_explanation_service_uses_configured_prompt_template(tmp_path: Path):
+    class FakeKB:
+        def find_nfr_ids(self, nfr_focus):
+            return []
+
+        def summarize_for_prompt(self, nfr_ids, depth=1):
+            return "taxonomy"
+
+    class CapturingLLMClient:
+        def __init__(self):
+            self.last_prompt = ""
+
+        def chat(self, prompt):
+            self.last_prompt = prompt
+            return json.dumps(
+                {
+                    "overall_verdict": "acceptable",
+                    "rationale": "ok",
+                    "nfr_impacts": [],
+                    "risks": [],
+                    "recommended_tests": [],
+                }
+            )
+
+    template_path = tmp_path / "judge_prompt.md"
+    template_path.write_text(
+        "[[HEADER]]CUSTOM BLOCK\n[[PROBLEM_DESCRIPTION]]\n[[MODIFIED_CODE]]",
+        encoding="utf-8",
+    )
+
+    config = SweMcpConfig()
+    config.judging.prompt_template_path = str(template_path)
+
+    llm = CapturingLLMClient()
+    plan = CodeGenPlan(
+        problem_description="Refactor auth service",
+        high_level_steps=["Step 1"],
+    )
+    context = SweContext(plan=plan, swe_summary="summary")
+
+    service = ExplanationService(kb=FakeKB(), llm_client=llm, config=config)
+    explanation = service.explain_change(
+        swe_context=context,
+        original_code="before",
+        modified_code="after",
+    )
+
+    assert explanation.overall_verdict == "acceptable"
+    assert "CUSTOM BLOCK" in llm.last_prompt
+    assert "Refactor auth service" in llm.last_prompt
+    assert "after" in llm.last_prompt
 
 
 def test_swe_knowledge_base_find_nfr_ids_matches_by_id_name_and_category_case_insensitive():

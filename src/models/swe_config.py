@@ -79,6 +79,13 @@ class JudgingConfig(BaseModel):
         ge=1,
         description="Maximum number of risk bullet points to keep in explanations.",
     )
+    prompt_template_path: Optional[str] = Field(
+        default=None,
+        description=(
+            "Optional absolute or repo-relative path to the Stage 2 judging "
+            "prompt template. When omitted, a built-in template is used."
+        ),
+    )
 
 
 class WorkflowConfig(BaseModel):
