@@ -1,0 +1,12 @@
+{
+  "name": "Comments",
+  "problem": "Comments used to explain complex or unclear code instead of rewriting it.",
+  "steps": [
+    "Extract Method if a comment explains a block of code",
+    "Rename Method if comments explain what a method does",
+    "Introduce Assertion if comments describe required preconditions",
+    "If the comment explains why something was done, leave it"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - comment explains messy code)\n// Check if employee can receive a full bonus\nif ((employee.yearsWorked > 5 && employee.rating >= 4) ||\n    employee.isExempt) {\n  awardBonus();\n}\n\n// After (refactored - self-documenting code)\nif (isEligibleForFullBonus(employee)) {\n  awardBonus();\n}\n\nboolean isEligibleForFullBonus(Employee employee) {\n  return (employee.yearsWorked > 5 && employee.rating >= 4) || employee.isExempt;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testCommentSmell() {\n  Employee employee = new Employee(6, 4.5, false);\n  assertTrue(isEligibleForFullBonus(employee));\n}"
+}

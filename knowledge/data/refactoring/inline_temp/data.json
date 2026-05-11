@@ -1,0 +1,11 @@
+{
+  "name": "Inline Temp",
+  "problem": "You have a temporary variable assigned the result of a simple expression.",
+  "steps": [
+    "Find all places where the temporary variable is used",
+    "Replace the variable references with the expression itself",
+    "Delete the variable declaration and assignment"
+  ],
+  "CODE_EXAMPLE": "// Before\nboolean hasDiscount(Order order) {\n  double basePrice = order.basePrice();\n  return basePrice > 1000;\n}\n\n// After\nboolean hasDiscount(Order order) {\n  return order.basePrice() > 1000;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testInlineTemp() {\n  Order order = new Order(1500);\n  assertTrue(hasDiscount(order));\n  \n  order = new Order(500);\n  assertFalse(hasDiscount(order));\n}"
+}

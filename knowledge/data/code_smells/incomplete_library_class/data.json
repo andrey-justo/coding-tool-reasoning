@@ -1,0 +1,10 @@
+{
+  "name": "Incomplete Library Class",
+  "problem": "A library class does not provide the methods you need.",
+  "steps": [
+    "Use Introduce Foreign Method to add a method to the client if only one or two methods needed",
+    "Use Introduce Local Extension if many new methods needed"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - Date class doesn't have a nextWorkday() method)\nDate nextWorkday = new Date(today.getTime() + 86400000);\nwhile (nextWorkday.getDay() == 0 || nextWorkday.getDay() == 6) {\n  nextWorkday = new Date(nextWorkday.getTime() + 86400000);\n}\n\n// After (Introduce Foreign Method in client class)\nprivate Date nextWorkday(Date date) {\n  Date next = new Date(date.getTime() + 86400000);\n  while (next.getDay() == 0 || next.getDay() == 6) {\n    next = new Date(next.getTime() + 86400000);\n  }\n  return next;\n}\n\nDate nextWorkday = nextWorkday(today);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testIncompleteLibrary() {\n  Date friday = new Date(2024, 4, 3); // Friday\n  Date next = nextWorkday(friday);\n  assertEquals(1, next.getDay()); // Should be Monday\n}"
+}

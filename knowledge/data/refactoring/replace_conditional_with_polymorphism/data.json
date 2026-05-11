@@ -1,0 +1,13 @@
+{
+  "name": "Replace Conditional with Polymorphism Refactoring Pattern",
+  "problem": "Large conditional branches by type or mode become hard to maintain and violate open/closed principles.",
+  "steps": [
+    "Identify conditional logic switching on a type discriminator.",
+    "Define a common interface representing the variant behavior.",
+    "Move each branch into its own concrete implementation.",
+    "Instantiate the correct implementation via factory/DI.",
+    "Delete the conditional and rely on polymorphic dispatch."
+  ],
+  "CODE_EXAMPLE": "public interface IShippingCost {\n  decimal Calculate(decimal weight);\n}\n\npublic class StandardShipping : IShippingCost {\n  public decimal Calculate(decimal weight) => 5m + weight * 1m;\n}\n\npublic class ExpressShipping : IShippingCost {\n  public decimal Calculate(decimal weight) => 15m + weight * 2m;\n}\n\npublic class ShippingService {\n  private readonly IShippingCost _strategy;\n  public ShippingService(IShippingCost strategy) { _strategy = strategy; }\n  public decimal Calculate(decimal weight) => _strategy.Calculate(weight);\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void StandardShipping_CalculatesExpectedCost() {\n  var service = new ShippingService(new StandardShipping());\n  Assert.AreEqual(7m, service.Calculate(2m));\n}\n\n[TestMethod]\npublic void ExpressShipping_CalculatesExpectedCost() {\n  var service = new ShippingService(new ExpressShipping());\n  Assert.AreEqual(19m, service.Calculate(2m));\n}"
+}

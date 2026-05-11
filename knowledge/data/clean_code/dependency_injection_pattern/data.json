@@ -1,0 +1,16 @@
+{
+  "name": "Dependency Injection Pattern",
+  "source": "Clean Code by Robert C. Martin, Chapter 11: Systems",
+  "category": "systems",
+  "problem": "Classes create their own dependencies internally, coupling them to specific implementations and making them hard to test, replace, or reconfigure without modifying source code.",
+  "steps": [
+    "Identify every dependency a class creates internally with 'new'.",
+    "Declare the dependency as a constructor parameter (preferred) or setter parameter.",
+    "Accept the dependency as an interface type, not a concrete class.",
+    "Remove the internal instantiation; the caller or a DI container supplies the instance.",
+    "Test by injecting a mock or stub; deploy by injecting the real implementation."
+  ],
+  "bad_example": "class ReportService {\n    private final EmailSender sender = new SmtpEmailSender(); // tight coupling\n    public void sendReport(Report r) { sender.send(r.toEmail()); }\n}",
+  "CODE_EXAMPLE": "interface EmailSender { void send(Email email); }\n\nclass ReportService {\n    private final EmailSender sender;\n    // Dependency injected via constructor\n    public ReportService(EmailSender sender) { this.sender = sender; }\n    public void sendReport(Report report) { sender.send(report.toEmail()); }\n}\n\n// Wiring happens outside:\n// new ReportService(new SmtpEmailSender(config))",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void sendReport_delegatesToEmailSender() {\n    EmailSender mockSender = mock(EmailSender.class);\n    ReportService service = new ReportService(mockSender);\n    Report report = new Report(\"Q1 Results\");\n    service.sendReport(report);\n    verify(mockSender).send(report.toEmail());\n}"
+}

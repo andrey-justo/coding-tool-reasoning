@@ -1,0 +1,16 @@
+{
+  "name": "Avoid Mental Mapping",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Single-letter or cryptic variable names require readers to constantly translate them into the real concept they represent, increasing cognitive load and making code harder to review and maintain.",
+  "steps": [
+    "Replace single-letter variable names with names that express the concept they represent.",
+    "Reserve i, j, k only for small, obvious loop counters where no other names can conflict.",
+    "Prefer problem-domain or solution-domain terminology over arbitrary shorthand.",
+    "Verify that each name is self-explanatory without needing to mentally decode it.",
+    "Refactor names whenever you find yourself translating a variable to understand what it holds."
+  ],
+  "bad_example": "// r is lower-cased URL without host and scheme - requires memorization\nString r = url.getPath();\nif (r.startsWith(\"/api\")) process(r);",
+  "CODE_EXAMPLE": "String urlPath = url.getPath();\nif (urlPath.startsWith(\"/api\")) processApiRequest(urlPath);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void processApiRequest_triggeredForApiPaths() {\n    Router router = new Router();\n    assertTrue(router.isApiPath(\"/api/users\"));\n    assertFalse(router.isApiPath(\"/home\"));\n}"
+}

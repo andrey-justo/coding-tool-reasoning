@@ -1,0 +1,10 @@
+{
+  "name": "Middle Man",
+  "problem": "A class performs only delegation to another class.",
+  "steps": [
+    "Use Remove Middle Man to have the client call the delegated object directly",
+    "If only a few methods delegate, use Inline Method to merge them"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - half the methods just delegate)\nclass Manager extends Employee {\n  Department department;\n  Person getManager() { return department.getManager(); }\n  List<Person> getReports() { return department.getReports(); }\n  String getLocation() { return department.getLocation(); }\n}\n\n// After (refactored)\nclass Manager extends Employee {\n  Department getDepartment() { return department; }\n}\n\n// Client calls directly\nmanager.getDepartment().getLocation();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testMiddleMan() {\n  Department dept = new Department(\"Engineering\", \"NYC\");\n  Manager manager = new Manager(dept);\n  assertEquals(\"NYC\", manager.getDepartment().getLocation());\n}"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Data Clumps",
+  "problem": "The same group of data items appears in multiple places.",
+  "steps": [
+    "Identify groups of data that always appear together",
+    "Extract Class to create a new class for these groups",
+    "Replace Data Value with Object where appropriate",
+    "Introduce Parameter Object to group method parameters"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - same 3 fields appear in many classes)\nclass Order {\n  String streetAddress;\n  String city;\n  String zipCode;\n}\n\nclass Customer {\n  String streetAddress;\n  String city;\n  String zipCode;\n}\n\n// After (refactored)\nclass Address {\n  String streetAddress;\n  String city;\n  String zipCode;\n}\n\nclass Order { Address address; }\nclass Customer { Address address; }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDataClumps() {\n  Address address = new Address(\"123 Main St\", \"NYC\", \"10001\");\n  Customer customer = new Customer(address);\n  assertEquals(\"NYC\", customer.getAddress().getCity());\n}"
+}

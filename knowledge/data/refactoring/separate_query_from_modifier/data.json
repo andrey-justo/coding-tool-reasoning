@@ -1,0 +1,11 @@
+{
+  "name": "Separate Query from Modifier",
+  "problem": "A method returns a value and has side effects.",
+  "steps": [
+    "Create a query method that returns the value",
+    "Create a modifier method that performs the side effect",
+    "Replace calls appropriately"
+  ],
+  "CODE_EXAMPLE": "// Before\nint getTotalOutstandingAndSetReadyForSummaries() {\n  int total = 0;\n  for (int i = 0; i < invoices.length; i++) {\n    Invoice invoice = invoices[i];\n    int outstanding = invoice.getOutstanding();\n    total += outstanding;\n    invoice.setReadyForSummary();\n  }\n  return total;\n}\n\n// After\nint getTotalOutstanding() {\n  int total = 0;\n  for (int i = 0; i < invoices.length; i++) {\n    total += invoices[i].getOutstanding();\n  }\n  return total;\n}\n\nvoid setReadyForSummaries() {\n  for (int i = 0; i < invoices.length; i++) {\n    invoices[i].setReadyForSummary();\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSeparateQuery() {\n  Order order = new Order();\n  int total = order.getTotalOutstanding();\n  assertTrue(total >= 0);\n  order.setReadyForSummaries();\n}"
+}

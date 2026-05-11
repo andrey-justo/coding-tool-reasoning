@@ -1,0 +1,11 @@
+{
+  "name": "Decompose Conditional",
+  "problem": "You have a complex conditional.",
+  "steps": [
+    "Extract each condition into a method",
+    "Extract the action into a method",
+    "Replace the condition with method calls"
+  ],
+  "CODE_EXAMPLE": "// Before\nif (date.before(SUMMER_START) || date.after(SUMMER_END)) {\n  charge = quantity * winterRate + winterServiceCharge;\n} else {\n  charge = quantity * summerRate;\n}\n\n// After\nif (notSummer(date)) {\n  charge = winterCharge(quantity);\n} else {\n  charge = summerCharge(quantity);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDecomposeCondition() {\n  Date winterDate = new Date(1, 1);\n  double charge = getCharge(winterDate, 100);\n  assertTrue(charge > 0);\n}"
+}

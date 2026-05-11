@@ -1,0 +1,11 @@
+{
+  "name": "Replace Constructor with Factory Method",
+  "problem": "You want more control over object creation or need to return subclasses.",
+  "steps": [
+    "Create a static factory method",
+    "Make the constructor private",
+    "Change all object creation to use the factory method"
+  ],
+  "CODE_EXAMPLE": "// Before\nnew Employee(\"Senior\");\n\n// After\nEmployee create(String type) {\n  if (type.equals(\"Senior\")) {\n    return new SeniorEmployee();\n  }\n  return new JuniorEmployee();\n}\n\n// Call\nEmployee.create(\"Senior\");",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testFactoryMethod() {\n  Employee senior = Employee.create(\"Senior\");\n  assertTrue(senior instanceof SeniorEmployee);\n}"
+}

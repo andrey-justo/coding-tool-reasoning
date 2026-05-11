@@ -1,0 +1,11 @@
+{
+  "name": "Dead Code",
+  "problem": "Code that is no longer used or executed.",
+  "steps": [
+    "Delete unused variables, parameters, fields, and methods",
+    "If a class is no longer used, delete it",
+    "Use your IDE to find unreachable code and eliminate it"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - unused method and variable)\nclass Calculator {\n  private double unusedCache; // never read\n  \n  double add(int a, int b) { return a + b; }\n  \n  double legacySubtract(int a, int b) { // no callers\n    return a - b;\n  }\n}\n\n// After (refactored)\nclass Calculator {\n  double add(int a, int b) { return a + b; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDeadCode() {\n  Calculator calc = new Calculator();\n  assertEquals(5, calc.add(2, 3));\n}"
+}

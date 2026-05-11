@@ -1,0 +1,10 @@
+{
+  "name": "Replace Magic Number with Symbolic Constant",
+  "problem": "You have a literal number with special significance.",
+  "steps": [
+    "Create a constant with a meaningful name",
+    "Replace all magic number usages with the constant"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble potentialEnergy(double mass, double height) {\n  return mass * 9.81 * height;\n}\n\n// After\nstatic final double GRAVITATIONAL_CONSTANT = 9.81;\ndouble potentialEnergy(double mass, double height) {\n  return mass * GRAVITATIONAL_CONSTANT * height;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testMagicNumber() {\n  double energy = potentialEnergy(10, 5);\n  assertEquals(490.5, energy, 0.01);\n}"
+}

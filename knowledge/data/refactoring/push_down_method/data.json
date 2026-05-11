@@ -1,0 +1,10 @@
+{
+  "name": "Push Down Method",
+  "problem": "A method is used only by some subclasses.",
+  "steps": [
+    "Move the method to the subclass(es) that use it",
+    "Remove the method from the superclass"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Employee {\n  int getQuota() { ... } // only used by Salesman\n}\n\n// After\nclass Employee {}\n\nclass Salesman extends Employee {\n  int getQuota() { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPushDownMethod() {\n  Salesman salesman = new Salesman();\n  salesman.setQuota(1000);\n  assertEquals(1000, salesman.getQuota());\n}"
+}

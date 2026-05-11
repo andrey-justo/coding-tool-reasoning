@@ -1,0 +1,16 @@
+{
+  "name": "Don't Pun",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "The same word is reused for two semantically different operations (a pun), causing readers to assume identical behavior where the operations actually differ, leading to subtle bugs.",
+  "steps": [
+    "Verify that every use of a shared method name (e.g., add) is semantically equivalent across all classes.",
+    "When an operation differs in meaning (e.g., inserting into a collection vs. summing values), use a different verb such as insert or append.",
+    "Prefer clarity over false consistency: do not reuse a term just because it seems consistent.",
+    "Review all classes that share a method name and confirm the semantics are truly the same.",
+    "Document any intentional reuse to prevent future misunderstanding."
+  ],
+  "bad_example": "// Many classes use add to concatenate values;\n// new class reuses add to insert into a collection - a pun\nclass EventBus {\n    public void add(Event e) { events.add(e); } // really an insert\n}",
+  "CODE_EXAMPLE": "class EventBus {\n    private List<Event> events = new ArrayList<>();\n\n    public void publish(Event e) { events.add(e); }\n\n    public List<Event> getEvents() { return Collections.unmodifiableList(events); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void publish_addsEventToQueue() {\n    EventBus bus = new EventBus();\n    Event event = new Event(\"user.created\");\n    bus.publish(event);\n    assertEquals(1, bus.getEvents().size());\n    assertEquals(event, bus.getEvents().get(0));\n}"
+}

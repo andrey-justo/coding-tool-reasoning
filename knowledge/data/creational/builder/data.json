@@ -1,0 +1,13 @@
+{
+  "name": "Builder Design Pattern",
+  "problem": "Construct complex objects step by step while keeping construction logic separate from the final representation.",
+  "steps": [
+    "Define the target object with the required and optional fields.",
+    "Create a builder class that stores intermediate state.",
+    "Expose fluent methods for each construction step.",
+    "Validate required fields during build.",
+    "Return the fully constructed object from a Build method."
+  ],
+  "CODE_EXAMPLE": "public class Report {\n  public string Title { get; }\n  public string Body { get; }\n  public string Footer { get; }\n\n  public Report(string title, string body, string footer) {\n    Title = title;\n    Body = body;\n    Footer = footer;\n  }\n}\n\npublic class ReportBuilder {\n  private string _title = \"\";\n  private string _body = \"\";\n  private string _footer = \"\";\n\n  public ReportBuilder WithTitle(string title) { _title = title; return this; }\n  public ReportBuilder WithBody(string body) { _body = body; return this; }\n  public ReportBuilder WithFooter(string footer) { _footer = footer; return this; }\n\n  public Report Build() {\n    if (string.IsNullOrWhiteSpace(_title)) throw new InvalidOperationException(\"Title is required\");\n    return new Report(_title, _body, _footer);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Build_CreatesReportWithConfiguredValues() {\n  var report = new ReportBuilder()\n    .WithTitle(\"Weekly\")\n    .WithBody(\"Body\")\n    .WithFooter(\"Footer\")\n    .Build();\n\n  Assert.AreEqual(\"Weekly\", report.Title);\n  Assert.AreEqual(\"Body\", report.Body);\n  Assert.AreEqual(\"Footer\", report.Footer);\n}\n\n[TestMethod]\n[ExpectedException(typeof(InvalidOperationException))]\npublic void Build_ThrowsWhenTitleIsMissing() {\n  _ = new ReportBuilder().WithBody(\"Body\").Build();\n}"
+}

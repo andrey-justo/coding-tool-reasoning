@@ -1,0 +1,13 @@
+{
+  "name": "Template Method Design Pattern",
+  "problem": "Define the skeleton of an algorithm in a base class while allowing subclasses to override specific steps.",
+  "steps": [
+    "Identify the fixed algorithm sequence.",
+    "Create a base class template method for the sequence.",
+    "Extract variable steps into primitive operations.",
+    "Implement primitive operations in subclasses.",
+    "Keep the template method stable and reusable."
+  ],
+  "CODE_EXAMPLE": "public abstract class DataExporter {\n  public void Export() {\n    Open();\n    WriteData();\n    Close();\n  }\n\n  protected virtual void Open() => Console.WriteLine(\"Open\");\n  protected abstract void WriteData();\n  protected virtual void Close() => Console.WriteLine(\"Close\");\n}\n\npublic class CsvExporter : DataExporter {\n  protected override void WriteData() => Console.WriteLine(\"Write CSV\");\n}\n\npublic class JsonExporter : DataExporter {\n  protected override void WriteData() => Console.WriteLine(\"Write JSON\");\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void TemplateMethod_ExecutesAlgorithmSkeleton() {\n  DataExporter exporter = new CsvExporter();\n  exporter.Export();\n  Assert.IsTrue(true);\n}\n\n[TestMethod]\npublic void Subclass_OverridesOnlyVariableStep() {\n  DataExporter exporter = new JsonExporter();\n  exporter.Export();\n  Assert.IsNotNull(exporter);\n}"
+}

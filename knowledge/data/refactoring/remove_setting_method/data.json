@@ -1,0 +1,11 @@
+{
+  "name": "Remove Setting Method",
+  "problem": "A field should not change after creation.",
+  "steps": [
+    "Remove the setter method",
+    "Move the initialization to the constructor",
+    "Ensure the field cannot be modified"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Employee {\n  private String id;\n  void setId(String id) { this.id = id; }\n}\n\n// After\nclass Employee {\n  private final String id;\n  Employee(String id) { this.id = id; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRemoveSetter() {\n  Employee employee = new Employee(\"E123\");\n  assertEquals(\"E123\", employee.getId());\n}"
+}

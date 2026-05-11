@@ -1,0 +1,16 @@
+{
+  "name": "Make Meaningful Distinctions",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Identifiers differ in name only by noise words, numeric suffixes, or minor misspellings, providing no information about how they differ in purpose, making the codebase confusing and hard to navigate.",
+  "steps": [
+    "Remove noise words such as Info, Data, Object, or The from names when they add no meaning.",
+    "Replace number-series names (a1, a2) with descriptive names that reveal intent (source, destination).",
+    "Ensure that if two names differ, they mean something different; never rename just to satisfy a compiler.",
+    "Verify each name can be distinguished from related names by reading them aloud.",
+    "Eliminate redundant qualifiers where the base name is already self-explanatory."
+  ],
+  "bad_example": "public static void copyChars(char a1[], char a2[]) {\n    for (int i = 0; i < a1.length; i++)\n        a2[i] = a1[i];\n}\n\nvoid getActiveAccount()  {}\nvoid getActiveAccounts() {}\nvoid getActiveAccountInfo() {}",
+  "CODE_EXAMPLE": "public static void copyChars(char[] source, char[] destination) {\n    for (int i = 0; i < source.length; i++)\n        destination[i] = source[i];\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void copyChars_copiesAllCharacters() {\n    char[] source = {'h', 'i'};\n    char[] destination = new char[2];\n    TextUtils.copyChars(source, destination);\n    assertArrayEquals(source, destination);\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Extract Try/Catch Blocks",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Inline try/catch blocks mix normal processing with error processing inside the same function, violating the rule that functions should do one thing and making both the happy path and error path harder to follow.",
+  "steps": [
+    "Move the body of the try block into its own well-named function.",
+    "Move the body of the catch block into its own well-named function.",
+    "The outer function now does one thing: error handling.",
+    "Ensure the outer function contains nothing but the try/catch/finally structure.",
+    "Name the extracted functions to reveal their purpose without reading the implementation."
+  ],
+  "bad_example": "public void processOrder(Order order) {\n    // normal logic mixed with error handling\n    try {\n        validate(order);\n        save(order);\n        notify(order);\n        logger.log(\"saved\");\n    } catch (Exception e) {\n        logger.log(\"failed: \" + e.getMessage());\n        metrics.increment(\"order.error\");\n    }\n}",
+  "CODE_EXAMPLE": "// Error handling is the only concern of this function\npublic void processOrder(Order order) {\n    try {\n        processOrderHappyPath(order);\n    } catch (Exception e) {\n        handleOrderError(e);\n    }\n}\n\nprivate void processOrderHappyPath(Order order) throws Exception {\n    validate(order);\n    save(order);\n    notify(order);\n    logger.log(\"saved\");\n}\n\nprivate void handleOrderError(Exception e) {\n    logger.log(\"failed: \" + e.getMessage());\n    metrics.increment(\"order.error\");\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void processOrder_handlesExceptionGracefully() {\n    OrderService service = new OrderService(failingRepo);\n    TestMetrics metrics = new TestMetrics();\n    service.setMetrics(metrics);\n    service.processOrder(new Order());\n    assertEquals(1, metrics.getCount(\"order.error\"));\n}"
+}

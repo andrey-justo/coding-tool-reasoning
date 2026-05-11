@@ -1,0 +1,13 @@
+{
+  "name": "Rename Method Refactoring Pattern",
+  "problem": "A method name is vague or misleading, making intent unclear and increasing misuse risk.",
+  "steps": [
+    "Identify a method with a misleading or ambiguous name.",
+    "Choose a clear, intention-revealing replacement name.",
+    "Apply a safe rename across declaration and all call sites.",
+    "Update documentation and tests that reference the old name.",
+    "Run tests to confirm no behavior changed."
+  ],
+  "CODE_EXAMPLE": "public class UserRepository {\n  public User GetById(int id) => new User { Id = id };\n\n  // Renamed from Get to GetById for clarity\n  public User GetByIdRenamed(int id) => new User { Id = id };\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void GetByIdRenamed_ReturnsExpectedUser() {\n  var repo = new UserRepository();\n  var user = repo.GetByIdRenamed(5);\n  Assert.AreEqual(5, user.Id);\n}\n\n[TestMethod]\npublic void Rename_DoesNotChangeBehavior() {\n  var repo = new UserRepository();\n  Assert.AreEqual(repo.GetById(7).Id, repo.GetByIdRenamed(7).Id);\n}"
+}

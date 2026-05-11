@@ -1,0 +1,16 @@
+{
+  "name": "Use Explanatory Variables",
+  "source": "Clean Code by Robert C. Martin, Chapter 17: Smells and Heuristics (G19)",
+  "category": "general",
+  "problem": "Complex calculations or expressions are written as a single dense line, making it impossible to understand what intermediate values represent without mentally executing the arithmetic.",
+  "steps": [
+    "Break the calculation into steps.",
+    "Assign each meaningful intermediate value to a well-named local variable.",
+    "Read the variable names top-to-bottom as a plain-English summary of the algorithm.",
+    "Avoid combining assignment and usage in the same expression.",
+    "Ensure each explanatory variable has a name that makes a comment unnecessary."
+  ],
+  "bad_example": "// What does this compute?\nreturn (order.getTotal() - (order.getTotal() * (customer.isPremium() ? 0.15 : 0.05))) * taxRate + shippingCost;",
+  "CODE_EXAMPLE": "double baseTotal      = order.getTotal();\ndouble discountRate   = customer.isPremium() ? 0.15 : 0.05;\ndouble discount       = baseTotal * discountRate;\ndouble discountedTotal = baseTotal - discount;\ndouble tax            = discountedTotal * taxRate;\ndouble finalAmount    = discountedTotal + tax + shippingCost;\nreturn finalAmount;",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void finalAmount_appliesPremiumDiscount() {\n    Order order    = new Order(100.0);\n    Customer prem  = new Customer(true);\n    double result  = PricingService.calculate(order, prem, 0.10, 5.0);\n    // 100 - 15% = 85; tax 8.5; shipping 5 → 98.50\n    assertEquals(98.50, result, 0.001);\n}"
+}

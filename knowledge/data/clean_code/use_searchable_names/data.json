@@ -1,0 +1,16 @@
+{
+  "name": "Use Searchable Names",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Single-letter variables and bare numeric literals cannot be located reliably with a text search, making it hard to find all usages, understand purpose, or safely change them.",
+  "steps": [
+    "Replace bare numeric literals with named constants that describe their meaning.",
+    "Avoid single-letter variable names except for loop counters inside very short, tightly scoped loops.",
+    "Name constants in UPPER_SNAKE_CASE so they are visually distinct and searchable.",
+    "Keep the length of a name proportional to the size of its scope.",
+    "Validate that each identifier can be found unambiguously with a simple text search."
+  ],
+  "bad_example": "for (int j = 0; j < 34; j++) {\n    s += (t[j] * 4) / 5;\n}",
+  "CODE_EXAMPLE": "static final int REAL_DAYS_PER_IDEAL_DAY = 4;\nstatic final int WORK_DAYS_PER_WEEK = 5;\nstatic final int NUMBER_OF_TASKS = 34;\n\nint sum = 0;\nfor (int j = 0; j < NUMBER_OF_TASKS; j++) {\n    int realTaskDays = taskEstimate[j] * REAL_DAYS_PER_IDEAL_DAY;\n    int realTaskWeeks = realTaskDays / WORK_DAYS_PER_WEEK;\n    sum += realTaskWeeks;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void totalWeeks_calculatesCorrectly() {\n    int[] estimates = {4, 8};\n    Scheduler scheduler = new Scheduler(estimates);\n    // 4*4/5 = 3, 8*4/5 = 6, total = 9\n    assertEquals(9, scheduler.totalWeeks());\n}"
+}

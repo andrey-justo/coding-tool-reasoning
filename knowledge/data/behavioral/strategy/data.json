@@ -1,0 +1,13 @@
+{
+  "name": "Strategy Design Pattern",
+  "problem": "Encapsulate interchangeable algorithms behind a common interface so behavior can vary at runtime.",
+  "steps": [
+    "Define a strategy interface for the algorithm.",
+    "Implement concrete strategy classes.",
+    "Create a context class that depends on the strategy interface.",
+    "Allow strategy selection or replacement at runtime.",
+    "Delegate algorithm execution from context to the selected strategy."
+  ],
+  "CODE_EXAMPLE": "public interface IDiscountStrategy {\n  decimal Apply(decimal amount);\n}\n\npublic class NoDiscount : IDiscountStrategy {\n  public decimal Apply(decimal amount) => amount;\n}\n\npublic class PercentageDiscount : IDiscountStrategy {\n  private readonly decimal _rate;\n  public PercentageDiscount(decimal rate) { _rate = rate; }\n  public decimal Apply(decimal amount) => amount * (1 - _rate);\n}\n\npublic class PricingContext {\n  private IDiscountStrategy _strategy;\n  public PricingContext(IDiscountStrategy strategy) { _strategy = strategy; }\n  public void SetStrategy(IDiscountStrategy strategy) { _strategy = strategy; }\n  public decimal Calculate(decimal amount) => _strategy.Apply(amount);\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Context_UsesConfiguredStrategy() {\n  var context = new PricingContext(new NoDiscount());\n  Assert.AreEqual(100m, context.Calculate(100m));\n  context.SetStrategy(new PercentageDiscount(0.2m));\n  Assert.AreEqual(80m, context.Calculate(100m));\n}\n\n[TestMethod]\npublic void PercentageDiscount_AppliesRate() {\n  var strategy = new PercentageDiscount(0.1m);\n  Assert.AreEqual(90m, strategy.Apply(100m));\n}"
+}

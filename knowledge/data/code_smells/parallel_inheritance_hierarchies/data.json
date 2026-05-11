@@ -1,0 +1,10 @@
+{
+  "name": "Parallel Inheritance Hierarchies",
+  "problem": "When you create a subclass in one hierarchy you must also create one in another.",
+  "steps": [
+    "Make instances of one hierarchy refer to instances of another",
+    "Remove the redundant hierarchy using Move Method and Move Field"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass Animal {}\nclass Dog extends Animal {}\nclass Cat extends Animal {}\n\nclass AnimalTrainer {}\nclass DogTrainer extends AnimalTrainer {}\nclass CatTrainer extends AnimalTrainer {} // parallel hierarchy\n\n// After (refactored)\nclass Animal {\n  Trainer trainer;\n}\n\nclass Trainer {\n  void train(Animal animal) { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testParallelHierarchy() {\n  Trainer trainer = new Trainer();\n  Animal dog = new Dog();\n  dog.setTrainer(trainer);\n  assertEquals(trainer, dog.getTrainer());\n}"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Iterator Design Pattern",
+  "problem": "Provide a way to traverse elements of a collection without exposing its internal representation.",
+  "steps": [
+    "Define an iterator interface with traversal operations.",
+    "Implement concrete iterators for collection traversal behavior.",
+    "Expose iterator creation from the aggregate.",
+    "Use iterator from client code to traverse consistently.",
+    "Keep collection internals encapsulated."
+  ],
+  "CODE_EXAMPLE": "public interface IIterator<T> {\n  bool HasNext();\n  T Next();\n}\n\npublic class NameCollection {\n  private readonly List<string> _items = new();\n  public void Add(string value) => _items.Add(value);\n  public IIterator<string> Iterator() => new NameIterator(_items);\n}\n\npublic class NameIterator : IIterator<string> {\n  private readonly List<string> _items;\n  private int _index;\n  public NameIterator(List<string> items) { _items = items; }\n  public bool HasNext() => _index < _items.Count;\n  public string Next() => _items[_index++];\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Iterator_TraversesAllItemsInOrder() {\n  var collection = new NameCollection();\n  collection.Add(\"Alice\");\n  collection.Add(\"Bob\");\n  var it = collection.Iterator();\n  Assert.AreEqual(\"Alice\", it.Next());\n  Assert.AreEqual(\"Bob\", it.Next());\n}\n\n[TestMethod]\npublic void Iterator_HasNextReflectsTraversalState() {\n  var collection = new NameCollection();\n  collection.Add(\"Only\");\n  var it = collection.Iterator();\n  Assert.IsTrue(it.HasNext());\n  it.Next();\n  Assert.IsFalse(it.HasNext());\n}"
+}

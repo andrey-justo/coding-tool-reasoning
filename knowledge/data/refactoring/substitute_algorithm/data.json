@@ -1,0 +1,12 @@
+{
+  "name": "Substitute Algorithm",
+  "problem": "You want to replace an algorithm with a clearer implementation.",
+  "steps": [
+    "Prepare your refactoring with smaller steps",
+    "Replace the old algorithm body with the new one",
+    "Test after each small change",
+    "Remove the old code once the new algorithm works"
+  ],
+  "CODE_EXAMPLE": "// Before\nString foundPerson(String[] people, String name) {\n  for (int i = 0; i < people.length; i++) {\n    if (people[i].equals(name)) {\n      return \"Found\";\n    }\n  }\n  return \"Not found\";\n}\n\n// After\nString foundPerson(String[] people, String name) {\n  List<String> candidates = Arrays.asList(people);\n  if (candidates.contains(name)) {\n    return \"Found\";\n  }\n  return \"Not found\";\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSubstituteAlgorithm() {\n  String[] people = {\"Alice\", \"Bob\", \"Charlie\"};\n  assertEquals(\"Found\", foundPerson(people, \"Bob\"));\n  assertEquals(\"Not found\", foundPerson(people, \"David\"));\n}"
+}

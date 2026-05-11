@@ -1,0 +1,11 @@
+{
+  "name": "Consolidate Conditional Expression",
+  "problem": "You have a series of conditional tests with the same result.",
+  "steps": [
+    "Consolidate the condition using boolean operators",
+    "Use logical operators to combine conditions",
+    "Extract to a method if needed"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble disabilityAmount() {\n  if (seniority < 2) return 0;\n  if (monthsDisabled > 12) return 0;\n  if (isPartTime) return 0;\n  return 0.5;\n}\n\n// After\ndouble disabilityAmount() {\n  if (isNotEligibleForDisability()) return 0;\n  return 0.5;\n}\n\nboolean isNotEligibleForDisability() {\n  return seniority < 2 || monthsDisabled > 12 || isPartTime;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testConsolidateCondition() {\n  assertTrue(isNotEligibleForDisability());\n}"
+}

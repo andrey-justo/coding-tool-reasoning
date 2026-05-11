@@ -1,0 +1,13 @@
+{
+  "name": "Extract Method Refactoring Pattern",
+  "problem": "A method does too many things, making it hard to read, test, and reuse parts of the logic.",
+  "steps": [
+    "Identify a coherent code block inside a large method.",
+    "Create a new method with a name that expresses intent.",
+    "Move the selected block into the new method.",
+    "Pass required inputs as parameters and return needed outputs.",
+    "Replace original block with a call to the extracted method and run tests."
+  ],
+  "CODE_EXAMPLE": "public class OrderService {\n  public decimal CalculateTotal(Order order) {\n    decimal subtotal = 0;\n    foreach (var item in order.Items) {\n      subtotal += item.Price * item.Quantity;\n    }\n    decimal discount = subtotal > 100 ? subtotal * 0.1m : 0;\n    return subtotal - discount;\n  }\n\n  public decimal CalculateSubtotal(Order order) {\n    decimal subtotal = 0;\n    foreach (var item in order.Items) subtotal += item.Price * item.Quantity;\n    return subtotal;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void CalculateSubtotal_ReturnsSumOfItems() {\n  var order = new Order { Items = new List<OrderItem> { new OrderItem(10m, 2), new OrderItem(5m, 1) } };\n  var service = new OrderService();\n  Assert.AreEqual(25m, service.CalculateSubtotal(order));\n}\n\n[TestMethod]\npublic void CalculateTotal_AppliesDiscountForLargeSubtotal() {\n  var order = new Order { Items = new List<OrderItem> { new OrderItem(60m, 2) } };\n  var service = new OrderService();\n  Assert.AreEqual(108m, service.CalculateTotal(order));\n}"
+}

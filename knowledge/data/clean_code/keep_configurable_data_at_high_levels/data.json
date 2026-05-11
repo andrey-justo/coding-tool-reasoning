@@ -1,0 +1,16 @@
+{
+  "name": "Keep Configurable Data at High Levels",
+  "source": "Clean Code by Robert C. Martin, Chapter 17: Smells and Heuristics (G35)",
+  "category": "general",
+  "problem": "Magic numbers and default values buried deep in low-level implementation code are invisible to the caller, cannot be overridden without modifying internals, and are easily duplicated inconsistently across the codebase.",
+  "steps": [
+    "Identify every literal constant or default value that represents a business rule or configuration choice.",
+    "Move it to the highest abstraction level that uses it: a top-level constant, config file, or environment variable.",
+    "Name it clearly so its intent is obvious without a comment.",
+    "Pass the value down to lower-level code through constructors, method parameters, or a config object.",
+    "Never let low-level code define values that higher-level code should control."
+  ],
+  "bad_example": "class PricingEngine {\n    public double applyDiscount(double price) {\n        return price * 0.85; // magic number buried in logic\n    }\n}",
+  "CODE_EXAMPLE": "// Config at high level\npublic class AppConfig {\n    public static final double STANDARD_DISCOUNT_RATE = 0.15;\n}\n\n// Low-level code receives the value\nclass PricingEngine {\n    private final double discountRate;\n    public PricingEngine(double discountRate) { this.discountRate = discountRate; }\n    public double applyDiscount(double price) { return price * (1.0 - discountRate); }\n}\n\n// Wired at startup\nnew PricingEngine(AppConfig.STANDARD_DISCOUNT_RATE);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void applyDiscount_reducesPrice() {\n    PricingEngine engine = new PricingEngine(0.15);\n    assertEquals(85.0, engine.applyDiscount(100.0), 0.001);\n}\n\n@Test\npublic void applyDiscount_usesInjectedRate() {\n    PricingEngine engine = new PricingEngine(0.20);\n    assertEquals(80.0, engine.applyDiscount(100.0), 0.001);\n}"
+}

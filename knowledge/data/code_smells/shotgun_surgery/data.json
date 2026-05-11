@@ -1,0 +1,11 @@
+{
+  "name": "Shotgun Surgery",
+  "problem": "Making a single change requires modifications to many different classes.",
+  "steps": [
+    "Use Move Method and Move Field to consolidate related behavior",
+    "If many classes have too little code, use Inline Class to merge them",
+    "Apply the principle that things that change together should be together"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - adding a field requires changing many classes)\nclass Order { String currency; }\nclass Invoice { String currency; }\nclass Payment { String currency; }\nclass Receipt { String currency; }\n\n// After (refactored)\nclass CurrencySettings {\n  String currency;\n  // Only this class changes when currency logic changes\n}\n\nclass Order { CurrencySettings currencySettings; }\nclass Invoice { CurrencySettings currencySettings; }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testShotgunSurgery() {\n  CurrencySettings settings = new CurrencySettings(\"USD\");\n  Order order = new Order(settings);\n  assertEquals(\"USD\", order.getCurrencySettings().getCurrency());\n}"
+}

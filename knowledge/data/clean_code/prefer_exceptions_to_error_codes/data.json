@@ -1,0 +1,16 @@
+{
+  "name": "Prefer Exceptions to Returning Error Codes",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Returning error codes from command functions forces callers to check and handle errors immediately with deeply nested if-else chains, mixing happy-path logic with error handling and violating the separation of concerns.",
+  "steps": [
+    "Replace return-code error handling with exceptions.",
+    "Wrap the happy-path operations in a try block and handle errors in a catch block.",
+    "Extract the try and catch bodies into separate named functions.",
+    "Ensure error handling is the only thing the enclosing function does.",
+    "Avoid the Error.java dependency-magnet anti-pattern by using standard exception hierarchies."
+  ],
+  "bad_example": "if (deletePage(page) == E_OK) {\n    if (registry.deleteReference(page.name) == E_OK) {\n        if (configKeys.deleteKey(page.name.makeKey()) == E_OK) {\n            logger.log(\"page deleted\");\n        } else { logger.log(\"configKey not deleted\"); }\n    } else { logger.log(\"deleteReference failed\"); }\n} else {\n    logger.log(\"delete failed\");\n    return E_ERROR;\n}",
+  "CODE_EXAMPLE": "public void deletePage(Page page) throws PageDeleteException {\n    try {\n        deletePageAndAllReferences(page);\n    } catch (Exception e) {\n        logError(e);\n    }\n}\n\nprivate void deletePageAndAllReferences(Page page) throws Exception {\n    pages.delete(page);\n    registry.deleteReference(page.name);\n    configKeys.deleteKey(page.name.makeKey());\n}\n\nprivate void logError(Exception e) {\n    logger.log(e.getMessage());\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void deletePage_logsError_whenDeletionFails() {\n    PageService service = new PageService(failingRegistry);\n    TestLogger logger = new TestLogger();\n    service.setLogger(logger);\n    service.deletePage(new Page(\"test\"));\n    assertFalse(logger.getMessages().isEmpty());\n}"
+}

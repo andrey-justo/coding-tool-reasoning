@@ -1,0 +1,10 @@
+{
+  "name": "Feature Envy",
+  "problem": "A method accesses the data of another object more than its own.",
+  "steps": [
+    "Use Move Method to move the method to the class it uses most",
+    "Use Extract Method first if only part of the method envies another class"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - method is more interested in BankAccount data)\nclass Report {\n  double calculateInterest(BankAccount account) {\n    return account.getBalance() * account.getRate() * account.getDays() / 365;\n  }\n}\n\n// After (refactored - method moved to BankAccount)\nclass BankAccount {\n  double calculateInterest() {\n    return balance * rate * days / 365;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testFeatureEnvy() {\n  BankAccount account = new BankAccount(1000, 0.05, 365);\n  assertEquals(50.0, account.calculateInterest(), 0.01);\n}"
+}

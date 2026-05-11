@@ -1,0 +1,16 @@
+{
+  "name": "Concurrency Single Responsibility",
+  "source": "Clean Code by Robert C. Martin, Chapter 13: Concurrency",
+  "category": "concurrency",
+  "problem": "Concurrency management code is tangled with business logic, making both harder to understand, test, and change. Threading bugs become indistinguishable from domain bugs.",
+  "steps": [
+    "Identify code that mixes threading/synchronization concerns with business logic.",
+    "Extract threading management into its own class or layer (e.g., a worker, executor, or scheduler wrapper).",
+    "Keep the business-logic class unaware of threads; it should perform its work synchronously.",
+    "Test the business-logic class single-threaded; test the concurrency layer independently with thread-safety tests.",
+    "Limit the concurrency layer to a single, well-understood threading policy."
+  ],
+  "bad_example": "class DataProcessor {\n    public synchronized void processAll(List<Item> items) {\n        ExecutorService pool = Executors.newFixedThreadPool(4);\n        for (Item item : items) {\n            pool.submit(() -> { /* business logic inline */ });\n        }\n        pool.shutdown();\n    }\n}",
+  "CODE_EXAMPLE": "// Pure business logic — no threading knowledge\nclass ItemProcessor {\n    public Result process(Item item) {\n        // domain logic only\n        return new Result(item.getValue() * 2);\n    }\n}\n\n// Concurrency concern isolated here\nclass ConcurrentProcessingService {\n    private final ItemProcessor processor;\n    private final ExecutorService pool;\n\n    public ConcurrentProcessingService(ItemProcessor processor, int threads) {\n        this.processor = processor;\n        this.pool = Executors.newFixedThreadPool(threads);\n    }\n\n    public List<Future<Result>> processAll(List<Item> items) {\n        return items.stream()\n            .map(item -> pool.submit(() -> processor.process(item)))\n            .collect(toList());\n    }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void process_returnsDoubledValue() {\n    // Business logic tested without any threading\n    ItemProcessor processor = new ItemProcessor();\n    Result result = processor.process(new Item(5));\n    assertEquals(10, result.getValue());\n}"
+}
