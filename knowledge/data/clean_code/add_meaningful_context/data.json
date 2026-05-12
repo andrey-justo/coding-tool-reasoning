@@ -1,0 +1,16 @@
+{
+  "name": "Add Meaningful Context",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Variables like state, number, or verb exist in isolation without surrounding context, so readers cannot tell whether they belong to an address, a guess-statistics message, or some other concept.",
+  "steps": [
+    "Group related variables into a well-named class to provide implicit context through membership.",
+    "If a class is not yet appropriate, add a descriptive prefix that signals the enclosing concept.",
+    "Break large functions into smaller ones and introduce a class when variables need shared context.",
+    "Verify that each variable name makes sense both in isolation and within its containing class.",
+    "Prefer encapsulation in a class over name-prefixing as the primary context mechanism."
+  ],
+  "bad_example": "// Unclear whether these belong to an address\nprivate void printGuessStatistics(char candidate, int count) {\n    String number;\n    String verb;\n    String pluralModifier;\n    // ... 20 more lines mixing all three\n}",
+  "CODE_EXAMPLE": "class GuessStatisticsMessage {\n    private String number;\n    private String verb;\n    private String pluralModifier;\n\n    public String make(char candidate, int count) {\n        createPluralDependentMessageParts(count);\n        return String.format(\"There %s %s %s%s\", verb, number, candidate, pluralModifier);\n    }\n\n    private void createPluralDependentMessageParts(int count) {\n        if (count == 0)       { number = \"no\";                    verb = \"are\"; pluralModifier = \"s\"; }\n        else if (count == 1)  { number = \"1\";                     verb = \"is\";  pluralModifier = \"\"; }\n        else                  { number = Integer.toString(count);  verb = \"are\"; pluralModifier = \"s\"; }\n    }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void make_formatsZeroCount() {\n    GuessStatisticsMessage msg = new GuessStatisticsMessage();\n    assertEquals(\"There are no xs\", msg.make('x', 0));\n}\n\n@Test\npublic void make_formatsOneCount() {\n    GuessStatisticsMessage msg = new GuessStatisticsMessage();\n    assertEquals(\"There is 1 x\", msg.make('x', 1));\n}"
+}

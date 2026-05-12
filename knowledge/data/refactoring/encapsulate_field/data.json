@@ -1,0 +1,10 @@
+{
+  "name": "Encapsulate Field",
+  "problem": "Public data fields should be accessed through getter/setter methods.",
+  "steps": [
+    "Create a private field and public getter/setter",
+    "Replace all direct field accesses with getter/setter calls"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  public String name;\n}\n\n// After\nclass Person {\n  private String name;\n  String getName() { return name; }\n  void setName(String name) { this.name = name; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testEncapsulateField() {\n  Person person = new Person();\n  person.setName(\"John\");\n  assertEquals(\"John\", person.getName());\n}"
+}

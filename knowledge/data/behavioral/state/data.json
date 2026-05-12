@@ -1,0 +1,13 @@
+{
+  "name": "State Design Pattern",
+  "problem": "Allow an object to alter its behavior when internal state changes by delegating behavior to state objects.",
+  "steps": [
+    "Define a state interface with state-dependent operations.",
+    "Implement concrete state classes.",
+    "Store a current state in the context object.",
+    "Delegate operations from context to current state.",
+    "Transition context state based on events or rules."
+  ],
+  "CODE_EXAMPLE": "public interface ITicketState {\n  string Handle();\n}\n\npublic class OpenState : ITicketState {\n  public string Handle() => \"Open\";\n}\n\npublic class ClosedState : ITicketState {\n  public string Handle() => \"Closed\";\n}\n\npublic class TicketContext {\n  private ITicketState _state = new OpenState();\n  public void SetState(ITicketState state) { _state = state; }\n  public string Status() => _state.Handle();\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Context_ChangesBehavior_WhenStateChanges() {\n  var ticket = new TicketContext();\n  Assert.AreEqual(\"Open\", ticket.Status());\n\n  ticket.SetState(new ClosedState());\n  Assert.AreEqual(\"Closed\", ticket.Status());\n}\n\n[TestMethod]\npublic void Context_DelegatesToCurrentState() {\n  var ticket = new TicketContext();\n  Assert.AreEqual(\"Open\", ticket.Status());\n}"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Memento Design Pattern",
+  "problem": "Capture and restore an object's internal state without violating encapsulation.",
+  "steps": [
+    "Define a memento object to store originator state snapshots.",
+    "Let originator create and restore mementos.",
+    "Use a caretaker to keep memento history.",
+    "Trigger save points before risky changes.",
+    "Restore from a previous memento when needed."
+  ],
+  "CODE_EXAMPLE": "public record EditorMemento(string Text);\n\npublic class Editor {\n  public string Text { get; private set; } = string.Empty;\n  public void Type(string text) => Text += text;\n  public EditorMemento Save() => new(Text);\n  public void Restore(EditorMemento memento) => Text = memento.Text;\n}\n\npublic class History {\n  private readonly Stack<EditorMemento> _stack = new();\n  public void Push(EditorMemento m) => _stack.Push(m);\n  public EditorMemento Pop() => _stack.Pop();\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Editor_RestoresPreviousStateFromMemento() {\n  var editor = new Editor();\n  var history = new History();\n  editor.Type(\"Hello\");\n  history.Push(editor.Save());\n  editor.Type(\" World\");\n  editor.Restore(history.Pop());\n  Assert.AreEqual(\"Hello\", editor.Text);\n}\n\n[TestMethod]\npublic void Memento_DoesNotExposeOriginatorInternals() {\n  var m = new EditorMemento(\"snapshot\");\n  Assert.AreEqual(\"snapshot\", m.Text);\n}"
+}

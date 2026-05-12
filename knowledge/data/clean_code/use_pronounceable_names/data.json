@@ -1,0 +1,16 @@
+{
+  "name": "Use Pronounceable Names",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Identifier names are composed of abbreviations or concatenated syllables that cannot be naturally pronounced, making spoken discussion awkward and reducing readability for new team members.",
+  "steps": [
+    "Replace unpronounceable abbreviations with full descriptive words.",
+    "Verify that every identifier name can be spoken naturally in a sentence.",
+    "Prefer compound words or short phrases over acronym-heavy abbreviations.",
+    "When reviewing code, read names aloud; if a name sounds unnatural, rename it.",
+    "Ensure new team members can discuss the code without resorting to spelling out identifiers."
+  ],
+  "bad_example": "class DtaRcrd102 {\n    private Date genymdhms;\n    private Date modymdhms;\n    private final String pszqint = \"102\";\n}",
+  "CODE_EXAMPLE": "class Customer {\n    private Date generationTimestamp;\n    private Date modificationTimestamp;\n    private final String recordId = \"102\";\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void customer_hasGenerationTimestamp() {\n    Customer customer = new Customer();\n    customer.setGenerationTimestamp(new Date());\n    assertNotNull(customer.getGenerationTimestamp());\n}"
+}

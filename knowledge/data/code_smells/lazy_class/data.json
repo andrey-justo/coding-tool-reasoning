@@ -1,0 +1,10 @@
+{
+  "name": "Lazy Class",
+  "problem": "A class does too little to justify its existence.",
+  "steps": [
+    "Use Inline Class to merge the lazy class into its parent",
+    "Use Collapse Hierarchy if it is almost a superclass"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - class does almost nothing)\nclass OrderValidator {\n  boolean isValid(Order order) {\n    return order != null;\n  }\n}\n\n// Usage\nif (new OrderValidator().isValid(order)) { ... }\n\n// After (refactored - inline into caller)\nif (order != null) { ... }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testLazyClass() {\n  Order order = new Order();\n  assertTrue(order != null);\n}"
+}

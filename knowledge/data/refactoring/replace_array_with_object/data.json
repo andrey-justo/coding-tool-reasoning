@@ -1,0 +1,11 @@
+{
+  "name": "Replace Array with Object",
+  "problem": "You have an array in which certain elements mean certain things.",
+  "steps": [
+    "Create a new class with a field for each array element",
+    "Replace array references with field accessors",
+    "Delete the array"
+  ],
+  "CODE_EXAMPLE": "// Before\nString row[] = new String[2];\nrow[0] = \"John\";\nrow[1] = \"Doe\";\n\n// After\nclass Person {\n  private String firstName;\n  private String lastName;\n}\n\nPerson person = new Person();\nperson.setFirstName(\"John\");\nperson.setLastName(\"Doe\");",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testArrayToObject() {\n  Person person = new Person(\"John\", \"Doe\");\n  assertEquals(\"John\", person.getFirstName());\n  assertEquals(\"Doe\", person.getLastName());\n}"
+}

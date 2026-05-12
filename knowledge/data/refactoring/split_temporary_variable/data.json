@@ -1,0 +1,12 @@
+{
+  "name": "Split Temporary Variable",
+  "problem": "A temporary variable is assigned to more than once for different purposes.",
+  "steps": [
+    "Identify the temporary variable assigned multiple times",
+    "Create separate variables for each assignment",
+    "Replace each reference with the appropriate variable",
+    "Rename variables to reflect their purposes"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble temp = 2 * (height + width);\nSystem.out.println(temp);\ntemp = height * width;\nSystem.out.println(temp);\n\n// After\ndouble perimeter = 2 * (height + width);\nSystem.out.println(perimeter);\ndouble area = height * width;\nSystem.out.println(area);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSplitTemporaryVariable() {\n  int height = 5, width = 10;\n  double perimeter = 2 * (height + width);\n  double area = height * width;\n  \n  assertEquals(30.0, perimeter, 0.01);\n  assertEquals(50.0, area, 0.01);\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Extract Interface",
+  "problem": "A class is used by clients in a specialized way.",
+  "steps": [
+    "Create an interface with the methods the client uses",
+    "Implement the interface in the class",
+    "Change client references to use the interface type"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass TimesheetEntry {\n  Date getDate() { ... }\n  int getHours() { ... }\n  void approve() { ... }\n}\n\n// After\ninterface Billable {\n  int getHours();\n}\n\nclass TimesheetEntry implements Billable {\n  Date getDate() { ... }\n  public int getHours() { ... }\n  void approve() { ... }\n}\n\n// Client\nBillable entry = new TimesheetEntry();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExtractInterface() {\n  Billable item = new TimesheetEntry();\n  item.setHours(8);\n  assertEquals(8, item.getHours());\n}"
+}

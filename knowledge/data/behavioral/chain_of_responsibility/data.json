@@ -1,0 +1,13 @@
+{
+  "name": "Chain of Responsibility Design Pattern",
+  "problem": "Pass a request along a chain of handlers so each handler can process it or delegate to the next one.",
+  "steps": [
+    "Define a common handler interface with set-next and handle operations.",
+    "Implement concrete handlers for specific request conditions.",
+    "Link handlers into a chain in desired order.",
+    "Pass requests into the first handler.",
+    "Let each handler process or forward the request to the next handler."
+  ],
+  "CODE_EXAMPLE": "public abstract class Handler {\n  private Handler _next;\n  public Handler SetNext(Handler next) { _next = next; return next; }\n\n  public virtual string Handle(int value) {\n    return _next != null ? _next.Handle(value) : \"unhandled\";\n  }\n}\n\npublic class NegativeHandler : Handler {\n  public override string Handle(int value) {\n    if (value < 0) return \"negative\";\n    return base.Handle(value);\n  }\n}\n\npublic class ZeroHandler : Handler {\n  public override string Handle(int value) {\n    if (value == 0) return \"zero\";\n    return base.Handle(value);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Chain_HandlesRequest_ByMatchingHandler() {\n  var negative = new NegativeHandler();\n  var zero = new ZeroHandler();\n  negative.SetNext(zero);\n\n  Assert.AreEqual(\"negative\", negative.Handle(-1));\n  Assert.AreEqual(\"zero\", negative.Handle(0));\n}\n\n[TestMethod]\npublic void Chain_ReturnsUnhandled_WhenNoMatch() {\n  var negative = new NegativeHandler();\n  var zero = new ZeroHandler();\n  negative.SetNext(zero);\n\n  Assert.AreEqual(\"unhandled\", negative.Handle(10));\n}"
+}

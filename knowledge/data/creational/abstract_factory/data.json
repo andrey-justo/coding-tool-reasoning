@@ -1,0 +1,13 @@
+{
+  "name": "Abstract Factory Design Pattern",
+  "problem": "Create families of related objects without specifying their concrete classes, ensuring products from the same family are used together.",
+  "steps": [
+    "Define interfaces for each product type in the family.",
+    "Define an abstract factory interface with creation methods for all product types.",
+    "Implement concrete factories that produce consistent product families.",
+    "Implement concrete product classes for each family.",
+    "Inject the selected factory into client code so product creation is family-consistent."
+  ],
+  "CODE_EXAMPLE": "public interface IButton {\n  string Render();\n}\n\npublic interface ITextbox {\n  string Render();\n}\n\npublic interface IUiFactory {\n  IButton CreateButton();\n  ITextbox CreateTextbox();\n}\n\npublic class WindowsButton : IButton {\n  public string Render() => \"windows-button\";\n}\n\npublic class WindowsTextbox : ITextbox {\n  public string Render() => \"windows-textbox\";\n}\n\npublic class WindowsUiFactory : IUiFactory {\n  public IButton CreateButton() => new WindowsButton();\n  public ITextbox CreateTextbox() => new WindowsTextbox();\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Factory_CreatesMatchingWindowsComponents() {\n  IUiFactory factory = new WindowsUiFactory();\n  var button = factory.CreateButton();\n  var textbox = factory.CreateTextbox();\n\n  Assert.AreEqual(\"windows-button\", button.Render());\n  Assert.AreEqual(\"windows-textbox\", textbox.Render());\n}\n\n[TestMethod]\npublic void Factory_ReturnsInterfaceTypes() {\n  IUiFactory factory = new WindowsUiFactory();\n  Assert.IsNotNull(factory.CreateButton());\n  Assert.IsNotNull(factory.CreateTextbox());\n}"
+}

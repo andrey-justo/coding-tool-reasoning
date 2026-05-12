@@ -1,0 +1,11 @@
+{
+  "name": "Replace Error Code with Exception",
+  "problem": "A method returns an error code instead of throwing an exception.",
+  "steps": [
+    "Create an exception class",
+    "Replace return statements with throw statements",
+    "Update error handling code"
+  ],
+  "CODE_EXAMPLE": "// Before\nint withdraw(int amount) {\n  if (amount > balance) {\n    return -1;\n  }\n  balance -= amount;\n  return 0;\n}\n\n// Usage\nif (account.withdraw(100) == -1) {\n  // handle error\n}\n\n// After\nvoid withdraw(int amount) {\n  if (amount > balance) {\n    throw new InsufficientFundsException();\n  }\n  balance -= amount;\n}\n\n// Usage\ntry {\n  account.withdraw(100);\n} catch (InsufficientFundsException e) {\n  // handle error\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExceptionHandling() {\n  Account account = new Account(50);\n  assertThrows(InsufficientFundsException.class, () -> {\n    account.withdraw(100);\n  });\n}"
+}

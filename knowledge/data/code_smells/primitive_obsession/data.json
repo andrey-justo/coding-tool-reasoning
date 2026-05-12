@@ -1,0 +1,12 @@
+{
+  "name": "Primitive Obsession",
+  "problem": "Use of primitive types instead of small objects for simple tasks.",
+  "steps": [
+    "Replace Data Value with Object for field groups that go together",
+    "Replace Type Code with Class/Subclasses/State for type codes",
+    "Replace Array with Object when array elements carry different meanings",
+    "Introduce Parameter Object to group related parameters"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass Employee {\n  String phoneAreaCode;\n  String phoneNumber;\n  String zipCode;\n  String countryCode;\n}\n\n// After (refactored)\nclass Employee {\n  PhoneNumber phone;\n  Address address;\n}\n\nclass PhoneNumber {\n  String areaCode;\n  String number;\n  String format() { return areaCode + \"-\" + number; }\n}\n\nclass Address {\n  String zipCode;\n  String countryCode;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPrimitiveObsession() {\n  PhoneNumber phone = new PhoneNumber(\"415\", \"9999999\");\n  assertEquals(\"415-9999999\", phone.format());\n}"
+}

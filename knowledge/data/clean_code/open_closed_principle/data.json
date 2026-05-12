@@ -1,0 +1,16 @@
+{
+  "name": "Open/Closed Principle",
+  "source": "Clean Code by Robert C. Martin, Chapter 10: Classes",
+  "category": "classes",
+  "problem": "Adding new behavior requires modifying existing, working classes, risking regressions in tested code and forcing the same classes to be changed repeatedly for every new requirement.",
+  "steps": [
+    "Design classes to be open for extension (new behavior can be added) but closed for modification (existing code is not changed).",
+    "Introduce abstractions (interfaces or abstract classes) where variation is expected.",
+    "Add new behavior by creating new classes that implement or extend the abstraction.",
+    "Use dependency injection to supply the appropriate implementation at runtime.",
+    "Protect stable code behind the abstraction; only the new subclass is modified or added."
+  ],
+  "bad_example": "// Must modify this class every time a new shape is added\nclass AreaCalculator {\n    double area(Object shape) {\n        if (shape instanceof Circle)    return Math.PI * ((Circle)shape).radius * ((Circle)shape).radius;\n        if (shape instanceof Rectangle) return ((Rectangle)shape).width * ((Rectangle)shape).height;\n        throw new IllegalArgumentException();\n    }\n}",
+  "CODE_EXAMPLE": "interface Shape { double area(); }\n\nclass Circle    implements Shape { double r; public double area() { return Math.PI * r * r; } }\nclass Rectangle implements Shape { double w, h; public double area() { return w * h; } }\n// Adding Triangle requires no change to existing classes\nclass Triangle  implements Shape { double b, h; public double area() { return 0.5 * b * h; } }\n\nclass AreaCalculator {\n    double totalArea(List<Shape> shapes) {\n        return shapes.stream().mapToDouble(Shape::area).sum();\n    }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void totalArea_sumsAllShapes() {\n    List<Shape> shapes = List.of(new Circle(1.0), new Rectangle(2.0, 3.0));\n    AreaCalculator calc = new AreaCalculator();\n    assertEquals(Math.PI + 6.0, calc.totalArea(shapes), 0.001);\n}\n\n@Test\npublic void totalArea_worksWithNewShapeWithoutModification() {\n    List<Shape> shapes = List.of(new Triangle(4.0, 3.0));\n    assertEquals(6.0, new AreaCalculator().totalArea(shapes), 0.001);\n}"
+}

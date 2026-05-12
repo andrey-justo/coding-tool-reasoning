@@ -1,0 +1,16 @@
+{
+  "name": "Vertical Formatting",
+  "source": "Clean Code by Robert C. Martin, Chapter 5: Formatting",
+  "category": "formatting",
+  "problem": "Source files lack consistent vertical spacing, causing conceptually distinct sections to blur together and related code to be separated by unrelated lines, making the visual structure of the code misleading.",
+  "steps": [
+    "Separate each distinct concept or function with a blank line to create visual breathing room.",
+    "Keep lines of code that are closely related (e.g., variable declaration and first use) vertically close without blank lines between them.",
+    "Declare local variables immediately before their first use, not at the top of a function.",
+    "Declare instance variables at the top of the class, grouped together.",
+    "Never let a source file grow beyond ~500 lines; most should be under 200."
+  ],
+  "bad_example": "class Report {\n    private String title;\n\n\n\n    private Date created;\n    public String generate() {\n        String body = buildBody();\n        String header = buildHeader();\n        return header + body;\n    }\n    private String buildHeader() { return title; }\n    private String buildBody()   { return \"body\"; }\n}",
+  "CODE_EXAMPLE": "class Report {\n    private String title;\n    private Date created;\n\n    public String generate() {\n        String header = buildHeader();\n        String body = buildBody();\n        return header + body;\n    }\n\n    private String buildHeader() { return title; }\n\n    private String buildBody()   { return \"body\"; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void generate_combinesHeaderAndBody() {\n    Report report = new Report(\"Q1 Summary\", new Date());\n    String result = report.generate();\n    assertTrue(result.startsWith(\"Q1 Summary\"));\n    assertTrue(result.contains(\"body\"));\n}"
+}

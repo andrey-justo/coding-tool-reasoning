@@ -1,0 +1,12 @@
+{
+  "name": "Form Template Method",
+  "problem": "Subclasses implement algorithms with similar structure.",
+  "steps": [
+    "Identify the different steps in the algorithms",
+    "Create methods for each step in the superclass",
+    "Create the template method that calls these methods",
+    "Override the appropriate methods in subclasses"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Site {}\nclass ResidentialSite extends Site {\n  Money getBillingAmount() { ... }\n}\nclass LifelineSite extends Site {\n  Money getBillingAmount() { ... }\n}\n\n// After\nabstract class Site {\n  Money getBillingAmount() {\n    return getBaseAmount() + getDiscountAmount();\n  }\n  abstract Money getBaseAmount();\n  abstract Money getDiscountAmount();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testTemplateMethod() {\n  Site site = new ResidentialSite();\n  Money amount = site.getBillingAmount();\n  assertTrue(amount.getValue() > 0);\n}"
+}

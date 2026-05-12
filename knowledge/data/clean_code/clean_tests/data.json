@@ -1,0 +1,16 @@
+{
+  "name": "Clean Tests",
+  "source": "Clean Code by Robert C. Martin, Chapter 9: Unit Tests",
+  "category": "unit_tests",
+  "problem": "Test code treated as second-class code becomes messy and brittle, causing tests to be abandoned when production code changes, leaving the production code without a safety net for refactoring.",
+  "steps": [
+    "Apply the same care to test code as to production code: name tests clearly, keep them small, eliminate duplication.",
+    "Follow the BUILD-OPERATE-CHECK pattern: arrange, act, assert with clear visual separation.",
+    "Write one logical concept (one assert cluster) per test to make failures self-diagnosing.",
+    "Create domain-specific testing utilities and assertion helpers to keep test bodies readable.",
+    "Keep tests independent: no shared mutable state between test cases."
+  ],
+  "bad_example": "// Messy test: multiple concepts, unclear structure\n@Test\npublic void test1() throws Exception {\n    Page p = new Page(); p.content = \"x\"; p.save();\n    Page p2 = Page.load(p.id);\n    assert p2.content.equals(\"x\") && p2.id == p.id && Page.count() == 1;\n}",
+  "CODE_EXAMPLE": "// Clean test: one concept, clear BUILD-OPERATE-CHECK structure\n@Test\npublic void savedPage_canBeReloadedWithSameContent() throws Exception {\n    // BUILD\n    Page original = new Page(\"clean content\");\n    original.save();\n\n    // OPERATE\n    Page reloaded = Page.load(original.getId());\n\n    // CHECK\n    assertEquals(original.getContent(), reloaded.getContent());\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void savedPage_hasMatchingId() throws Exception {\n    Page page = new Page(\"body\");\n    page.save();\n    Page loaded = Page.load(page.getId());\n    assertEquals(page.getId(), loaded.getId());\n}\n\n@Test\npublic void savedPage_hasMatchingContent() throws Exception {\n    Page page = new Page(\"body\");\n    page.save();\n    Page loaded = Page.load(page.getId());\n    assertEquals(\"body\", loaded.getContent());\n}"
+}

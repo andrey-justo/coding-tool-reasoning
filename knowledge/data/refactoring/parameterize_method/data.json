@@ -1,0 +1,10 @@
+{
+  "name": "Parameterize Method",
+  "problem": "Multiple methods do similar things but with different values.",
+  "steps": [
+    "Create a single method with a parameter for the differing value",
+    "Replace the old methods with calls to the new method"
+  ],
+  "CODE_EXAMPLE": "// Before\nint fivePercentRaise() {\n  return salary * 1.05;\n}\n\nint tenPercentRaise() {\n  return salary * 1.10;\n}\n\n// After\nint raise(double factor) {\n  return salary * factor;\n}\n\n// Calls\nraise(1.05);\nraise(1.10);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testParameterize() {\n  Employee employee = new Employee(1000);\n  int raised = employee.raise(1.05);\n  assertEquals(1050, raised);\n}"
+}

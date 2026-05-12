@@ -1,0 +1,12 @@
+{
+  "name": "Replace Data Value with Object",
+  "problem": "You have a data item that requires additional data and behavior.",
+  "steps": [
+    "Create a new class for the data item",
+    "Move the data and logic to the new class",
+    "Replace the original data item with an instance of the new class",
+    "Add accessor methods"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Order {\n  private String customer;\n}\n\n// After\nclass Order {\n  private Customer customer;\n}\n\nclass Customer {\n  private String name;\n  String getName() { return name; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDataValueToObject() {\n  Customer customer = new Customer(\"John\");\n  Order order = new Order(customer);\n  \n  assertEquals(\"John\", order.getCustomer().getName());\n}"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "Duplicate Observed Data",
+  "problem": "You have a domain object in the presentation layer.",
+  "steps": [
+    "Create fields in the presentation class for the data",
+    "Create getters and setters",
+    "Update the view when domain object changes",
+    "Set domain object when view data changes"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass IntervalWindow {\n  Interval interval;\n}\n\n// After\nclass IntervalWindow {\n  Interval interval;\n  int start;\n  int length;\n  void updateInterval() {\n    interval.setStart(start);\n    interval.setLength(length);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDuplicateObservedData() {\n  Interval interval = new Interval(5, 10);\n  IntervalWindow window = new IntervalWindow(interval);\n  \n  assertEquals(5, window.getStart());\n  assertEquals(10, window.getLength());\n}"
+}

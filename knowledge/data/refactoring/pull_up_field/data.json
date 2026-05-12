@@ -1,0 +1,11 @@
+{
+  "name": "Pull Up Field",
+  "problem": "Subclasses have the same field.",
+  "steps": [
+    "Create a field in the superclass",
+    "Remove the field from the subclasses",
+    "Update all references to use the superclass field"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Salesman extends Employee {\n  String name;\n}\n\nclass Engineer extends Employee {\n  String name;\n}\n\n// After\nclass Employee {\n  String name;\n}\n\nclass Salesman extends Employee {}\nclass Engineer extends Employee {}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPullUpField() {\n  Salesman salesman = new Salesman();\n  salesman.setName(\"John\");\n  assertEquals(\"John\", salesman.getName());\n}"
+}

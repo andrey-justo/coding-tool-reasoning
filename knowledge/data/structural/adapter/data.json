@@ -1,0 +1,13 @@
+{
+  "name": "Adapter Design Pattern",
+  "problem": "Allow incompatible interfaces to collaborate by introducing an adapter that translates calls from the client-facing interface to an existing implementation.",
+  "steps": [
+    "Identify the target interface expected by client code.",
+    "Identify the adaptee class with incompatible operations.",
+    "Create an adapter class implementing the target interface.",
+    "Translate target operations into adaptee calls.",
+    "Inject the adapter where the target interface is required."
+  ],
+  "CODE_EXAMPLE": "public interface IPaymentGateway {\n  bool Charge(decimal amount);\n}\n\npublic class LegacyGateway {\n  public int MakePayment(double amount) => 1;\n}\n\npublic class PaymentGatewayAdapter : IPaymentGateway {\n  private readonly LegacyGateway _legacy;\n  public PaymentGatewayAdapter(LegacyGateway legacy) { _legacy = legacy; }\n\n  public bool Charge(decimal amount) {\n    return _legacy.MakePayment((double)amount) == 1;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Charge_ReturnsTrue_WhenLegacySucceeds() {\n  var gateway = new PaymentGatewayAdapter(new LegacyGateway());\n  Assert.IsTrue(gateway.Charge(12.50m));\n}\n\n[TestMethod]\npublic void Adapter_ImplementsTargetInterface() {\n  IPaymentGateway gateway = new PaymentGatewayAdapter(new LegacyGateway());\n  Assert.IsNotNull(gateway);\n}"
+}

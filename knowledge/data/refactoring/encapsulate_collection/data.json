@@ -1,0 +1,13 @@
+{
+  "name": "Encapsulate Collection Refactoring Pattern",
+  "problem": "Exposing mutable collections directly allows uncontrolled external changes and breaks invariants.",
+  "steps": [
+    "Locate public mutable collections exposed by a class.",
+    "Make collection field private.",
+    "Expose read-only views for consumers.",
+    "Provide controlled add/remove methods enforcing invariants.",
+    "Update call sites to use the controlled methods."
+  ],
+  "CODE_EXAMPLE": "public class Team {\n  private readonly List<string> _members = new List<string>();\n  public IReadOnlyList<string> Members => _members.AsReadOnly();\n\n  public void AddMember(string member) {\n    if (!_members.Contains(member)) _members.Add(member);\n  }\n}\n",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void AddMember_AddsUniqueMember() {\n  var team = new Team();\n  team.AddMember(\"alice\");\n  team.AddMember(\"alice\");\n  Assert.AreEqual(1, team.Members.Count);\n}\n\n[TestMethod]\npublic void Members_IsReadOnlyView() {\n  var team = new Team();\n  team.AddMember(\"bob\");\n  Assert.AreEqual(\"bob\", team.Members[0]);\n}"
+}

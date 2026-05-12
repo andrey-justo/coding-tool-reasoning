@@ -1,0 +1,16 @@
+{
+  "name": "Avoid Encodings",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Type or scope information encoded into identifier names via Hungarian Notation, m_ prefixes, or I-prefixed interfaces adds cognitive overhead, becomes stale when types change, and clutters modern IDE-aided development.",
+  "steps": [
+    "Remove type prefixes from variable names (e.g., rename strName to name, iCount to count).",
+    "Remove m_ or _ member-variable prefixes; keep classes and methods small enough to make scope obvious.",
+    "Leave interfaces unadorned; if encoding is needed, suffix the implementation instead (ShapeFactoryImpl, not IShapeFactory).",
+    "Rely on the IDE and strong type system rather than name-embedded type hints.",
+    "Review legacy code and incrementally strip obsolete encoding prefixes."
+  ],
+  "bad_example": "interface IShapeFactory { Shape makeShape(); }\nclass CShapeFactory implements IShapeFactory {\n    private String m_dsc;\n    PhoneNumber phoneString; // type changed, name not updated\n}",
+  "CODE_EXAMPLE": "interface ShapeFactory { Shape makeShape(); }\nclass ShapeFactoryImpl implements ShapeFactory {\n    private String description;\n    PhoneNumber phoneNumber;\n\n    @Override\n    public Shape makeShape() { return new Circle(); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void shapeFactory_createsShape() {\n    ShapeFactory factory = new ShapeFactoryImpl();\n    assertNotNull(factory.makeShape());\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Explain Yourself in Code",
+  "source": "Clean Code by Robert C. Martin, Chapter 4: Comments",
+  "category": "comments",
+  "problem": "Developers write comments to explain what confusing code does instead of rewriting the code to be self-explanatory, leading to comments that drift out of sync with the code they describe.",
+  "steps": [
+    "Before writing a comment, ask whether the code can be rewritten to make the comment unnecessary.",
+    "Extract a condition into a boolean-returning function with a descriptive name.",
+    "Extract a block of code into a function whose name states its purpose.",
+    "Replace magic numbers and literals with named constants.",
+    "Reserve comments for information that truly cannot be expressed in code (legal notices, algorithm citations, intent rationale)."
+  ],
+  "bad_example": "// Check if employee is eligible for full benefits\nif ((employee.flags & HOURLY_FLAG) != 0 && employee.age > 65) {\n    // ... do something\n}",
+  "CODE_EXAMPLE": "if (employee.isEligibleForFullBenefits()) {\n    // ...\n}\n\n// In Employee class:\npublic boolean isEligibleForFullBenefits() {\n    return isHourly() && age > FULL_BENEFIT_AGE;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void isEligibleForFullBenefits_trueForHourlyOver65() {\n    Employee emp = new Employee(EmployeeType.HOURLY, 66);\n    assertTrue(emp.isEligibleForFullBenefits());\n}\n\n@Test\npublic void isEligibleForFullBenefits_falseForSalariedOver65() {\n    Employee emp = new Employee(EmployeeType.SALARIED, 66);\n    assertFalse(emp.isEligibleForFullBenefits());\n}"
+}

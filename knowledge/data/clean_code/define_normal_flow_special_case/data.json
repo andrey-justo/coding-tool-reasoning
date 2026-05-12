@@ -1,0 +1,16 @@
+{
+  "name": "Define Normal Flow (Special Case Pattern)",
+  "source": "Clean Code by Robert C. Martin, Chapter 7: Error Handling",
+  "category": "error_handling",
+  "problem": "Calling code must check for exceptional cases (null, missing values, empty results) at every call site, cluttering business logic with exception-handling conditionals that distract from the normal flow.",
+  "steps": [
+    "Identify places where the caller checks for an exceptional case after each call.",
+    "Create a Special Case object that encapsulates the default or null behavior.",
+    "Return the Special Case object instead of null or throwing an exception for expected absent data.",
+    "Remove the null checks in the calling code, allowing the normal flow to proceed without conditionals.",
+    "Apply the Null Object Pattern as a specific form of this principle."
+  ],
+  "bad_example": "// Caller must handle null explicitly\ntry {\n    MealExpenses expenses = expenseReportDAO.getMeals(employee.getID());\n    total += expenses.getTotal();\n} catch (MealExpensesNotFound e) {\n    total += getMealPerDiem();\n}",
+  "CODE_EXAMPLE": "// DAO returns a PerDiemMealExpenses when none found (Special Case)\npublic MealExpenses getMeals(int employeeId) {\n    MealExpenses expenses = db.find(employeeId);\n    return (expenses != null) ? expenses : new PerDiemMealExpenses();\n}\n\n// Caller has clean, exception-free normal flow\nMealExpenses expenses = expenseReportDAO.getMeals(employee.getID());\ntotal += expenses.getTotal();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getMeals_returnsPerDiemExpenses_whenNoExpensesFound() {\n    ExpenseReportDAO dao = new ExpenseReportDAO(emptyDb);\n    MealExpenses result = dao.getMeals(999);\n    assertEquals(MealExpenses.PER_DIEM_AMOUNT, result.getTotal());\n}"
+}

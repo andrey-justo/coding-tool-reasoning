@@ -1,0 +1,11 @@
+{
+  "name": "Refused Bequest",
+  "problem": "A subclass uses only some of the inherited methods and properties.",
+  "steps": [
+    "If there is no logical relationship, use Replace Inheritance with Delegation",
+    "If hierarchy makes sense but just some behavior is unwanted, use Push Down Method/Field",
+    "Create a sibling class and use Push Down to move the unused code there"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass Animal {\n  void fly() { ... }\n  void walk() { ... }\n}\n\nclass Dog extends Animal {\n  // fly() is inherited but makes no sense for a dog\n}\n\n// After (refactored - replace inheritance with delegation)\ninterface Walkable {\n  void walk();\n}\n\nclass Dog implements Walkable {\n  public void walk() { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRefusedBequest() {\n  Dog dog = new Dog();\n  dog.walk();\n  // dog does not have fly() anymore\n}"
+}
