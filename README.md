@@ -144,7 +144,7 @@ If you prefer to run LocalAI manually (no docker-compose), you can still follow 
 This repo also provides an MCP server that exposes software-engineering taxonomies
 for clean code and NFR-aware code generation.
 
-- Server entry point: `src/swe_mcp_server.py`
+- Server entry point: `src/mcp/swe_mcp_server.py`
 - Taxonomy sources: `taxonomies/ground_data` and `taxonomies/linked_data`
 
 ### Running the MCP server
@@ -234,9 +234,10 @@ GitHub Actions workflow: `.github/workflows/cd.yml`
 
 ## Structure
 - `src/main.py`: Entry point
-- `src/migration/`: Migration logic
+- `src/service/`: Business logic and services
 - `src/utils/`: Utility functions
 - `src/llm_client/localai_client.py`: LocalAI HTTP client wrapper
+- `src/mcp/`: MCP server implementation
 - `available_models.yaml`: Model/provider configuration (add LocalAI)
 
 ## Features
