@@ -49,8 +49,8 @@ class LocalAIClient:
             "Accept": "application/json",
         }
         if self.api_key:
-            # send as API token (project code will set API_KEY in .env)
-            headers["Authorization"] = f"{self.api_key}"
+            # Send as Bearer token (RFC 6750 OAuth 2.0 Bearer Token Usage)
+            headers["Authorization"] = f"Bearer {self.api_key}"
         return headers
 
     def chat(self, prompt, model=None, **kwargs):
