@@ -1,0 +1,16 @@
+{
+  "name": "Have No Side Effects",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "A function named for one purpose secretly performs additional state changes (side effects), creating hidden temporal couplings and order dependencies that cause subtle, hard-to-reproduce bugs.",
+  "steps": [
+    "Audit every function for state changes beyond what its name implies.",
+    "If a side effect is necessary, rename the function to reveal all of its actions.",
+    "Prefer separating the side-effecting operation into its own function called explicitly by the caller.",
+    "Avoid modifying global state, session data, or input arguments inside functions that appear to be query-only.",
+    "Document any unavoidable side effects prominently and consider making them explicit through the function signature."
+  ],
+  "bad_example": "// Name implies only password checking, but secretly initializes session\npublic boolean checkPassword(String userName, String password) {\n    User user = UserGateway.findByName(userName);\n    if (user != null && isValid(user, password)) {\n        Session.initialize(); // hidden side effect!\n        return true;\n    }\n    return false;\n}",
+  "CODE_EXAMPLE": "// Side effect made explicit in the name\npublic boolean checkPasswordAndInitializeSession(String userName, String password) {\n    User user = UserGateway.findByName(userName);\n    if (user != null && isValid(user, password)) {\n        Session.initialize();\n        return true;\n    }\n    return false;\n}\n\n// Or better: separate concerns\npublic boolean isValidPassword(String userName, String password) {\n    User user = UserGateway.findByName(userName);\n    return user != null && isValid(user, password);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void isValidPassword_doesNotInitializeSession() {\n    UserValidator validator = new UserValidator();\n    boolean result = validator.isValidPassword(\"bob\", \"secret\");\n    assertFalse(Session.isInitialized());\n}\n\n@Test\npublic void isValidPassword_returnsTrueForCorrectCredentials() {\n    UserValidator validator = new UserValidator();\n    assertTrue(validator.isValidPassword(\"bob\", \"secret\"));\n}"
+}

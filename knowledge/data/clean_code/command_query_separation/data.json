@@ -1,0 +1,16 @@
+{
+  "name": "Command Query Separation",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "A function both changes state (command) and returns a value (query), so callers cannot tell from a call site whether the function is asking a question or issuing an order, leading to confusing conditional expressions.",
+  "steps": [
+    "Identify functions that both mutate state and return a value.",
+    "Split each such function into a command (void, mutates state) and a separate query (returns value, no mutation).",
+    "Name commands as imperative verbs (setAttribute) and queries as noun-phrases or questions (attributeExists, getAttribute).",
+    "Never use command return values as conditional predicates; query first, then command.",
+    "Apply this principle at every layer: service, repository, and domain."
+  ],
+  "bad_example": "// Command and query mixed: set + check in one\npublic boolean set(String attribute, String value) {\n    if (!attributes.containsKey(attribute)) return false;\n    attributes.put(attribute, value);\n    return true;\n}\n// Confusing usage:\nif (set(\"username\", \"bob\")) { ... }",
+  "CODE_EXAMPLE": "// Query\npublic boolean attributeExists(String name) {\n    return attributes.containsKey(name);\n}\n// Command\npublic void setAttribute(String name, String value) {\n    attributes.put(name, value);\n}\n\n// Clear usage\nif (attributeExists(\"username\")) {\n    setAttribute(\"username\", \"bob\");\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void setAttribute_doesNotReturnValue() throws NoSuchMethodException {\n    Method m = Config.class.getMethod(\"setAttribute\", String.class, String.class);\n    assertEquals(void.class, m.getReturnType());\n}\n\n@Test\npublic void attributeExists_returnsFalseForMissingKey() {\n    Config config = new Config();\n    assertFalse(config.attributeExists(\"missing\"));\n}"
+}

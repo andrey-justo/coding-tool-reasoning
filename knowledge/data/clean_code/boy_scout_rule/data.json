@@ -1,0 +1,16 @@
+{
+  "name": "Boy Scout Rule",
+  "source": "Clean Code by Robert C. Martin, Chapter 1 & Chapter 17",
+  "category": "general",
+  "problem": "Code gradually degrades over time because developers only add features and never clean up. Small messes accumulate into large, unmaintainable systems even when everyone follows existing conventions for new code.",
+  "steps": [
+    "Every time you touch a file, leave it slightly cleaner than you found it.",
+    "Rename an unclear variable or method if you notice one while making your change.",
+    "Extract a long method or remove a redundant comment while you are already in the file.",
+    "Keep the improvement small and safe — do not refactor the whole file in one commit.",
+    "Add or improve one test if a test is missing for the code you touched."
+  ],
+  "bad_example": "// Developer adds feature but ignores pre-existing mess\nvoid processOrders(List orders) {\n    // TODO: clean this up someday\n    for(int i=0;i<orders.size();i++){Order o=(Order)orders.get(i);if(o!=null){ship(o);}}\n    // new feature added here, mess left unchanged\n    logProcessed(orders.size());\n}",
+  "CODE_EXAMPLE": "// Same change, but developer also cleaned while passing through\nvoid processOrders(List<Order> orders) {\n    orders.stream()\n          .filter(Objects::nonNull)\n          .forEach(this::ship);\n    logProcessed(orders.size());\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void processOrders_skipsNullEntries() {\n    List<Order> orders = Arrays.asList(new Order(1), null, new Order(2));\n    processor.processOrders(orders);\n    verify(processor, times(2)).ship(any(Order.class));\n}\n\n@Test\npublic void processOrders_logsCount() {\n    List<Order> orders = List.of(new Order(1));\n    processor.processOrders(orders);\n    verify(logger).logProcessed(1);\n}"
+}

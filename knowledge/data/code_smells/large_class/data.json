@@ -1,0 +1,12 @@
+{
+  "name": "Large Class",
+  "problem": "A class has too many fields, methods, or lines of code.",
+  "steps": [
+    "Identify groups of related fields and methods",
+    "Extract Class to move cohesive groups into new classes",
+    "Extract Subclass if the class serves multiple roles at runtime",
+    "Extract Interface if clients use only a subset of the class"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass Order {\n  String customerName;\n  String customerEmail;\n  String customerAddress;\n  double itemPrice;\n  int quantity;\n  String shippingCarrier;\n  String shippingTrackingNumber;\n  void calculateTotal() { ... }\n  void sendConfirmationEmail() { ... }\n  void scheduleShipment() { ... }\n}\n\n// After (refactored)\nclass Order {\n  Customer customer;\n  double itemPrice;\n  int quantity;\n  Shipment shipment;\n  double calculateTotal() { ... }\n}\n\nclass Customer { String name, email, address; }\nclass Shipment { String carrier, trackingNumber; void schedule() { ... } }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testLargeClass() {\n  Customer customer = new Customer(\"John\", \"john@example.com\", \"123 Main St\");\n  Order order = new Order(customer, 100.0, 2);\n  assertEquals(200.0, order.calculateTotal(), 0.01);\n}"
+}

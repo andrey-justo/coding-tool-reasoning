@@ -1,0 +1,11 @@
+{
+  "name": "Inappropriate Intimacy",
+  "problem": "Two classes know too much about each other's internal details.",
+  "steps": [
+    "Use Move Method and Move Field to share as little as possible",
+    "Use Change Bidirectional Association to Unidirectional where possible",
+    "Use Extract Class to create a neutral mediator"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - class A directly accesses class B internals)\nclass Order {\n  Customer customer;\n  void printSummary() {\n    System.out.println(customer.address.city); // deep access\n    System.out.println(customer.creditCard.last4); // deep access\n  }\n}\n\n// After (refactored)\nclass Order {\n  Customer customer;\n  void printSummary() {\n    System.out.println(customer.getCityName());\n    System.out.println(customer.getMaskedCard());\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testInappropriateIntimacy() {\n  Customer customer = new Customer(\"NYC\", \"**** **** **** 1234\");\n  Order order = new Order(customer);\n  order.printSummary(); // should not throw\n}"
+}

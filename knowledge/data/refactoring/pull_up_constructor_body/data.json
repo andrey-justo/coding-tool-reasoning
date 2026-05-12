@@ -1,0 +1,11 @@
+{
+  "name": "Pull Up Constructor Body",
+  "problem": "Constructors in subclasses have identical bodies.",
+  "steps": [
+    "Create a superclass constructor",
+    "Call the superclass constructor from subclasses using super()",
+    "Remove duplicate code from subclass constructors"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Manager extends Employee {\n  Manager(String name, String id) {\n    this.name = name;\n    this.id = id;\n  }\n}\n\n// After\nclass Employee {\n  Employee(String name, String id) {\n    this.name = name;\n    this.id = id;\n  }\n}\n\nclass Manager extends Employee {\n  Manager(String name, String id) {\n    super(name, id);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPullUpConstructor() {\n  Manager manager = new Manager(\"John\", \"M123\");\n  assertEquals(\"John\", manager.getName());\n}"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Extract Variable",
+  "problem": "You have a complex expression that is hard to understand.",
+  "steps": [
+    "Identify the complex expression or subexpression",
+    "Insert a new line before the relevant expression",
+    "Declare a new variable and assign part of the expression to it",
+    "Replace that part of the expression with the new variable",
+    "Repeat for all complex parts"
+  ],
+  "CODE_EXAMPLE": "// Before\nvoid renderBanner() {\n  if ((platform.toUpperCase().indexOf(\"MAC\") > -1) &&\n      (browser.toUpperCase().indexOf(\"IE\") > -1)) {\n    // do something\n  }\n}\n\n// After\nvoid renderBanner() {\n  final boolean isMacOs = platform.toUpperCase().indexOf(\"MAC\") > -1;\n  final boolean isIE = browser.toUpperCase().indexOf(\"IE\") > -1;\n  if (isMacOs && isIE) {\n    // do something\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExtractVariable() {\n  String platform = \"MacOS\";\n  String browser = \"IE\";\n  \n  boolean isMacOs = platform.toUpperCase().indexOf(\"MAC\") > -1;\n  boolean isIE = browser.toUpperCase().indexOf(\"IE\") > -1;\n  \n  assertTrue(isMacOs);\n  assertTrue(isIE);\n}"
+}

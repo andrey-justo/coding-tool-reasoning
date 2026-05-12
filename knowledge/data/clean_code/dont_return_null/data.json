@@ -1,0 +1,16 @@
+{
+  "name": "Don't Return Null",
+  "source": "Clean Code by Robert C. Martin, Chapter 7: Error Handling",
+  "category": "error_handling",
+  "problem": "Methods that return null force every caller to add a null check, and when even one caller forgets, the result is a NullPointerException at an unrelated location, making the root cause hard to trace.",
+  "steps": [
+    "Return an empty collection instead of null when a list, set, or map result has no entries.",
+    "Return a Special Case object (Null Object) instead of null for a missing domain entity.",
+    "Return Optional<T> to make the possibility of absence explicit and compiler-enforced.",
+    "Throw a meaningful exception if the absence of a value is truly an error condition.",
+    "Audit all return statements for null and replace with one of the above strategies."
+  ],
+  "bad_example": "public List<Employee> getEmployees() {\n    if (employees.isEmpty()) return null; // forces null check everywhere\n}\n\n// Caller\nList<Employee> employees = getEmployees();\nif (employees != null) {\n    for (Employee e : employees) totalPay += e.getPay();\n}",
+  "CODE_EXAMPLE": "public List<Employee> getEmployees() {\n    if (employees.isEmpty()) return Collections.emptyList();\n    return new ArrayList<>(employees);\n}\n\n// Caller - no null check needed\nfor (Employee e : getEmployees()) {\n    totalPay += e.getPay();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getEmployees_returnsEmptyList_notNull_whenNoEmployees() {\n    EmployeeRepository repo = new EmployeeRepository();\n    List<Employee> result = repo.getEmployees();\n    assertNotNull(result);\n    assertTrue(result.isEmpty());\n}"
+}

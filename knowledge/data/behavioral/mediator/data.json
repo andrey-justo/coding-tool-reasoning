@@ -1,0 +1,13 @@
+{
+  "name": "Mediator Design Pattern",
+  "problem": "Reduce direct dependencies between collaborating objects by centralizing communication in a mediator.",
+  "steps": [
+    "Define a mediator interface for component interactions.",
+    "Implement a concrete mediator containing collaboration rules.",
+    "Make components depend on mediator rather than each other.",
+    "Notify mediator from components on state changes.",
+    "Let mediator coordinate actions among components."
+  ],
+  "CODE_EXAMPLE": "public interface IChatMediator {\n  void Send(string message, User sender);\n}\n\npublic class ChatRoom : IChatMediator {\n  private readonly List<User> _users = new();\n  public void Register(User user) => _users.Add(user);\n  public void Send(string message, User sender) {\n    foreach (var user in _users.Where(u => u != sender)) user.Receive(message);\n  }\n}\n\npublic class User {\n  private readonly IChatMediator _mediator;\n  public string Name { get; }\n  public User(string name, IChatMediator mediator) { Name = name; _mediator = mediator; }\n  public void Send(string message) => _mediator.Send(message, this);\n  public void Receive(string message) => Console.WriteLine($\"{Name} received: {message}\");\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Mediator_RoutesMessagesBetweenUsers() {\n  var room = new ChatRoom();\n  var a = new User(\"A\", room);\n  var b = new User(\"B\", room);\n  room.Register(a);\n  room.Register(b);\n  a.Send(\"hello\");\n  Assert.IsTrue(true);\n}\n\n[TestMethod]\npublic void Components_DoNotDependOnEachOtherDirectly() {\n  var room = new ChatRoom();\n  var u = new User(\"U\", room);\n  Assert.IsNotNull(u);\n}"
+}

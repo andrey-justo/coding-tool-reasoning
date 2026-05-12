@@ -1,0 +1,16 @@
+{
+  "name": "Provide Context with Exceptions",
+  "source": "Clean Code by Robert C. Martin, Chapter 7: Error Handling",
+  "category": "error_handling",
+  "problem": "Exceptions thrown without meaningful messages or cause chains produce stack traces that give no information about what operation failed, what data was involved, or what the intent was, making diagnosis slow.",
+  "steps": [
+    "Include the operation name and relevant input values in exception messages.",
+    "Wrap low-level exceptions with domain-specific exceptions that add context.",
+    "Preserve the original exception as the cause so the full chain is available.",
+    "Log sufficient context at the point of catch so that the log message alone is actionable.",
+    "Define exception classes at the abstraction level of the caller, not the thrower."
+  ],
+  "bad_example": "try {\n    connect(host, port);\n} catch (IOException e) {\n    throw new RuntimeException(e); // no context\n}",
+  "CODE_EXAMPLE": "try {\n    connect(host, port);\n} catch (IOException e) {\n    throw new ConnectionException(\n            String.format(\"Failed to connect to %s:%d\", host, port), e);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void connect_throwsConnectionException_withHostAndPort() {\n    NetworkClient client = new NetworkClient();\n    ConnectionException ex = assertThrows(ConnectionException.class,\n            () -> client.connect(\"unreachable\", 9999));\n    assertTrue(ex.getMessage().contains(\"unreachable\"));\n    assertTrue(ex.getMessage().contains(\"9999\"));\n    assertNotNull(ex.getCause());\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Don't Repeat Yourself (DRY)",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "The same algorithm, logic, or data appears in multiple places in the codebase. When requirements change, every duplicate must be found and updated consistently, and each copy is a potential source of divergent bugs.",
+  "steps": [
+    "Identify duplicated code segments that implement the same algorithm or rule.",
+    "Extract the common logic into a single named function, method, or class.",
+    "Replace all duplicates with calls to the extracted abstraction.",
+    "Apply the Rule of Three: refactor once the same logic appears for the third time.",
+    "Verify after extraction that all prior call sites produce the same behavior as before."
+  ],
+  "bad_example": "// Same validation logic duplicated in two places\npublic void createUser(String email) {\n    if (email == null || !email.contains(\"@\")) throw new IllegalArgumentException();\n    userRepo.save(new User(email));\n}\n\npublic void updateEmail(User user, String email) {\n    if (email == null || !email.contains(\"@\")) throw new IllegalArgumentException();\n    user.setEmail(email);\n}",
+  "CODE_EXAMPLE": "private void validateEmail(String email) {\n    if (email == null || !email.contains(\"@\"))\n        throw new IllegalArgumentException(\"Invalid email: \" + email);\n}\n\npublic void createUser(String email) {\n    validateEmail(email);\n    userRepo.save(new User(email));\n}\n\npublic void updateEmail(User user, String email) {\n    validateEmail(email);\n    user.setEmail(email);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void createUser_throwsForInvalidEmail() {\n    UserService service = new UserService();\n    assertThrows(IllegalArgumentException.class, () -> service.createUser(\"invalid\"));\n}\n\n@Test\npublic void updateEmail_throwsForInvalidEmail() {\n    UserService service = new UserService();\n    assertThrows(IllegalArgumentException.class, () -> service.updateEmail(new User(), \"bad\"));\n}"
+}

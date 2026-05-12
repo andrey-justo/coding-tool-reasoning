@@ -1,0 +1,13 @@
+{
+  "name": "Observer Design Pattern",
+  "problem": "Define a one-to-many dependency so observers are notified automatically when subject state changes.",
+  "steps": [
+    "Define an observer interface with an update method.",
+    "Implement a subject that stores and manages observer subscriptions.",
+    "Notify all observers when subject state changes.",
+    "Implement concrete observers reacting to updates.",
+    "Unsubscribe observers that no longer need notifications."
+  ],
+  "CODE_EXAMPLE": "public interface IObserver {\n  void Update(int value);\n}\n\npublic class Subject {\n  private readonly List<IObserver> _observers = new List<IObserver>();\n  public int Value { get; private set; }\n\n  public void Subscribe(IObserver observer) => _observers.Add(observer);\n  public void SetValue(int value) {\n    Value = value;\n    foreach (var observer in _observers) observer.Update(value);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Subject_NotifiesAllObservers_OnStateChange() {\n  var subject = new Subject();\n  var a = new TestObserver();\n  var b = new TestObserver();\n  subject.Subscribe(a);\n  subject.Subscribe(b);\n\n  subject.SetValue(42);\n\n  Assert.AreEqual(42, a.LastValue);\n  Assert.AreEqual(42, b.LastValue);\n}\n\nprivate class TestObserver : IObserver {\n  public int LastValue { get; private set; }\n  public void Update(int value) { LastValue = value; }\n}"
+}

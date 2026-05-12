@@ -1,0 +1,11 @@
+{
+  "name": "Temporary Field",
+  "problem": "An object field is only set in certain circumstances, otherwise empty.",
+  "steps": [
+    "Extract Class for the group of fields that behave as temporaries",
+    "Move the logic that uses these fields to the extracted class",
+    "Introduce Null Object to avoid null checks"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass Order {\n  Customer customer;\n  double discount; // only used during complex discount calculation\n  \n  double calculatePrice() {\n    if (customer.isVip()) {\n      discount = 0.1; // set here\n    }\n    return base * (1 - discount); // used here\n  }\n}\n\n// After (refactored)\nclass DiscountCalculator {\n  double calculate(Customer customer, double base) {\n    double discount = customer.isVip() ? 0.1 : 0;\n    return base * (1 - discount);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testTemporaryField() {\n  DiscountCalculator calc = new DiscountCalculator();\n  Customer vip = new Customer(true);\n  assertEquals(90.0, calc.calculate(vip, 100.0), 0.01);\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Replace Type Code with Subclasses",
+  "problem": "A class behavior varies by an enumerated type code.",
+  "steps": [
+    "Create subclasses for each type code",
+    "Move behavior to the appropriate subclass",
+    "Replace type code checks with polymorphism"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Employee {\n  static final int ENGINEER = 0;\n  static final int SALESMAN = 1;\n  static final int MANAGER = 2;\n  private int type;\n  \n  int getType() { return type; }\n}\n\n// After\nabstract class Employee {\n  abstract int getType();\n}\n\nclass Engineer extends Employee {\n  int getType() { return ENGINEER; }\n}\n\nclass Salesman extends Employee {\n  int getType() { return SALESMAN; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testTypeCodeSubclasses() {\n  Employee engineer = new Engineer();\n  assertTrue(engineer instanceof Engineer);\n}"
+}

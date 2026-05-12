@@ -1,0 +1,11 @@
+{
+  "name": "Remove Middle Man",
+  "problem": "A class is doing too much simple delegation.",
+  "steps": [
+    "Create an accessor for the delegate",
+    "Replace calls to the delegating methods with direct calls",
+    "Remove the delegating methods"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  String getTelephoneNumber() { return department.getTelephoneNumber(); }\n  Department department;\n}\n\n// After\nclass Person {\n  Department getDepartment() { return department; }\n  Department department;\n}\n\n// Usage\nString telNumber = person.getDepartment().getTelephoneNumber();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRemoveMiddleMan() {\n  Person person = new Person();\n  Department dept = new Department();\n  person.setDepartment(dept);\n  \n  assertEquals(dept, person.getDepartment());\n}"
+}

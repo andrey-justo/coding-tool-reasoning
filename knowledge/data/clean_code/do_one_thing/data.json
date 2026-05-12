@@ -1,0 +1,16 @@
+{
+  "name": "Do One Thing",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Functions that perform multiple operations at different levels of abstraction are hard to name accurately, test in isolation, and reason about, and they grow unbounded as requirements change.",
+  "steps": [
+    "Describe the function as a single TO paragraph: if the description requires and or or, the function does more than one thing.",
+    "Verify all statements in the function are at the same level of abstraction below the function name.",
+    "Extract any step that can be given a name that is not merely a restatement of its implementation.",
+    "Ensure the function cannot be meaningfully divided into sections.",
+    "Rename the function so it describes exactly the one thing it does."
+  ],
+  "bad_example": "// Does: create buffer, fetch pages, render HTML, set content\npublic String process(PageData data, boolean suite) throws Exception {\n    StringBuffer buf = new StringBuffer();\n    WikiPage page = data.getWikiPage();\n    if (data.hasAttribute(\"Test\")) {\n        appendSetup(buf, page, suite);\n    }\n    buf.append(data.getContent());\n    if (data.hasAttribute(\"Test\")) {\n        appendTeardown(buf, page, suite);\n    }\n    data.setContent(buf.toString());\n    return data.getHtml();\n}",
+  "CODE_EXAMPLE": "// Does exactly one thing: include setups/teardowns and render\npublic String renderPageWithSetupsAndTeardowns(\n        PageData data, boolean isSuite) throws Exception {\n    if (isTestPage(data))\n        includeSetupAndTeardownPages(data, isSuite);\n    return data.getHtml();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void render_doesNotIncludeSetup_forNonTestPages() throws Exception {\n    PageData data = new PageData(\"NotTest\", \"body\");\n    String html = PageRenderer.renderPageWithSetupsAndTeardowns(data, false);\n    assertFalse(html.contains(\"setup\"));\n    assertTrue(html.contains(\"body\"));\n}"
+}

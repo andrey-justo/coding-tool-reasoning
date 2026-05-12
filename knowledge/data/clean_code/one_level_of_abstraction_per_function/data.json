@@ -1,0 +1,16 @@
+{
+  "name": "One Level of Abstraction per Function",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Mixing high-level concepts (getHtml()) with low-level details (.append(\"\\n\")) inside the same function makes readers unable to tell what is essential logic vs. an implementation detail, and details accumulate over time.",
+  "steps": [
+    "Identify the abstraction level of the function from its name.",
+    "Ensure every statement inside operates exactly one level below that abstraction.",
+    "Extract any statement that is at a lower abstraction level into a helper function.",
+    "Apply the Stepdown Rule: arrange functions so each is followed by the next lower level of abstraction.",
+    "Read the function as a TO paragraph; if details intrude, extract them."
+  ],
+  "bad_example": "public void buildPage(Page page) {\n    // High level\n    String html = page.getHtml();\n    // Low level detail mixed in\n    buffer.append(\"\\t\").append(html).append(\"\\n\");\n    // High level again\n    includeTeardown(page);\n}",
+  "CODE_EXAMPLE": "// All statements at the same abstraction level\npublic void buildPage(Page page) {\n    String renderedHtml = renderHtml(page);\n    appendToBuffer(renderedHtml);\n    includeTeardown(page);\n}\n\nprivate String renderHtml(Page page) { return page.getHtml(); }\nprivate void appendToBuffer(String content) { buffer.append(content); }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void buildPage_appendsHtmlAndTeardown() {\n    Page page = new Page(\"<p>content</p>\");\n    PageBuilder builder = new PageBuilder();\n    builder.buildPage(page);\n    String result = builder.getBuffer();\n    assertTrue(result.contains(\"<p>content</p>\"));\n    assertTrue(result.contains(\"teardown\"));\n}"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "Move Method Refactoring Pattern",
+  "problem": "A method uses more data or behavior from another class than its own, indicating misplaced responsibility.",
+  "steps": [
+    "Identify the method with feature envy toward another class.",
+    "Create equivalent method in the target class.",
+    "Update callers to invoke method on target class.",
+    "Remove or delegate old method from source class.",
+    "Run tests to ensure behavior is preserved."
+  ],
+  "CODE_EXAMPLE": "public class Invoice {\n  public List<InvoiceLine> Lines { get; } = new List<InvoiceLine>();\n}\n\npublic class InvoiceCalculator {\n  public decimal Total(Invoice invoice) => invoice.Lines.Sum(l => l.Price * l.Quantity);\n}\n\npublic class InvoiceWithMovedMethod {\n  public List<InvoiceLine> Lines { get; } = new List<InvoiceLine>();\n  public decimal Total() => Lines.Sum(l => l.Price * l.Quantity);\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Total_InTargetClass_ComputesExpectedValue() {\n  var invoice = new InvoiceWithMovedMethod();\n  invoice.Lines.Add(new InvoiceLine(10m, 2));\n  Assert.AreEqual(20m, invoice.Total());\n}\n\n[TestMethod]\npublic void MovedMethod_PreservesCalculationLogic() {\n  var invoice = new InvoiceWithMovedMethod();\n  invoice.Lines.Add(new InvoiceLine(7m, 3));\n  Assert.AreEqual(21m, invoice.Total());\n}"
+}

@@ -7,8 +7,8 @@ import re
 from datetime import datetime
 from typing import Any, Callable, List, Optional
 
-from src.business_logic.explanation_service import ExplanationService
-from src.business_logic.intent_planner import IntentPlanner
+from src.service.explanation_service import ExplanationService
+from src.service.intent_planner import IntentPlanner
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation

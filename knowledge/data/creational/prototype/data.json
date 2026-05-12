@@ -1,0 +1,13 @@
+{
+  "name": "Prototype Design Pattern",
+  "problem": "Create new objects by copying existing prototype instances when object setup is expensive or when runtime composition is needed.",
+  "steps": [
+    "Define a clone contract for objects that can be copied.",
+    "Implement clone logic in each concrete prototype.",
+    "Create and preconfigure a prototype instance.",
+    "Clone the prototype to produce new instances.",
+    "Adjust cloned instances with scenario-specific values."
+  ],
+  "CODE_EXAMPLE": "public interface IPrototype<T> {\n  T Clone();\n}\n\npublic class DocumentTemplate : IPrototype<DocumentTemplate> {\n  public string Name { get; }\n  public string Layout { get; }\n\n  public DocumentTemplate(string name, string layout) {\n    Name = name;\n    Layout = layout;\n  }\n\n  public DocumentTemplate Clone() {\n    return new DocumentTemplate(Name, Layout);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Clone_ReturnsIndependentCopy() {\n  var original = new DocumentTemplate(\"Invoice\", \"A4\");\n  var copy = original.Clone();\n\n  Assert.AreNotSame(original, copy);\n  Assert.AreEqual(original.Name, copy.Name);\n  Assert.AreEqual(original.Layout, copy.Layout);\n}\n\n[TestMethod]\npublic void Clone_CanBeUsedAsTemplateForMultipleInstances() {\n  var prototype = new DocumentTemplate(\"Receipt\", \"Thermal\");\n  var first = prototype.Clone();\n  var second = prototype.Clone();\n\n  Assert.AreNotSame(first, second);\n  Assert.AreEqual(\"Receipt\", first.Name);\n  Assert.AreEqual(\"Receipt\", second.Name);\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Remove Parameter",
+  "problem": "A parameter is no longer used in the method body.",
+  "steps": [
+    "Check that the parameter is not used elsewhere",
+    "Remove the parameter from the method signature",
+    "Remove the argument from all call sites"
+  ],
+  "CODE_EXAMPLE": "// Before\nint getPrice(int discountLevel) {\n  return quantity * itemPrice;\n}\n\n// After\nint getPrice() {\n  return quantity * itemPrice;\n}\n\n// Call\ngetPrice();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRemoveParameter() {\n  Order order = new Order(10, 100);\n  int price = order.getPrice();\n  assertEquals(1000, price);\n}"
+}

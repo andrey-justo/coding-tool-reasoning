@@ -1,0 +1,11 @@
+{
+  "name": "Self Encapsulate Field",
+  "problem": "You access a field directly, but the field relationship is not straightforward.",
+  "steps": [
+    "Create a getter and setter for the field",
+    "Replace all direct accesses with the getter/setter",
+    "Remove direct field access"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass IntRange {\n  private int low, high;\n  boolean includes(int arg) {\n    return arg >= low && arg <= high;\n  }\n}\n\n// After\nclass IntRange {\n  private int low, high;\n  boolean includes(int arg) {\n    return arg >= getLow() && arg <= getHigh();\n  }\n  int getLow() { return low; }\n  int getHigh() { return high; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSelfEncapsulateField() {\n  IntRange range = new IntRange(5, 10);\n  assertTrue(range.includes(7));\n  assertFalse(range.includes(12));\n}"
+}

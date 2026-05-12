@@ -1,0 +1,13 @@
+{
+  "name": "Visitor Design Pattern",
+  "problem": "Define new operations over an object structure without changing the element classes.",
+  "steps": [
+    "Define a visitor interface with a visit method per element type.",
+    "Add an accept(visitor) method to each element.",
+    "Implement concrete visitors for different operations.",
+    "Traverse elements and dispatch via accept(visitor).",
+    "Add new operations by adding new visitors, not changing elements."
+  ],
+  "CODE_EXAMPLE": "public interface IShapeVisitor {\n  void VisitCircle(Circle circle);\n  void VisitRectangle(Rectangle rectangle);\n}\n\npublic interface IShape {\n  void Accept(IShapeVisitor visitor);\n}\n\npublic class Circle : IShape {\n  public double Radius { get; }\n  public Circle(double radius) { Radius = radius; }\n  public void Accept(IShapeVisitor visitor) => visitor.VisitCircle(this);\n}\n\npublic class Rectangle : IShape {\n  public double Width { get; }\n  public double Height { get; }\n  public Rectangle(double w, double h) { Width = w; Height = h; }\n  public void Accept(IShapeVisitor visitor) => visitor.VisitRectangle(this);\n}\n\npublic class AreaVisitor : IShapeVisitor {\n  public double Area { get; private set; }\n  public void VisitCircle(Circle c) => Area += Math.PI * c.Radius * c.Radius;\n  public void VisitRectangle(Rectangle r) => Area += r.Width * r.Height;\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Visitor_ComputesAreaAcrossDifferentElements() {\n  IShape[] shapes = { new Circle(1), new Rectangle(2, 3) };\n  var visitor = new AreaVisitor();\n  foreach (var shape in shapes) shape.Accept(visitor);\n  Assert.IsTrue(visitor.Area > 0);\n}\n\n[TestMethod]\npublic void Elements_AcceptVisitorWithoutChangingElementClasses() {\n  var circle = new Circle(2);\n  var visitor = new AreaVisitor();\n  circle.Accept(visitor);\n  Assert.IsTrue(visitor.Area > 0);\n}"
+}

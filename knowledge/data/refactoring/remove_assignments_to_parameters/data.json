@@ -1,0 +1,11 @@
+{
+  "name": "Remove Assignments to Parameters",
+  "problem": "A method parameter is assigned a value inside the method body.",
+  "steps": [
+    "Create a local variable for the parameter value",
+    "Replace all assignments to the parameter with the local variable",
+    "Replace all references to the parameter with the local variable"
+  ],
+  "CODE_EXAMPLE": "// Before\nint discount(int inputVal, int quantity) {\n  if (inputVal > 50) {\n    inputVal -= 2;\n  }\n  return inputVal * quantity;\n}\n\n// After\nint discount(int inputVal, int quantity) {\n  int result = inputVal;\n  if (inputVal > 50) {\n    result -= 2;\n  }\n  return result * quantity;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRemoveParameterAssignment() {\n  assertEquals(98, discount(100, 1));\n  assertEquals(150, discount(30, 5));\n}"
+}

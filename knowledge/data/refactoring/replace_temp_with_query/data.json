@@ -1,0 +1,11 @@
+{
+  "name": "Replace Temp with Query",
+  "problem": "You store the result of an expression in a local variable for later use.",
+  "steps": [
+    "Ensure the value is assigned only once in the method",
+    "Use Extract Method to place the expression in a new method",
+    "Replace the variable with a query to the new method"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble calculateTotal() {\n  double basePrice = quantity * itemPrice;\n  if (basePrice > 1000) {\n    return basePrice * 0.95;\n  } else {\n    return basePrice * 0.98;\n  }\n}\n\n// After\ndouble calculateTotal() {\n  if (basePrice() > 1000) {\n    return basePrice() * 0.95;\n  } else {\n    return basePrice() * 0.98;\n  }\n}\n\ndouble basePrice() {\n  return quantity * itemPrice;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testReplaceWithQuery() {\n  Order order = new Order(100, 15); // quantity=100, itemPrice=15\n  double total = order.calculateTotal();\n  assertEquals(1425.0, total, 0.01);\n}"
+}

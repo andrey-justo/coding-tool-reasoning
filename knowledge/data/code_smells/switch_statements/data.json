@@ -1,0 +1,12 @@
+{
+  "name": "Switch Statements",
+  "problem": "Complex switch/if-else chains based on type or state flags.",
+  "steps": [
+    "Use Replace Type Code with Subclasses for type-based switching",
+    "Use Replace Conditional with Polymorphism to eliminate switch logic",
+    "Use Replace Parameter with Explicit Methods for simple cases",
+    "Use Introduce Null Object for null checks"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\ndouble getSpeed() {\n  switch (type) {\n    case EUROPEAN: return getBaseSpeed();\n    case AFRICAN: return getBaseSpeed() - getLoadFactor() * numberOfCoconuts;\n    case NORWEGIAN_BLUE: return isNailed ? 0 : getBaseSpeed();\n  }\n}\n\n// After (refactored - polymorphism)\nabstract class Bird {\n  abstract double getSpeed();\n}\n\nclass EuropeanBird extends Bird {\n  double getSpeed() { return getBaseSpeed(); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSwitchSmell() {\n  Bird bird = new EuropeanBird();\n  assertTrue(bird.getSpeed() > 0);\n}"
+}
