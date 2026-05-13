@@ -149,6 +149,22 @@ class ConcernAssetsConfig(BaseModel):
             "Defaults to templates/data."
         ),
     )
+    enable_related_subject_discovery: bool = Field(
+        default=True,
+        description=(
+            "When true, infer related knowledge subjects from the change purpose "
+            "(problem description + plan steps) and attach matching knowledge data "
+            "to the explanation workflow."
+        ),
+    )
+    max_related_subjects: int = Field(
+        default=4,
+        ge=1,
+        description=(
+            "Maximum number of purpose-matched subjects to attach as knowledge "
+            "context for explanation."
+        ),
+    )
 
 
 class SweMcpConfig(BaseModel):

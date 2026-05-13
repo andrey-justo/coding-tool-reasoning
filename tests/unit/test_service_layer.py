@@ -217,6 +217,67 @@ def test_explanation_service_uses_configured_prompt_template(tmp_path: Path):
     assert "after" in llm.last_prompt
 
 
+def test_explanation_service_includes_related_knowledge_section_in_prompt():
+    class FakeKB:
+        def find_nfr_ids(self, nfr_focus):
+            return []
+
+        def summarize_for_prompt(self, nfr_ids, depth=1):
+            return "taxonomy"
+
+    class CapturingLLMClient:
+        def __init__(self):
+            self.last_prompt = ""
+
+        def chat(self, prompt):
+            self.last_prompt = prompt
+            return json.dumps(
+                {
+                    "overall_verdict": "acceptable",
+                    "rationale": "ok",
+                    "nfr_impacts": [],
+                    "risks": [],
+                    "recommended_tests": [],
+                }
+            )
+
+    llm = CapturingLLMClient()
+    plan = CodeGenPlan(
+        problem_description="Refactor auth service",
+        high_level_steps=["Step 1"],
+    )
+    context = SweContext(
+        plan=plan,
+        swe_summary="summary",
+        related_subjects=["circuit_breaker", "throttling"],
+        attached_knowledge=[
+            {
+                "kind": "swe_concern_data",
+                "concern_group": "circuit_breaker",
+                "content": '{"problem":"fallback after repeated failure"}',
+            },
+            {
+                "kind": "swe_concern_data",
+                "concern_group": "throttling",
+                "content": '{"problem":"slow requests under overload"}',
+            },
+        ],
+    )
+
+    service = ExplanationService(kb=FakeKB(), llm_client=llm, config=SweMcpConfig())
+    explanation = service.explain_change(
+        swe_context=context,
+        original_code="before",
+        modified_code="after",
+    )
+
+    assert explanation.overall_verdict == "acceptable"
+    assert "Related Knowledge From knowledge/data" in llm.last_prompt
+    assert "Subjects inferred from change purpose" in llm.last_prompt
+    assert "circuit_breaker" in llm.last_prompt
+    assert "throttling" in llm.last_prompt
+
+
 def test_swe_knowledge_base_find_nfr_ids_matches_by_id_name_and_category_case_insensitive():
     kb = SweKnowledgeBase(ground_data_dir="/tmp/ground", linked_data_dir="/tmp/linked")
     kb.nodes = {

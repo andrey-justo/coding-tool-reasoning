@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import json
 import logging
+import re
 from typing import Any, Callable, List, Optional, Type
 
 from src.models.code_gen_plan import CodeGenPlan
+from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation
 from src.service.explanation_service import ExplanationService
@@ -102,6 +105,24 @@ class SweMcpToolRegistry:
                 "Loaded %d concern template/data assets into context", len(templates)
             )
 
+        config = getattr(ctx, "config", SweMcpConfig())
+        related_subjects: List[str] = []
+        attached_knowledge: List[dict] = []
+        if (
+            include_templates
+            and config.concern_assets.enable_related_subject_discovery
+        ):
+            related_subjects, attached_knowledge = self._resolve_related_knowledge(
+                plan=plan,
+                templates=templates,
+                max_subjects=config.concern_assets.max_related_subjects,
+            )
+            if related_subjects:
+                LOGGER.info(
+                    "Resolved related subjects for explanation: %s",
+                    ", ".join(related_subjects),
+                )
+
         if prompt_output_folder:
             try:
                 executed_prompts: Optional[List[dict]] = None
@@ -139,7 +160,107 @@ class SweMcpToolRegistry:
             swe_summary=summary,
             templates=templates,
             security_context=security_extra_context,
+            related_subjects=related_subjects,
+            attached_knowledge=attached_knowledge,
         )
+
+    def _resolve_related_knowledge(
+        self,
+        plan: CodeGenPlan,
+        templates: List[dict],
+        max_subjects: int,
+    ) -> tuple[List[str], List[dict]]:
+        knowledge_items = [
+            item for item in templates if item.get("kind") == "swe_concern_data"
+        ]
+        if not knowledge_items:
+            return [], []
+
+        change_text = " ".join(
+            [plan.problem_description or "", *[str(step) for step in plan.high_level_steps]]
+        ).lower()
+        change_tokens = self._tokenize(change_text)
+
+        scored: List[tuple[int, str, dict, dict]] = []
+        by_subject: dict[str, tuple[dict, dict]] = {}
+        for item in knowledge_items:
+            subject = str(item.get("concern_group") or item.get("name") or "").strip()
+            if not subject:
+                continue
+
+            payload = self._safe_json_loads(str(item.get("content") or ""))
+            by_subject[subject] = (item, payload)
+
+            searchable_parts = [
+                subject,
+                str(payload.get("name", "")),
+                str(payload.get("problem", "")),
+                " ".join(str(step) for step in payload.get("steps", []) if step),
+            ]
+            keyword_hits = 0
+            for key in ("purpose_keywords", "keywords", "tags"):
+                values = payload.get(key)
+                if not isinstance(values, list):
+                    continue
+                for raw in values:
+                    phrase = str(raw).strip().lower()
+                    if phrase and phrase in change_text:
+                        keyword_hits += 1
+                        searchable_parts.append(phrase)
+
+            candidate_tokens = self._tokenize(" ".join(searchable_parts).lower())
+            overlap = len(change_tokens.intersection(candidate_tokens))
+            score = overlap + (keyword_hits * 3)
+            if score > 0:
+                scored.append((score, subject, item, payload))
+
+        scored.sort(key=lambda entry: (-entry[0], entry[1]))
+        selected_subjects: List[str] = []
+        selected_items: List[dict] = []
+
+        for _, subject, item, payload in scored:
+            if subject in selected_subjects:
+                continue
+            selected_subjects.append(subject)
+            selected_items.append(item)
+            if len(selected_subjects) >= max_subjects:
+                break
+
+            related = payload.get("related_subjects")
+            if not isinstance(related, list):
+                continue
+            for raw_related in related:
+                related_subject = str(raw_related).strip()
+                if not related_subject or related_subject in selected_subjects:
+                    continue
+                related_match = by_subject.get(related_subject)
+                if not related_match:
+                    continue
+                selected_subjects.append(related_subject)
+                selected_items.append(related_match[0])
+                if len(selected_subjects) >= max_subjects:
+                    break
+
+            if len(selected_subjects) >= max_subjects:
+                break
+
+        return selected_subjects, selected_items
+
+    @staticmethod
+    def _safe_json_loads(raw: str) -> dict:
+        try:
+            data = json.loads(raw)
+            return data if isinstance(data, dict) else {}
+        except json.JSONDecodeError:
+            return {}
+
+    @staticmethod
+    def _tokenize(value: str) -> set[str]:
+        return {
+            token
+            for token in re.findall(r"[A-Za-z0-9_]+", value)
+            if len(token) >= 4
+        }
 
     def judge_swe_code_change(
         self,

@@ -13,6 +13,7 @@
 === SWE/NFR Summary (RAG-style context) ===
 [[SWE_SUMMARY]]
 [[SECURITY_CONTEXT_SECTION]]
+[[RELATED_KNOWLEDGE_SECTION]]
 === Original Code ===
 [[ORIGINAL_CODE]]
 

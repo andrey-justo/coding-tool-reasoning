@@ -119,6 +119,8 @@ class ExplanationService:
                 f"{swe_context.security_context}\n"
             )
 
+        related_knowledge_section = self._build_related_knowledge_section(swe_context)
+
         template_values = {
             "[[HEADER]]": header,
             "[[PROBLEM_DESCRIPTION]]": plan.problem_description,
@@ -127,6 +129,7 @@ class ExplanationService:
             "[[TAXONOMY_SUMMARY]]": taxonomy_summary,
             "[[SWE_SUMMARY]]": swe_context.swe_summary,
             "[[SECURITY_CONTEXT_SECTION]]": security_context_section,
+            "[[RELATED_KNOWLEDGE_SECTION]]": related_knowledge_section,
             "[[ORIGINAL_CODE]]": original_code,
             "[[MODIFIED_CODE]]": modified_code,
         }
@@ -159,6 +162,9 @@ class ExplanationService:
                 + f"{swe_context.security_context}\n"
             )
 
+        if related_knowledge_section:
+            sections.append(related_knowledge_section)
+
         sections.append(f"\n=== Original Code ===\n{original_code}\n")
         sections.append(f"\n=== Modified Code ===\n{modified_code}\n")
 
@@ -189,6 +195,27 @@ class ExplanationService:
         )
 
         return header + "".join(sections) + instructions
+
+    def _build_related_knowledge_section(self, swe_context: SweContext) -> str:
+        if not swe_context.attached_knowledge:
+            return ""
+
+        lines: List[str] = [
+            "\n=== Related Knowledge From knowledge/data ===",
+        ]
+        if swe_context.related_subjects:
+            lines.append(
+                "Subjects inferred from change purpose: "
+                + ", ".join(swe_context.related_subjects)
+            )
+
+        for item in swe_context.attached_knowledge:
+            subject = str(item.get("concern_group") or item.get("name") or "subject")
+            content = str(item.get("content") or "")
+            lines.append(f"\n--- Subject: {subject} ---")
+            lines.append(content)
+
+        return "\n".join(lines) + "\n"
 
     def _load_prompt_template(self) -> Optional[str]:
         configured_path = self.config.judging.prompt_template_path
