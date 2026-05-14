@@ -1,0 +1,11 @@
+{
+  "name": "Remove Control Flag",
+  "problem": "You have a variable that acts as a control flag for multiple boolean expressions.",
+  "steps": [
+    "Replace control flag assignments with return statements",
+    "Extract loops into methods if needed",
+    "Use break to exit loops instead of flag setting"
+  ],
+  "CODE_EXAMPLE": "// Before\nboolean found = false;\nfor (int i = 0; i < people.length; i++) {\n  if (people[i].equals(\"Don\")) {\n    found = true;\n  }\n}\n\n// After\nfor (int i = 0; i < people.length; i++) {\n  if (people[i].equals(\"Don\")) {\n    return true;\n  }\n}\nreturn false;",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testRemoveControlFlag() {\n  boolean result = findPerson(\"Don\");\n  assertTrue(result);\n}"
+}

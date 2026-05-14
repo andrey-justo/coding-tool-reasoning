@@ -1,0 +1,16 @@
+{
+  "name": "Avoid Disinformation",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Names carry false or misleading connotations that contradict the actual type, structure, or purpose of the identifier, causing readers to draw incorrect conclusions about the code.",
+  "steps": [
+    "Never use a name that implies a well-known data structure unless the identifier actually uses it (e.g., do not name a HashSet accountList).",
+    "Avoid platform or library keywords as variable names (e.g., hp, aix, sco).",
+    "Do not use names that are visually similar and differ only in subtle ways.",
+    "Never use lowercase l or uppercase O as variable names because they resemble 1 and 0.",
+    "Review names in context to verify they accurately describe what the identifier holds or does."
+  ],
+  "bad_example": "// Not actually a List\nMap<String, Account> accountList = new HashMap<>();\n\n// Visually confusable names\nint a = l;\nif (O == l) a = O1;",
+  "CODE_EXAMPLE": "Map<String, Account> accountsByCustomerId = new HashMap<>();\n\nAccount getAccount(String customerId) {\n    return accountsByCustomerId.get(customerId);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getAccount_returnsCorrectAccount() {\n    Map<String, Account> accounts = new HashMap<>();\n    Account expected = new Account(\"ACC-1\");\n    accounts.put(\"C1\", expected);\n    AccountRepository repo = new AccountRepository(accounts);\n    assertEquals(expected, repo.getAccount(\"C1\"));\n}"
+}

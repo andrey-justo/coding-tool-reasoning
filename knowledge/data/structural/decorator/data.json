@@ -1,0 +1,13 @@
+{
+  "name": "Decorator Design Pattern",
+  "problem": "Add responsibilities to objects dynamically without modifying their class hierarchy.",
+  "steps": [
+    "Define a common component interface.",
+    "Implement a concrete base component.",
+    "Create an abstract decorator implementing the same interface and wrapping a component.",
+    "Implement concrete decorators to add behavior before or after delegation.",
+    "Compose decorators at runtime based on required features."
+  ],
+  "CODE_EXAMPLE": "public interface INotifier {\n  string Send(string message);\n}\n\npublic class BaseNotifier : INotifier {\n  public string Send(string message) => \"base:\" + message;\n}\n\npublic abstract class NotifierDecorator : INotifier {\n  protected readonly INotifier Inner;\n  protected NotifierDecorator(INotifier inner) { Inner = inner; }\n  public abstract string Send(string message);\n}\n\npublic class LoggingNotifierDecorator : NotifierDecorator {\n  public LoggingNotifierDecorator(INotifier inner) : base(inner) { }\n  public override string Send(string message) => \"log|\" + Inner.Send(message);\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Decorator_AddsBehaviorWithoutChangingBase() {\n  INotifier notifier = new LoggingNotifierDecorator(new BaseNotifier());\n  Assert.AreEqual(\"log|base:hello\", notifier.Send(\"hello\"));\n}\n\n[TestMethod]\npublic void BaseNotifier_RemainsUnchanged() {\n  INotifier notifier = new BaseNotifier();\n  Assert.AreEqual(\"base:hello\", notifier.Send(\"hello\"));\n}"
+}

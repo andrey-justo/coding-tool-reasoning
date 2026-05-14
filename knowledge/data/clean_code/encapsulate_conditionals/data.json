@@ -1,0 +1,16 @@
+{
+  "name": "Encapsulate Conditionals",
+  "source": "Clean Code by Robert C. Martin, Chapter 17: Smells and Heuristics (G28)",
+  "category": "general",
+  "problem": "Boolean conditions expressed inline as compound logical expressions obscure the intent of an 'if' statement, requiring readers to mentally evaluate the logic before understanding what it means.",
+  "steps": [
+    "Identify any boolean expression in an if/while condition that is not immediately self-explanatory.",
+    "Extract the boolean expression into a private method with a name that describes the intent.",
+    "Replace the inline expression with a call to the new method.",
+    "Ensure the extracted method returns a boolean and has no side effects.",
+    "Verify that reading the if-statement now reads like a sentence in English."
+  ],
+  "bad_example": "if (employee.flags.contains(HOURLY) && employee.age > 65 && !employee.isOnLeave()) {\n    // ...\n}",
+  "CODE_EXAMPLE": "if (isEligibleForRetirementBenefits(employee)) {\n    // ...\n}\n\nprivate boolean isEligibleForRetirementBenefits(Employee employee) {\n    return employee.flags.contains(HOURLY)\n        && employee.age > 65\n        && !employee.isOnLeave();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void isEligibleForRetirementBenefits_trueWhenAllConditionsMet() {\n    Employee emp = new Employee(Set.of(HOURLY), 66, false);\n    assertTrue(service.isEligibleForRetirementBenefits(emp));\n}\n\n@Test\npublic void isEligibleForRetirementBenefits_falseWhenOnLeave() {\n    Employee emp = new Employee(Set.of(HOURLY), 66, true);\n    assertFalse(service.isEligibleForRetirementBenefits(emp));\n}"
+}

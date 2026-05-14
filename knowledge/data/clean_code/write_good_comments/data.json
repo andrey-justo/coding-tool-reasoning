@@ -1,0 +1,16 @@
+{
+  "name": "Write Good Comments",
+  "source": "Clean Code by Robert C. Martin, Chapter 4: Comments",
+  "category": "comments",
+  "problem": "Developers either omit valuable context that cannot be expressed in code, or they write no comments at all, leaving readers without important information about legal obligations, non-obvious intent, warnings, and public API contracts.",
+  "steps": [
+    "Add legal comments (copyright, license) at the top of source files where required.",
+    "Write informative comments that clarify return values of complex regexes or algorithms.",
+    "Use intent comments to explain WHY a decision was made when the reason is not obvious from the code.",
+    "Add TODO comments for known deferred work, but resolve them regularly.",
+    "Write Javadoc for every public API method documenting parameters, return values, and exceptions."
+  ],
+  "bad_example": "// (no comment)\npublic String formatDate(Date d) {\n    return new SimpleDateFormat(\"EEE, d MMM yyyy\").format(d);\n}\n\n// (no warning)\npublic synchronized void startThread() { ... }",
+  "CODE_EXAMPLE": "/**\n * Formats a date in RFC-1123 format (e.g., Tue, 3 Jun 2008).\n * @param date the date to format, must not be null\n * @return RFC-1123 formatted string\n */\npublic String formatDate(Date date) {\n    // SimpleDateFormat is NOT thread-safe\n    return new SimpleDateFormat(\"EEE, d MMM yyyy\").format(date);\n}\n\n// TODO: replace SimpleDateFormat with DateTimeFormatter once on Java 8+",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void formatDate_producesRfc1123Format() {\n    DateFormatter formatter = new DateFormatter();\n    Calendar cal = Calendar.getInstance();\n    cal.set(2008, Calendar.JUNE, 3);\n    String result = formatter.formatDate(cal.getTime());\n    assertTrue(result.matches(\"\\\\w+, \\\\d+ \\\\w+ \\\\d{4}\"));\n}"
+}

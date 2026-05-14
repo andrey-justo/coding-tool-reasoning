@@ -1,0 +1,10 @@
+{
+  "name": "Replace Parameter with Method Call",
+  "problem": "You pass a result of a method call as a parameter to another method.",
+  "steps": [
+    "Remove the parameter",
+    "Call the method inside the method body instead"
+  ],
+  "CODE_EXAMPLE": "// Before\nint getPrice() {\n  int basePrice = quantity * itemPrice;\n  int seasonalDiscount = getSeason().getDiscount();\n  return applyDiscount(basePrice, seasonalDiscount);\n}\n\nint applyDiscount(int basePrice, int discount) {\n  return basePrice - discount;\n}\n\n// After\nint getPrice() {\n  int basePrice = quantity * itemPrice;\n  return applyDiscount(basePrice);\n}\n\nint applyDiscount(int basePrice) {\n  return basePrice - getSeason().getDiscount();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testParameterWithMethodCall() {\n  Order order = new Order(10, 100);\n  int price = order.getPrice();\n  assertTrue(price > 0);\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Data Class",
+  "problem": "A class contains only fields and getters/setters, with no real behavior.",
+  "steps": [
+    "Move Method to bring behavior closer to the data it uses",
+    "Use Encapsulate Field to hide public fields behind getters/setters",
+    "Look for clients that manipulate the data and move logic into the class"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - no behavior, all logic outside)\nclass Point {\n  public double x;\n  public double y;\n}\n\n// Client manipulates the data\ndouble distance = Math.sqrt(p1.x * p1.x + p1.y * p1.y);\n\n// After (refactored - behavior moved in)\nclass Point {\n  private double x;\n  private double y;\n  \n  double distanceTo(Point other) {\n    return Math.sqrt(Math.pow(x - other.x, 2) + Math.pow(y - other.y, 2));\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDataClass() {\n  Point p1 = new Point(0, 0);\n  Point p2 = new Point(3, 4);\n  assertEquals(5.0, p1.distanceTo(p2), 0.01);\n}"
+}

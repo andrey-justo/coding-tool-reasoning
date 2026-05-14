@@ -1,0 +1,12 @@
+{
+  "name": "Inline Class",
+  "problem": "A class is not doing much and should be merged with another class.",
+  "steps": [
+    "Declare the public protocol of the source class in the absorbing class",
+    "Adjust references to the source class to use the absorbing class instead",
+    "Move all methods and fields from the source to absorbing class",
+    "Delete the source class"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  String getPhoneNumber() { return telephone.getPhoneNumber(); }\n  Telephone telephone;\n}\n\nclass Telephone {\n  String areaCode;\n  String number;\n  String getPhoneNumber() { return areaCode + number; }\n}\n\n// After\nclass Person {\n  String areaCode;\n  String number;\n  String getPhoneNumber() { return areaCode + number; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testInlineClass() {\n  Person person = new Person(\"415\", \"9999999\");\n  assertEquals(\"4159999999\", person.getPhoneNumber());\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Introduce Null Object",
+  "problem": "You constantly check if an object is null.",
+  "steps": [
+    "Create a null object subclass with safe default behavior",
+    "Replace null checks with polymorphism",
+    "Return the null object instead of null"
+  ],
+  "CODE_EXAMPLE": "// Before\nif (customer == null) {\n  plan = BillingPlan.basic();\n} else {\n  plan = customer.getPlan();\n}\n\n// After\nclass NullCustomer extends Customer {\n  Plan getPlan() { return BillingPlan.basic(); }\n}\n\nif (customer == null) {\n  customer = new NullCustomer();\n}\nplan = customer.getPlan();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testNullObject() {\n  Customer customer = new NullCustomer();\n  assertNotNull(customer.getPlan());\n}"
+}

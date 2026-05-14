@@ -1,0 +1,11 @@
+{
+  "name": "Divergent Change",
+  "problem": "A class is changed in different ways for different reasons.",
+  "steps": [
+    "Identify each reason the class changes",
+    "Extract Class to separate each concern into its own class",
+    "Each class should have only one reason to change (Single Responsibility Principle)"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - changes for both report format AND data source)\nclass OrderReport {\n  void generatePDFReport() { ... }\n  void generateCSVReport() { ... }\n  void fetchFromDatabase() { ... }\n  void fetchFromAPI() { ... }\n}\n\n// After (refactored)\nclass OrderDataFetcher {\n  List<Order> fetchFromDatabase() { ... }\n  List<Order> fetchFromAPI() { ... }\n}\n\nclass OrderReportFormatter {\n  void generatePDF(List<Order> orders) { ... }\n  void generateCSV(List<Order> orders) { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDivergentChange() {\n  OrderDataFetcher fetcher = new OrderDataFetcher();\n  List<Order> orders = fetcher.fetchFromDatabase();\n  assertNotNull(orders);\n}"
+}

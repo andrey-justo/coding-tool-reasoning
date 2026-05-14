@@ -1,0 +1,11 @@
+{
+  "name": "Change Value to Reference",
+  "problem": "You have many identical instances of a class that should be a single object.",
+  "steps": [
+    "Create a factory method that returns the single object",
+    "Replace instances created with new with the factory method",
+    "Test that objects are now shared"
+  ],
+  "CODE_EXAMPLE": "// Before\nCustomer newCustomer = new Customer(name);\n\n// After\nCustomer newCustomer = Customer.create(name);\n\nclass Customer {\n  private static Map instances = new HashMap();\n  static Customer create(String name) {\n    if (!instances.containsKey(name)) {\n      instances.put(name, new Customer(name));\n    }\n    return (Customer) instances.get(name);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testValueToReference() {\n  Customer c1 = Customer.create(\"John\");\n  Customer c2 = Customer.create(\"John\");\n  assertSame(c1, c2);\n}"
+}

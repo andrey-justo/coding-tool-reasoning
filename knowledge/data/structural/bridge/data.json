@@ -1,0 +1,13 @@
+{
+  "name": "Bridge Design Pattern",
+  "problem": "Decouple an abstraction from its implementation so both can vary independently without creating a combinatorial class explosion.",
+  "steps": [
+    "Identify the abstraction hierarchy and implementation hierarchy.",
+    "Define an implementor interface for implementation-specific operations.",
+    "Inject an implementor into the abstraction.",
+    "Delegate implementation work from abstraction to implementor.",
+    "Extend abstractions and implementors independently."
+  ],
+  "CODE_EXAMPLE": "public interface IRenderer {\n  void RenderCircle(float radius);\n}\n\npublic class VectorRenderer : IRenderer {\n  public void RenderCircle(float radius) {\n    Console.WriteLine($\"Drawing a circle of radius {radius}\");\n  }\n}\n\npublic class RasterRenderer : IRenderer {\n  public void RenderCircle(float radius) {\n    Console.WriteLine($\"Drawing pixels for radius {radius}\");\n  }\n}\n\npublic abstract class Shape {\n  protected readonly IRenderer Renderer;\n  protected Shape(IRenderer renderer) { Renderer = renderer; }\n  public abstract void Draw();\n}\n\npublic class Circle : Shape {\n  private readonly float _radius;\n  public Circle(IRenderer renderer, float radius) : base(renderer) { _radius = radius; }\n  public override void Draw() => Renderer.RenderCircle(_radius);\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Circle_Draw_DelegatesToRenderer() {\n  var circle = new Circle(new VectorRenderer(), 3f);\n  circle.Draw();\n  Assert.IsTrue(true);\n}\n\n[TestMethod]\npublic void Bridge_AllowsSwappingImplementation() {\n  Shape shape = new Circle(new RasterRenderer(), 2f);\n  shape.Draw();\n  Assert.IsNotNull(shape);\n}"
+}

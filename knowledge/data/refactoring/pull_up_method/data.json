@@ -1,0 +1,11 @@
+{
+  "name": "Pull Up Method",
+  "problem": "Subclasses have identical methods.",
+  "steps": [
+    "Check that the methods are identical",
+    "Move the method to the superclass",
+    "Remove the method from the subclasses"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Salesman extends Employee {\n  int getRating() { return rating; }\n}\n\nclass Engineer extends Employee {\n  int getRating() { return rating; }\n}\n\n// After\nclass Employee {\n  int getRating() { return rating; }\n}\n\nclass Salesman extends Employee {}\nclass Engineer extends Employee {}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPullUpMethod() {\n  Employee emp = new Salesman();\n  emp.setRating(5);\n  assertEquals(5, emp.getRating());\n}"
+}

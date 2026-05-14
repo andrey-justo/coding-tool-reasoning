@@ -1,0 +1,12 @@
+{
+  "name": "Duplicate Code",
+  "problem": "Identical or similar code exists in more than one location.",
+  "steps": [
+    "Use Extract Method to put duplicate code in one place",
+    "Use Pull Up Method if duplicates are in sibling subclasses",
+    "Use Form Template Method if duplicate algorithms have similar structure",
+    "Use Substitute Algorithm to unify similar implementations"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - same calculation in two places)\nclass SalesReport {\n  double getDiscount() {\n    return total * 0.1;\n  }\n}\n\nclass InvoiceReport {\n  double getDiscount() {\n    return total * 0.1; // duplicate\n  }\n}\n\n// After (refactored)\nclass Report {\n  double getDiscount() {\n    return total * 0.1;\n  }\n}\n\nclass SalesReport extends Report {}\nclass InvoiceReport extends Report {}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDuplicateCode() {\n  Report salesReport = new SalesReport(100);\n  Report invoiceReport = new InvoiceReport(100);\n  assertEquals(salesReport.getDiscount(), invoiceReport.getDiscount(), 0.01);\n}"
+}

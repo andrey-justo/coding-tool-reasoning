@@ -1,0 +1,11 @@
+{
+  "name": "Replace Exception with Test",
+  "problem": "You are throwing an exception when a simple test would do.",
+  "steps": [
+    "Replace the exception with a conditional test",
+    "Return a value or perform an action based on the test",
+    "Remove the try-catch block"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble getValueForPeriod(int periodNumber) {\n  try {\n    return values[periodNumber];\n  } catch (ArrayIndexOutOfBoundsException e) {\n    return 0;\n  }\n}\n\n// After\ndouble getValueForPeriod(int periodNumber) {\n  if (periodNumber < 0 || periodNumber >= values.length) {\n    return 0;\n  }\n  return values[periodNumber];\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testReplaceException() {\n  int[] values = {10, 20, 30};\n  double result = getValueForPeriod(5);\n  assertEquals(0, result);\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Three Laws of TDD",
+  "source": "Clean Code by Robert C. Martin, Chapter 9: Unit Tests",
+  "category": "unit_tests",
+  "problem": "Production code written without tests first is hard to verify, tends to be tightly coupled, and lacks the safety net needed for confident refactoring, resulting in code that degrades over time.",
+  "steps": [
+    "First Law: Write no production code until you have written a failing unit test.",
+    "Second Law: Write no more of a unit test than is sufficient to fail (compilation failure counts).",
+    "Third Law: Write no more production code than is sufficient to pass the currently failing test.",
+    "Repeat the Red-Green-Refactor cycle in very short increments (minutes).",
+    "Keep the test suite running fast and all tests passing at all times."
+  ],
+  "bad_example": "// Production code written first with no tests\npublic class Stack<T> {\n    private List<T> items = new ArrayList<>();\n    public void push(T item) { items.add(item); }\n    public T pop() { return items.remove(items.size() - 1); }\n    // ... discovered bugs only at integration time\n}",
+  "CODE_EXAMPLE": "// TDD cycle: test first, then code\n// Step 1 - RED: failing test\n@Test public void pop_returnsLastPushedItem() {\n    Stack<Integer> stack = new Stack<>();\n    stack.push(1);\n    assertEquals(1, (int) stack.pop());\n}\n\n// Step 2 - GREEN: minimal production code to pass\npublic class Stack<T> {\n    private List<T> items = new ArrayList<>();\n    public void push(T item)  { items.add(item); }\n    public T    pop()         { return items.remove(items.size() - 1); }\n}\n\n// Step 3 - REFACTOR: clean up while tests remain green",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void push_andPop_maintainsLIFOOrder() {\n    Stack<Integer> stack = new Stack<>();\n    stack.push(1); stack.push(2); stack.push(3);\n    assertEquals(3, (int) stack.pop());\n    assertEquals(2, (int) stack.pop());\n    assertEquals(1, (int) stack.pop());\n}\n\n@Test\npublic void pop_throwsOnEmptyStack() {\n    Stack<Integer> stack = new Stack<>();\n    assertThrows(IndexOutOfBoundsException.class, stack::pop);\n}"
+}

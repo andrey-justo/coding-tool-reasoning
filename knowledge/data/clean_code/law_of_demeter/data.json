@@ -1,0 +1,16 @@
+{
+  "name": "Law of Demeter",
+  "source": "Clean Code by Robert C. Martin, Chapter 17: Smells and Heuristics (G36)",
+  "category": "general",
+  "problem": "Method chains like a.getB().getC().doWork() create transitive coupling: the caller depends not only on A but also on B and C's internal structure. Any change along the chain breaks the caller.",
+  "steps": [
+    "Identify method chains that navigate through multiple objects (more than one dot beyond 'self').",
+    "Move the desired behavior into the object that owns the data (Tell, Don't Ask).",
+    "If you cannot move the behavior, add a convenience method to the direct collaborator that hides the navigation.",
+    "Limit a method's interactions to: its own fields, its parameters, objects it creates, and its direct dependencies.",
+    "Test that removing a middle class from the chain does not affect the caller's compilation."
+  ],
+  "bad_example": "// Caller knows about Order → Customer → Address → City\nString city = order.getCustomer().getAddress().getCity();",
+  "CODE_EXAMPLE": "// Order exposes only what callers need\nclass Order {\n    private final Customer customer;\n    public String getCustomerCity() { return customer.getCity(); }\n}\n\nclass Customer {\n    private final Address address;\n    public String getCity() { return address.getCity(); }\n}\n\n// Caller uses one dot\nString city = order.getCustomerCity();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getCustomerCity_returnsCityFromAddress() {\n    Address address  = new Address(\"Springfield\");\n    Customer customer = new Customer(address);\n    Order order      = new Order(customer);\n    assertEquals(\"Springfield\", order.getCustomerCity());\n}"
+}

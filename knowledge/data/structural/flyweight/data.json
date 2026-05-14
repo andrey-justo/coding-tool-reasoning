@@ -1,0 +1,13 @@
+{
+  "name": "Flyweight Design Pattern",
+  "problem": "Reduce memory usage by sharing common immutable state across many fine-grained objects.",
+  "steps": [
+    "Separate intrinsic (shared) state from extrinsic (context) state.",
+    "Create a flyweight interface for operations using extrinsic state.",
+    "Implement concrete flyweights storing only intrinsic state.",
+    "Add a flyweight factory to cache and reuse flyweights.",
+    "Provide extrinsic data from clients at call time."
+  ],
+  "CODE_EXAMPLE": "public interface ITreeType {\n  void Draw(int x, int y);\n}\n\npublic class TreeType : ITreeType {\n  private readonly string _name;\n  private readonly string _color;\n  public TreeType(string name, string color) { _name = name; _color = color; }\n  public void Draw(int x, int y) => Console.WriteLine($\"{_name}({_color}) at {x},{y}\");\n}\n\npublic class TreeFactory {\n  private readonly Dictionary<string, ITreeType> _cache = new();\n  public ITreeType GetTreeType(string name, string color) {\n    var key = $\"{name}:{color}\";\n    if (!_cache.ContainsKey(key)) _cache[key] = new TreeType(name, color);\n    return _cache[key];\n  }\n}\n\npublic record Tree(int X, int Y, ITreeType Type);",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Factory_ReusesFlyweightInstances() {\n  var factory = new TreeFactory();\n  var a = factory.GetTreeType(\"Oak\", \"Green\");\n  var b = factory.GetTreeType(\"Oak\", \"Green\");\n  Assert.AreSame(a, b);\n}\n\n[TestMethod]\npublic void Flyweight_UsesExtrinsicCoordinates() {\n  var type = new TreeType(\"Pine\", \"DarkGreen\");\n  type.Draw(10, 20);\n  Assert.IsTrue(true);\n}"
+}

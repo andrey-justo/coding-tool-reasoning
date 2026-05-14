@@ -1,0 +1,10 @@
+{
+  "name": "Message Chains",
+  "problem": "A client requests an object, then requests another object, then another (a.getB().getC().getD()).",
+  "steps": [
+    "Use Hide Delegate to encapsulate the chain into a single method",
+    "Use Extract Method and Move Method to create a shortcut at the point in the chain where needed"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nString city = order.getCustomer().getAddress().getCity();\n\n// After (refactored using Hide Delegate)\nclass Order {\n  String getCustomerCity() {\n    return customer.getCity();\n  }\n}\n\nclass Customer {\n  String getCity() {\n    return address.getCity();\n  }\n}\n\n// Usage\nString city = order.getCustomerCity();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testMessageChain() {\n  Address address = new Address(\"NYC\");\n  Customer customer = new Customer(address);\n  Order order = new Order(customer);\n  assertEquals(\"NYC\", order.getCustomerCity());\n}"
+}

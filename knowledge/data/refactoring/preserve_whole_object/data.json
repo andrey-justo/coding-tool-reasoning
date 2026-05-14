@@ -1,0 +1,11 @@
+{
+  "name": "Preserve Whole Object",
+  "problem": "You are picking multiple values from an object and passing them as separate parameters.",
+  "steps": [
+    "Remove the individual parameters",
+    "Pass the whole object instead",
+    "Update the method to use object accessors"
+  ],
+  "CODE_EXAMPLE": "// Before\nint withinRange(int low, int high) {\n  return (low <= quantity) && (quantity <= high);\n}\n\n// Usage\nwithinRange(range.getLow(), range.getHigh());\n\n// After\nint withinRange(Range range) {\n  return (range.getLow() <= quantity) && (quantity <= range.getHigh());\n}\n\n// Usage\nwithinRange(range);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPreserveWhole() {\n  Range range = new Range(5, 10);\n  assertTrue(withinRange(range));\n}"
+}

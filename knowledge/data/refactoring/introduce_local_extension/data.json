@@ -1,0 +1,11 @@
+{
+  "name": "Introduce Local Extension",
+  "problem": "You need multiple foreign methods for a class you cannot modify.",
+  "steps": [
+    "Create an extension class that subclasses the original or wraps it",
+    "Add the methods to the extension class",
+    "Use the extension class where you need the functionality"
+  ],
+  "CODE_EXAMPLE": "// Before\nDate newDate = new Date(previousEnd.getTime() + 1);\nint dayOfYear = newDate.getDayOfYear();\n\n// After\nclass MfDate extends Date {\n  int getNextDay() { return getTime() + 1; }\n}\n\nMfDate newDate = new MfDate(previousEnd);\nnewDate.getNextDay();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testLocalExtension() {\n  MfDate date = new MfDate(1000);\n  assertEquals(1001, date.getNextDay());\n}"
+}

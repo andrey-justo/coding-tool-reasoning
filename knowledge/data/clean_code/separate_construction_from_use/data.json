@@ -1,0 +1,16 @@
+{
+  "name": "Separate Construction from Use",
+  "source": "Clean Code by Robert C. Martin, Chapter 11: Systems",
+  "category": "systems",
+  "problem": "Object construction is mixed with business logic across the codebase, making it hard to change the wiring of the application and impossible to substitute test doubles without modifying production code.",
+  "steps": [
+    "Move all object construction and wiring to a single startup point such as main() or a dedicated factory/builder.",
+    "Never let application business-logic code call 'new' on collaborators it depends on.",
+    "Pass fully constructed objects into the application code through constructors or setters (Dependency Injection).",
+    "Use the Abstract Factory pattern when the application must create objects at runtime but still wants to keep construction details out of business logic.",
+    "Alternatively use a DI framework (Spring, Guice) to manage the construction phase."
+  ],
+  "bad_example": "// Construction scattered inside business logic\nclass OrderService {\n    public void placeOrder(OrderData data) {\n        PaymentProcessor processor = new StripeProcessor(apiKey); // construction here\n        processor.charge(data.total);\n    }\n}",
+  "CODE_EXAMPLE": "// main() constructs and wires everything\npublic static void main(String[] args) {\n    PaymentProcessor processor = new StripeProcessor(System.getenv(\"STRIPE_KEY\"));\n    OrderService service = new OrderService(processor);  // inject\n    App app = new App(service);\n    app.run();\n}\n\n// Business logic knows nothing about Stripe\nclass OrderService {\n    private final PaymentProcessor processor;\n    public OrderService(PaymentProcessor processor) { this.processor = processor; }\n    public void placeOrder(OrderData data) { processor.charge(data.total); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void placeOrder_chargesCorrectAmount() {\n    PaymentProcessor mockProcessor = mock(PaymentProcessor.class);\n    OrderService service = new OrderService(mockProcessor);\n    service.placeOrder(new OrderData(99.99));\n    verify(mockProcessor).charge(99.99);\n}"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "Replace Inheritance with Delegation",
+  "problem": "A subclass uses only some of the superclass behavior.",
+  "steps": [
+    "Create a field for the superclass",
+    "Copy methods to delegate to the field",
+    "Remove inheritance"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Vector<E> extends List<E> {}\n\n// After\nclass Vector<E> implements Collection<E> {\n  private List<E> list = new ArrayList<>();\n  \n  public int size() { return list.size(); }\n  public boolean add(E e) { return list.add(e); }\n  // ...delegate all methods...\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testDelegation() {\n  Vector<Integer> vec = new Vector<>();\n  vec.add(5);\n  assertEquals(1, vec.size());\n}"
+}

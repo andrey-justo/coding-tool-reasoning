@@ -1,0 +1,13 @@
+{
+  "name": "Facade Design Pattern",
+  "problem": "Provide a simplified interface for a complex subsystem to reduce coupling and make common workflows easier to use.",
+  "steps": [
+    "Identify the common high-level use case across subsystem classes.",
+    "Define a facade class with a concise API for that use case.",
+    "Delegate internal steps to existing subsystem components.",
+    "Hide subsystem orchestration details from clients.",
+    "Use the facade as the default entry point for the workflow."
+  ],
+  "CODE_EXAMPLE": "public class InventoryService { public bool Reserve(string sku) => true; }\npublic class BillingService { public bool Charge(string userId, decimal amount) => true; }\npublic class ShippingService { public string CreateShipment(string sku) => \"SHIP-1\"; }\n\npublic class CheckoutFacade {\n  private readonly InventoryService _inventory = new InventoryService();\n  private readonly BillingService _billing = new BillingService();\n  private readonly ShippingService _shipping = new ShippingService();\n\n  public string Checkout(string userId, string sku, decimal amount) {\n    if (!_inventory.Reserve(sku)) throw new InvalidOperationException(\"No stock\");\n    if (!_billing.Charge(userId, amount)) throw new InvalidOperationException(\"Payment failed\");\n    return _shipping.CreateShipment(sku);\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Checkout_ReturnsShipmentId() {\n  var facade = new CheckoutFacade();\n  var shipmentId = facade.Checkout(\"u1\", \"sku-1\", 100m);\n  Assert.IsTrue(shipmentId.StartsWith(\"SHIP-\"));\n}\n\n[TestMethod]\npublic void Checkout_EncapsulatesSubsystemCalls() {\n  var facade = new CheckoutFacade();\n  Assert.IsNotNull(facade.Checkout(\"u2\", \"sku-2\", 50m));\n}"
+}

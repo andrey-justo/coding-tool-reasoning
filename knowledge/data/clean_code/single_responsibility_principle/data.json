@@ -1,0 +1,16 @@
+{
+  "name": "Single Responsibility Principle",
+  "source": "Clean Code by Robert C. Martin, Chapter 10: Classes",
+  "category": "classes",
+  "problem": "A class has more than one reason to change because it handles multiple distinct concerns, leading to unexpected side effects when one responsibility changes and making the class difficult to reuse in isolation.",
+  "steps": [
+    "Identify each distinct reason the class might need to change.",
+    "Extract each independent responsibility into its own small, focused class.",
+    "Ensure the resulting classes have cohesive methods that all relate to their single purpose.",
+    "Name each new class precisely after the responsibility it owns.",
+    "Apply SRP to methods too: a method that changes for more than one reason should be split."
+  ],
+  "bad_example": "// Handles both SQL generation AND version management - two reasons to change\nclass Version {\n    int getMajorVersionNumber()   { ... }\n    int getMinorVersionNumber()   { ... }\n    String getVersionString()     { ... }\n    // SQL concern mixed in\n    String toSql()                { ... }\n    void saveToDB(Connection c)   { ... }\n}",
+  "CODE_EXAMPLE": "// Focused on version data only\nclass Version {\n    private int major;\n    private int minor;\n    int getMajorVersionNumber() { return major; }\n    int getMinorVersionNumber() { return minor; }\n    String getVersionString()   { return major + \".\" + minor; }\n}\n\n// Separate class owns the persistence concern\nclass VersionRepository {\n    void save(Version v, Connection c) { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void version_formatsVersionString() {\n    Version v = new Version(2, 5);\n    assertEquals(\"2.5\", v.getVersionString());\n}\n\n@Test\npublic void versionRepository_savesVersion() {\n    VersionRepository repo = new VersionRepository(mockConnection);\n    repo.save(new Version(1, 0), mockConnection);\n    verify(mockConnection).save(any());\n}"
+}

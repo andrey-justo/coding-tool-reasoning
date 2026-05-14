@@ -1,0 +1,13 @@
+{
+  "name": "Singleton Design Pattern",
+  "problem": "Ensure a class has only one instance and provide a global access point to that instance.",
+  "steps": [
+    "Make the constructor private to prevent direct instantiation.",
+    "Store the single instance in a static field.",
+    "Expose a static property or method to retrieve the instance.",
+    "Use lazy initialization for deferred creation when appropriate.",
+    "Ensure thread-safe initialization in concurrent scenarios."
+  ],
+  "CODE_EXAMPLE": "public sealed class AppConfig {\n  private static readonly Lazy<AppConfig> _instance = new Lazy<AppConfig>(() => new AppConfig());\n  public static AppConfig Instance => _instance.Value;\n\n  public string EnvironmentName { get; set; } = \"dev\";\n\n  private AppConfig() { }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Instance_ReturnsSameReference() {\n  var first = AppConfig.Instance;\n  var second = AppConfig.Instance;\n  Assert.AreSame(first, second);\n}\n\n[TestMethod]\npublic void Instance_SharesStateAcrossCalls() {\n  AppConfig.Instance.EnvironmentName = \"prod\";\n  Assert.AreEqual(\"prod\", AppConfig.Instance.EnvironmentName);\n}"
+}

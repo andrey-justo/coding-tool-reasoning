@@ -1,0 +1,11 @@
+{
+  "name": "Hide Delegate",
+  "problem": "A client is calling a delegate object of another object.",
+  "steps": [
+    "Create a new delegating method in the server",
+    "Replace client calls with calls to the new delegating method",
+    "If no client uses the accessor, remove it"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  Telephone getTelephone() { return telephone; }\n  Telephone telephone;\n}\n\n// Usage\nTelephone tel = person.getTelephone();\n\n// After\nclass Person {\n  String getTelephoneNumber() { return telephone.getPhoneNumber(); }\n  Telephone telephone;\n}\n\n// Usage\nString telNumber = person.getTelephoneNumber();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testHideDelegate() {\n  Person person = new Person();\n  person.setTelephoneNumber(\"415\", \"9999999\");\n  \n  assertEquals(\"4159999999\", person.getTelephoneNumber());\n}"
+}

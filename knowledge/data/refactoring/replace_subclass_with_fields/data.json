@@ -1,0 +1,12 @@
+{
+  "name": "Replace Subclass with Fields",
+  "problem": "Subclasses exist only to provide different values for a small set of methods.",
+  "steps": [
+    "Create fields for the type and subclass differences",
+    "Implement factory method to create the right subclass",
+    "Replace method overrides with field lookups",
+    "Remove the subclasses"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {}\nclass Male extends Person {\n  String getCode() { return \"M\"; }\n}\nclass Female extends Person {\n  String getCode() { return \"F\"; }\n}\n\n// After\nclass Person {\n  static final int MALE = 0;\n  static final int FEMALE = 1;\n  private int type;\n  \n  static Person createMale() {\n    return new Person(MALE);\n  }\n  \n  String getCode() {\n    return (type == MALE) ? \"M\" : \"F\";\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSubclassWithFields() {\n  Person male = Person.createMale();\n  assertEquals(\"M\", male.getCode());\n}"
+}

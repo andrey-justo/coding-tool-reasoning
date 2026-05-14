@@ -1,0 +1,16 @@
+{
+  "name": "F.I.R.S.T. Principles for Tests",
+  "source": "Clean Code by Robert C. Martin, Chapter 9: Unit Tests",
+  "category": "unit_tests",
+  "problem": "Tests that are slow, dependent on external state, non-repeatable, or hard to read are skipped, flaky, or ignored over time, destroying the value of the test suite as a safety net.",
+  "steps": [
+    "Fast: Tests should run in milliseconds; mock any I/O, database, or network dependency.",
+    "Independent: No test should depend on the output or state of another; tests must run in any order.",
+    "Repeatable: Tests must produce the same result in any environment (local, CI, production-like).",
+    "Self-validating: Every test must return a clear boolean pass/fail with no manual log inspection.",
+    "Timely: Write tests just before the production code they validate, not months after."
+  ],
+  "bad_example": "// Slow: hits real database\n// Dependent: relies on data left by previous test\n@Test\npublic void test_order_flow() throws Exception {\n    Thread.sleep(2000); // wait for DB\n    Order o = realDb.findLatestOrder(); // depends on prior test\n    assertEquals(\"PENDING\", o.getStatus()); // may fail in CI\n}",
+  "CODE_EXAMPLE": "// Fast + Independent + Repeatable + Self-validating\n@Test\npublic void order_initialStatus_isPending() {\n    Order order = new Order();\n    assertEquals(OrderStatus.PENDING, order.getStatus());\n}\n\n@Test\npublic void order_afterConfirm_isConfirmed() {\n    Order order = new Order();\n    order.confirm();\n    assertEquals(OrderStatus.CONFIRMED, order.getStatus());\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void order_transitions_areIndependent() {\n    Order o1 = new Order(); o1.confirm();\n    Order o2 = new Order();\n    assertEquals(OrderStatus.PENDING, o2.getStatus());\n    assertEquals(OrderStatus.CONFIRMED, o1.getStatus());\n}"
+}

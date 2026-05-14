@@ -1,0 +1,11 @@
+{
+  "name": "Replace Nested Conditional with Guard Clauses",
+  "problem": "A method has conditional behavior that does not make clear the normal path of execution.",
+  "steps": [
+    "Check preconditions at the start",
+    "Return or throw exception immediately on failure",
+    "Place normal flow at the end"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble getPayAmount() {\n  double result;\n  if (isDead)\n    result = deadAmount();\n  else\n    if (isSeparated)\n      result = separatedAmount();\n    else\n      if (isRetired)\n        result = retiredAmount();\n      else\n        result = normalPayAmount();\n  return result;\n}\n\n// After\ndouble getPayAmount() {\n  if (isDead) return deadAmount();\n  if (isSeparated) return separatedAmount();\n  if (isRetired) return retiredAmount();\n  return normalPayAmount();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testGuardClauses() {\n  Employee employee = new Employee();\n  double pay = employee.getPayAmount();\n  assertTrue(pay >= 0);\n}"
+}

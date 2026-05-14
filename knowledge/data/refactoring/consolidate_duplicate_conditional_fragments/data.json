@@ -1,0 +1,10 @@
+{
+  "name": "Consolidate Duplicate Conditional Fragments",
+  "problem": "The same code runs in all branches of a conditional expression.",
+  "steps": [
+    "Move the duplicated code outside the conditional",
+    "Ensure the code always executes regardless of condition"
+  ],
+  "CODE_EXAMPLE": "// Before\nif (isSpecialDeal()) {\n  total = price * 0.95;\n  send();\n} else {\n  total = price * 0.98;\n  send();\n}\n\n// After\nif (isSpecialDeal()) {\n  total = price * 0.95;\n} else {\n  total = price * 0.98;\n}\nsend();",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testConsolidateDuplicateFragments() {\n  Order order = new Order(100);\n  double total = order.getTotal();\n  assertTrue(total > 0);\n}"
+}
