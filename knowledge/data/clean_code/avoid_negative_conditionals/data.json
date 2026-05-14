@@ -1,0 +1,16 @@
+{
+  "name": "Avoid Negative Conditionals",
+  "source": "Clean Code by Robert C. Martin, Chapter 17: Smells and Heuristics (G29)",
+  "category": "general",
+  "problem": "Negated boolean expressions require readers to perform a mental double-negation, slowing comprehension and increasing the chance of logic errors.",
+  "steps": [
+    "Find any negated boolean condition: !isNotX(), !isEmpty(), if (!condition).",
+    "Rename the method or variable to its positive form, or invert the logic of the predicate.",
+    "Adjust call sites to use the positive form directly.",
+    "Where a positive name is not possible, negate once at the call site rather than nesting negations.",
+    "Prefer positive assertions in tests (assertTrue/assertFalse over complex negated conditions)."
+  ],
+  "bad_example": "if (!buffer.isNotEmpty()) {\n    // confusing double-negative\n    process(buffer);\n}\n\nif (!user.isNotAuthenticated()) { redirect(); }",
+  "CODE_EXAMPLE": "// Prefer positive predicate\nif (buffer.isEmpty()) {\n    process(buffer);\n}\n\nif (user.isAuthenticated()) {\n    allowAccess();\n} else {\n    redirect();\n}\n\n// Encapsulate when the condition is complex\nprivate boolean shouldSkip(Item item) {\n    return item.isExpired() || item.isDeleted();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void isEmpty_returnsTrueForNewBuffer() {\n    Buffer buf = new Buffer();\n    assertTrue(buf.isEmpty());\n}\n\n@Test\npublic void isEmpty_returnsFalseAfterWrite() {\n    Buffer buf = new Buffer();\n    buf.write(\"data\");\n    assertFalse(buf.isEmpty());\n}"
+}

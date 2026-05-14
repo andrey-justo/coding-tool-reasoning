@@ -1,0 +1,11 @@
+{
+  "name": "Alternative Classes with Different Interfaces",
+  "problem": "Two classes perform identical functions but have different method names.",
+  "steps": [
+    "Rename Method to give methods the same names in both classes",
+    "Move Method to make the protocol of classes the same",
+    "Extract Superclass to extract the common interface"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nclass EmailSender {\n  void sendEmail(String to, String msg) { ... }\n}\n\nclass SMSSender {\n  void sendMessage(String phone, String text) { ... }\n}\n\n// After (refactored)\ninterface MessageSender {\n  void send(String recipient, String message);\n}\n\nclass EmailSender implements MessageSender {\n  public void send(String recipient, String message) { ... }\n}\n\nclass SMSSender implements MessageSender {\n  public void send(String recipient, String message) { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testAlternativeClasses() {\n  MessageSender sender = new EmailSender();\n  sender.send(\"test@example.com\", \"Hello\");\n}"
+}

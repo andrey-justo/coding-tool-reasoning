@@ -1,0 +1,10 @@
+{
+  "name": "Replace Parameter with Explicit Methods",
+  "problem": "A method uses a parameter as a flag to determine behavior.",
+  "steps": [
+    "Create one method for each possible parameter value",
+    "Call the appropriate method instead of passing the flag"
+  ],
+  "CODE_EXAMPLE": "// Before\nvoid setValue(String name, int value) {\n  if (name.equals(\"height\")) {\n    height = value;\n  } else if (name.equals(\"width\")) {\n    width = value;\n  }\n}\n\n// After\nvoid setHeight(int value) { height = value; }\nvoid setWidth(int value) { width = value; }\n\n// Calls\nsetHeight(180);\nsetWidth(100);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExplicitMethods() {\n  Rectangle rect = new Rectangle();\n  rect.setHeight(180);\n  rect.setWidth(100);\n  assertEquals(180, rect.getHeight());\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Dependency Inversion Principle",
+  "source": "Clean Code by Robert C. Martin, Chapter 10: Classes",
+  "category": "classes",
+  "problem": "High-level classes directly depend on low-level concrete classes, so changing a low-level implementation forces changes in the high-level business logic and makes the system impossible to test in isolation.",
+  "steps": [
+    "Identify high-level classes that directly instantiate or import low-level classes.",
+    "Extract an interface or abstract class representing the abstraction the high-level class needs.",
+    "Make the high-level class depend on the abstraction, not the concrete implementation.",
+    "Inject the concrete implementation through the constructor or a setter (Dependency Injection).",
+    "Verify that high-level business logic can be tested with a mock or stub injected in place of the real dependency."
+  ],
+  "bad_example": "// High-level class depends directly on concrete low-level class\nclass OrderService {\n    private MySQLOrderRepository repository = new MySQLOrderRepository();\n    public void placeOrder(Order o) { repository.save(o); }\n}",
+  "CODE_EXAMPLE": "// High-level depends on abstraction\ninterface OrderRepository { void save(Order order); }\n\nclass OrderService {\n    private final OrderRepository repository;\n    public OrderService(OrderRepository repository) { this.repository = repository; }\n    public void placeOrder(Order order) { repository.save(order); }\n}\n\n// Concrete low-level class is injected\nclass MySQLOrderRepository implements OrderRepository {\n    public void save(Order order) { /* SQL logic */ }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void placeOrder_savesToRepository() {\n    OrderRepository mockRepo = mock(OrderRepository.class);\n    OrderService service = new OrderService(mockRepo);\n    Order order = new Order();\n    service.placeOrder(order);\n    verify(mockRepo).save(order);\n}"
+}

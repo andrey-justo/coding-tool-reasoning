@@ -1,0 +1,11 @@
+{
+  "name": "Replace Type Code with Class",
+  "problem": "A class uses numeric type codes instead of classes.",
+  "steps": [
+    "Create a new class for the type",
+    "Create factory methods for each type code",
+    "Replace type code references with class instances"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  static final int O = 0;\n  static final int A = 1;\n  static final int B = 2;\n  static final int AB = 3;\n  private int bloodType;\n}\n\n// After\nclass BloodType {\n  static final BloodType O = new BloodType(0);\n  static final BloodType A = new BloodType(1);\n  private int code;\n  BloodType(int code) { this.code = code; }\n}\n\nclass Person {\n  private BloodType bloodType;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testTypeCodeWithClass() {\n  Person person = new Person();\n  person.setBloodType(BloodType.O);\n  assertEquals(BloodType.O, person.getBloodType());\n}"
+}

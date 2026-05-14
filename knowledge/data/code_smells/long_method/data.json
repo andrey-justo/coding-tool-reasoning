@@ -1,0 +1,12 @@
+{
+  "name": "Long Method",
+  "problem": "A method contains too many lines of code, making it hard to understand.",
+  "steps": [
+    "Extract portions of the method into separate smaller methods",
+    "Give each extracted method a descriptive name",
+    "Use Replace Temp with Query to reduce local variables",
+    "Use Introduce Parameter Object or Preserve Whole Object for long parameter lists"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nvoid printOwing() {\n  double outstanding = 0;\n  System.out.println(\"*****\");\n  System.out.println(\"Customer: \" + name);\n  for (Order o : orders) {\n    outstanding += o.getAmount();\n  }\n  System.out.println(\"Amount: \" + outstanding);\n}\n\n// After (refactored)\nvoid printOwing() {\n  printBanner();\n  double outstanding = getOutstanding();\n  printDetails(outstanding);\n}\n\nvoid printBanner() {\n  System.out.println(\"*****\");\n  System.out.println(\"Customer: \" + name);\n}\n\ndouble getOutstanding() {\n  return orders.stream().mapToDouble(Order::getAmount).sum();\n}\n\nvoid printDetails(double outstanding) {\n  System.out.println(\"Amount: \" + outstanding);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPrintOwing() {\n  Customer c = new Customer(\"John\", List.of(new Order(100), new Order(200)));\n  assertEquals(300, c.getOutstanding(), 0.01);\n}"
+}

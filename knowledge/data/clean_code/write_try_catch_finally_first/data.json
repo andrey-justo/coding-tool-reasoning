@@ -1,0 +1,16 @@
+{
+  "name": "Write Try-Catch-Finally First",
+  "source": "Clean Code by Robert C. Martin, Chapter 7: Error Handling",
+  "category": "error_handling",
+  "problem": "Tests and code written without upfront exception handling leave the program in an undefined state when exceptions occur, and the happy-path logic ends up entangled with error-recovery logic added later.",
+  "steps": [
+    "Write a failing test that forces the exception scenario first.",
+    "Write the try-catch-finally structure before filling in the happy-path implementation.",
+    "Ensure the catch clause leaves the program in a consistent, expected state.",
+    "Add the happy-path implementation inside the try block.",
+    "Refactor once tests pass, keeping the try-catch-finally as the outermost concern."
+  ],
+  "bad_example": "// No exception handling; undefined behavior on failure\npublic List<Widget> retrieveSection(String sectionName) {\n    FileInputStream stream = new FileInputStream(sectionName);\n    // ... parse and return\n    stream.close();\n    return widgets;\n}",
+  "CODE_EXAMPLE": "public List<Widget> retrieveSection(String sectionName) {\n    try {\n        FileInputStream stream = new FileInputStream(sectionName);\n        // ... parse and return\n        stream.close();\n    } catch (FileNotFoundException e) {\n        throw new StorageException(\"section not found\", e);\n    }\n    return new ArrayList<>();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test(expected = StorageException.class)\npublic void retrieveSection_throwsStorageException_forMissingFile() {\n    WidgetRepository repo = new WidgetRepository();\n    repo.retrieveSection(\"nonexistent\");\n}"
+}

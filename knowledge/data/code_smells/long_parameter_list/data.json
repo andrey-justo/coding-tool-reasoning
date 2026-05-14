@@ -1,0 +1,11 @@
+{
+  "name": "Long Parameter List",
+  "problem": "A method has more than 3-4 parameters.",
+  "steps": [
+    "Use Replace Parameter with Method Call if data can be derived from existing objects",
+    "Use Preserve Whole Object to pass the object itself instead of its values",
+    "Use Introduce Parameter Object to consolidate parameters into a new class"
+  ],
+  "CODE_EXAMPLE": "// Before (smell)\nvoid createUser(String firstName, String lastName, String email, String city, String country, int age) {\n  ...\n}\n\n// After (refactored)\nvoid createUser(UserDetails details) {\n  ...\n}\n\nclass UserDetails {\n  String firstName, lastName, email, city, country;\n  int age;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testLongParameterList() {\n  UserDetails details = new UserDetails(\"John\", \"Doe\", \"john@example.com\", \"NYC\", \"US\", 30);\n  User user = createUser(details);\n  assertEquals(\"John\", user.getFirstName());\n}"
+}

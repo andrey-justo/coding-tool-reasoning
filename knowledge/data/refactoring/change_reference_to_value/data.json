@@ -1,0 +1,11 @@
+{
+  "name": "Change Reference to Value",
+  "problem": "You have a reference object that is small, immutable, and awkward to manage.",
+  "steps": [
+    "Make the object immutable",
+    "Delete the factory method",
+    "Replace constructor calls with new"
+  ],
+  "CODE_EXAMPLE": "// Before\nCustomer.create(name)\n\n// After\nnew Customer(name)\n\nclass Customer {\n  // Make immutable\n  private final String name;\n  Customer(String name) { this.name = name; }\n  equals(), hashCode() implemented\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testReferenceToValue() {\n  Customer c1 = new Customer(\"John\");\n  Customer c2 = new Customer(\"John\");\n  assertEquals(c1, c2);\n}"
+}

@@ -1,0 +1,16 @@
+{
+  "name": "Class Cohesion",
+  "source": "Clean Code by Robert C. Martin, Chapter 10: Classes",
+  "category": "classes",
+  "problem": "Classes accumulate instance variables that are only used by a subset of their methods, signalling that multiple unrelated concepts are sharing one class and should be separated into highly cohesive classes.",
+  "steps": [
+    "Count how many methods use each instance variable; every variable should be used by most methods.",
+    "Identify subsets of variables and methods that cluster together and extract them into separate classes.",
+    "Maximise cohesion: each method of the resulting class should operate on most or all of its instance variables.",
+    "Applying this rule often produces many small classes, which is the desired outcome.",
+    "Use cohesion analysis as a driver for refactoring large classes into focused components."
+  ],
+  "bad_example": "class Processor {\n    // Only used by network methods\n    private Socket socket;\n    private int port;\n    // Only used by file methods\n    private File file;\n    private String path;\n\n    public void readFromSocket() { ... }\n    public void readFromFile()   { ... }\n}",
+  "CODE_EXAMPLE": "class SocketReader {\n    private Socket socket;\n    private int port;\n    public void read() { ... }\n}\n\nclass FileReader {\n    private File file;\n    private String path;\n    public void read() { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void socketReader_readsFromSocket() throws Exception {\n    MockSocket mock = new MockSocket(\"data\");\n    SocketReader reader = new SocketReader(mock, 8080);\n    assertEquals(\"data\", reader.read());\n}\n\n@Test\npublic void fileReader_readsFromFile() throws Exception {\n    FileReader reader = new FileReader(tempFile);\n    assertNotNull(reader.read());\n}"
+}

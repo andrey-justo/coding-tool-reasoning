@@ -1,0 +1,11 @@
+{
+  "name": "Extract Subclass",
+  "problem": "A class has features used only in some instances.",
+  "steps": [
+    "Create a new subclass",
+    "Move the specialized features to the subclass",
+    "Create a factory method to return the appropriate subclass"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass JobItem {\n  int getTotalPrice() { ... }\n  String getUnitPrice() { ... }\n  String getEmployee() { ... } // only for some items\n}\n\n// After\nclass JobItem {\n  int getTotalPrice() { ... }\n  String getUnitPrice() { ... }\n}\n\nclass LaborItem extends JobItem {\n  String getEmployee() { ... }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExtractSubclass() {\n  JobItem item = new JobItem();\n  assertTrue(item instanceof JobItem);\n  \n  LaborItem laborItem = new LaborItem();\n  assertEquals(\"John\", laborItem.getEmployee());\n}"
+}

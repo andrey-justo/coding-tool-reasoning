@@ -1,0 +1,16 @@
+{
+  "name": "Newspaper Metaphor",
+  "source": "Clean Code by Robert C. Martin, Chapter 5: Formatting",
+  "category": "formatting",
+  "problem": "Source files are organized in a random or reverse order where low-level details appear before the high-level concepts they support, forcing readers to scroll extensively to understand the overall purpose before seeing it.",
+  "steps": [
+    "Place the most important, highest-level concepts and public API at the top of the file.",
+    "Order functions so that each one is followed by those it calls at the next lower abstraction level.",
+    "Treat the file like a newspaper: headline (class name/purpose) first, detail last.",
+    "Group related functions vertically so the reader can follow the narrative without jumping.",
+    "Apply the Stepdown Rule: high-level public methods near the top, private helpers below."
+  ],
+  "bad_example": "class OrderProcessor {\n    // Low-level helper buried at top\n    private String formatCurrency(double amount) { return \"$\" + amount; }\n    private void saveToDb(Order o)               { db.insert(o); }\n    // High-level entry point buried at bottom\n    public void processOrder(Order order)        { validate(order); saveToDb(order); }\n}",
+  "CODE_EXAMPLE": "class OrderProcessor {\n    // High-level entry point at top\n    public void processOrder(Order order) {\n        validate(order);\n        save(order);\n    }\n\n    private void validate(Order order) {\n        if (order.getTotal() <= 0) throw new IllegalArgumentException(\"Invalid total\");\n    }\n\n    // Low-level helpers below\n    private void save(Order order) { db.insert(order); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void processOrder_validatesBeforeSaving() {\n    TestDatabase db = new TestDatabase();\n    OrderProcessor processor = new OrderProcessor(db);\n    assertThrows(IllegalArgumentException.class,\n            () -> processor.processOrder(new Order(-1)));\n    assertEquals(0, db.getSaveCount());\n}"
+}

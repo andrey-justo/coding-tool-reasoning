@@ -1,0 +1,11 @@
+{
+  "name": "Replace Type Code with State/Strategy",
+  "problem": "A class has behavior that varies based on type code in complex ways.",
+  "steps": [
+    "Create a state/strategy class hierarchy",
+    "Create instances for each type",
+    "Delegate behavior to the state/strategy object"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Account {\n  int interestRate() {\n    return type == GOLD ? 10 : 5;\n  }\n}\n\n// After\nclass Account {\n  AccountType accountType;\n  int interestRate() {\n    return accountType.interestRate();\n  }\n}\n\ninterface AccountType {\n  int interestRate();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testTypeCodeState() {\n  Account account = new Account(new GoldAccount());\n  assertEquals(10, account.interestRate());\n}"
+}

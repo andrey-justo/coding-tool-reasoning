@@ -1,0 +1,13 @@
+{
+  "name": "Factory Method Design Pattern",
+  "problem": "Create objects without coupling client code to concrete classes, while allowing subclasses or factories to decide which implementation to instantiate.",
+  "steps": [
+    "Define a common interface or abstract base type for products.",
+    "Implement concrete product classes for each variation.",
+    "Create a factory abstraction with a method that returns the product interface.",
+    "Implement concrete factories that instantiate specific product types.",
+    "Use the factory method in client code to remove direct constructor dependencies."
+  ],
+  "CODE_EXAMPLE": "public interface INotifier {\n  string Send(string message);\n}\n\npublic class EmailNotifier : INotifier {\n  public string Send(string message) => \"email:\" + message;\n}\n\npublic class SmsNotifier : INotifier {\n  public string Send(string message) => \"sms:\" + message;\n}\n\npublic abstract class NotifierFactory {\n  public abstract INotifier Create();\n}\n\npublic class EmailNotifierFactory : NotifierFactory {\n  public override INotifier Create() => new EmailNotifier();\n}\n\npublic class SmsNotifierFactory : NotifierFactory {\n  public override INotifier Create() => new SmsNotifier();\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Create_ReturnsEmailNotifier() {\n  NotifierFactory factory = new EmailNotifierFactory();\n  var notifier = factory.Create();\n  Assert.AreEqual(\"email:test\", notifier.Send(\"test\"));\n}\n\n[TestMethod]\npublic void Create_ReturnsSmsNotifier() {\n  NotifierFactory factory = new SmsNotifierFactory();\n  var notifier = factory.Create();\n  Assert.AreEqual(\"sms:test\", notifier.Send(\"test\"));\n}"
+}

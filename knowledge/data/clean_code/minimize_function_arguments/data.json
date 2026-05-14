@@ -1,0 +1,16 @@
+{
+  "name": "Minimize Function Arguments",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Functions with many arguments are hard to understand, difficult to test exhaustively, and tempt callers to pass null or wrong-order values. Flag (boolean) arguments loudly proclaim that a function does more than one thing.",
+  "steps": [
+    "Aim for zero arguments (niladic), then one (monadic), then two (dyadic); treat three or more as a design warning.",
+    "When several arguments naturally belong together, extract them into a parameter object.",
+    "Replace boolean flag arguments by splitting the function into two explicitly named functions.",
+    "Avoid output arguments; instead, change state on the owning object or return a new value.",
+    "Use instance variables to share context rather than passing the same state through multiple calls."
+  ],
+  "bad_example": "// Flag argument - function does two things\nvoid render(boolean isSuite) { ... }\n\n// Too many args - belongs in a class\nCircle makeCircle(double x, double y, double radius) { ... }",
+  "CODE_EXAMPLE": "// Two focused functions instead of one with a flag\nvoid renderForSuite()      { render(suiteSetupPage); }\nvoid renderForSingleTest() { render(setupPage); }\n\n// Parameter object groups related values\nCircle makeCircle(Point center, double radius) { ... }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void renderForSingleTest_doesNotIncludeSuiteSetup() {\n    PageRenderer renderer = new PageRenderer();\n    renderer.renderForSingleTest();\n    assertFalse(renderer.getOutput().contains(\"SuiteSetUp\"));\n}\n\n@Test\npublic void makeCircle_hasCorrectCenter() {\n    Circle c = ShapeFactory.makeCircle(new Point(1, 2), 5.0);\n    assertEquals(new Point(1, 2), c.getCenter());\n}"
+}

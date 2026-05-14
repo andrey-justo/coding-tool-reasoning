@@ -1,0 +1,16 @@
+{
+  "name": "Avoid Bad Comments",
+  "source": "Clean Code by Robert C. Martin, Chapter 4: Comments",
+  "category": "comments",
+  "problem": "Noisy, redundant, misleading, mandated, or commented-out code clutters the codebase and erodes trust in all comments, including accurate ones, while distracting readers from the actual logic.",
+  "steps": [
+    "Remove any comment that merely restates what the code already says (redundant comment).",
+    "Never check in commented-out code; use version control to retain history instead.",
+    "Delete position markers and banner comments that add no information.",
+    "Remove mandated Javadoc on every function when many of them contain nothing but noise.",
+    "Fix misleading comments that claim the code does something other than what it actually does."
+  ],
+  "bad_example": "// i is the index\nint i = 0;\n\n/**\n * @param name the name\n * @return the name\n */\npublic String getName() { return name; }\n\n// old logic, keep for now\n// if (x > 0) { doSomething(); }\n\n////////// Section 1 //////////",
+  "CODE_EXAMPLE": "int index = 0;\n\npublic String getName() { return name; }\n\n// Deleted old logic - recoverable from git history if needed\n\n// No section banners needed; small functions make sections unnecessary",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getName_returnsAssignedName() {\n    Entity entity = new Entity(\"Alice\");\n    assertEquals(\"Alice\", entity.getName());\n}"
+}

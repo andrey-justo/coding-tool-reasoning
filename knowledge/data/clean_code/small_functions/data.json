@@ -1,0 +1,16 @@
+{
+  "name": "Small Functions",
+  "source": "Clean Code by Robert C. Martin, Chapter 3: Functions",
+  "category": "functions",
+  "problem": "Functions that span many lines mix multiple levels of abstraction, contain nested control structures, and become difficult to name, test, and understand independently.",
+  "steps": [
+    "Aim for functions that are 4-20 lines long; question any function exceeding 20 lines.",
+    "Ensure blocks inside if, else, and while statements are a single function call.",
+    "Keep indentation depth at one or two levels maximum.",
+    "Extract any logical section or named comment inside a function into its own function.",
+    "Name the extracted function so clearly that the original body reads like a high-level outline."
+  ],
+  "bad_example": "public static String testableHtml(PageData pageData, boolean includeSuiteSetup) throws Exception {\n    WikiPage wikiPage = pageData.getWikiPage();\n    StringBuffer buffer = new StringBuffer();\n    if (pageData.hasAttribute(\"Test\")) {\n        if (includeSuiteSetup) {\n            // ... 30 more lines of mixed concerns\n        }\n    }\n    pageData.setContent(buffer.toString());\n    return pageData.getHtml();\n}",
+  "CODE_EXAMPLE": "public static String renderPageWithSetupsAndTeardowns(\n        PageData pageData, boolean isSuite) throws Exception {\n    if (isTestPage(pageData))\n        includeSetupAndTeardownPages(pageData, isSuite);\n    return pageData.getHtml();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void renderPage_includesSetupForTestPages() throws Exception {\n    PageData page = new PageData(\"Test\", \"content\");\n    String html = PageRenderer.renderPageWithSetupsAndTeardowns(page, false);\n    assertTrue(html.contains(\"setup\"));\n    assertTrue(html.contains(\"content\"));\n}"
+}

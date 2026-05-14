@@ -1,0 +1,13 @@
+{
+  "name": "Introduce Parameter Object Refactoring Pattern",
+  "problem": "Methods with long parameter lists are hard to read, easy to call incorrectly, and difficult to evolve.",
+  "steps": [
+    "Identify methods with many related parameters.",
+    "Create a parameter object class grouping those values.",
+    "Replace method signature to accept the parameter object.",
+    "Update call sites to construct and pass the object.",
+    "Add validation rules in the parameter object if needed."
+  ],
+  "CODE_EXAMPLE": "public record SearchCriteria(string Query, int Page, int PageSize, string SortBy);\n\npublic class ProductSearchService {\n  public string Search(SearchCriteria criteria) {\n    return $\"{criteria.Query}:{criteria.Page}:{criteria.PageSize}:{criteria.SortBy}\";\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Search_UsesAllCriteriaFields() {\n  var service = new ProductSearchService();\n  var criteria = new SearchCriteria(\"phone\", 2, 25, \"price\");\n  Assert.AreEqual(\"phone:2:25:price\", service.Search(criteria));\n}\n\n[TestMethod]\npublic void ParameterObject_ImprovesCallClarity() {\n  var criteria = new SearchCriteria(\"book\", 1, 10, \"name\");\n  Assert.AreEqual(\"book\", criteria.Query);\n}"
+}

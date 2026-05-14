@@ -1,0 +1,13 @@
+{
+  "name": "Proxy Design Pattern",
+  "problem": "Control access to an object by using a stand-in that can add validation, caching, logging, or lazy initialization.",
+  "steps": [
+    "Define a subject interface shared by real subject and proxy.",
+    "Implement the real subject with core behavior.",
+    "Implement a proxy that holds a reference to the real subject.",
+    "Add access-control, caching, or lazy-load logic in the proxy.",
+    "Use the proxy in place of the real subject from client code."
+  ],
+  "CODE_EXAMPLE": "public interface IReportService {\n  string GetReport(int id);\n}\n\npublic class ReportService : IReportService {\n  public string GetReport(int id) => \"report-\" + id;\n}\n\npublic class CachingReportProxy : IReportService {\n  private readonly IReportService _inner;\n  private readonly Dictionary<int, string> _cache = new Dictionary<int, string>();\n\n  public CachingReportProxy(IReportService inner) { _inner = inner; }\n\n  public string GetReport(int id) {\n    if (_cache.TryGetValue(id, out var value)) return value;\n    value = _inner.GetReport(id);\n    _cache[id] = value;\n    return value;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Proxy_ReturnsCachedValue_OnSecondCall() {\n  IReportService service = new CachingReportProxy(new ReportService());\n  var first = service.GetReport(5);\n  var second = service.GetReport(5);\n  Assert.AreEqual(first, second);\n}\n\n[TestMethod]\npublic void Proxy_DelegatesToRealService_WhenCacheMiss() {\n  IReportService service = new CachingReportProxy(new ReportService());\n  Assert.AreEqual(\"report-7\", service.GetReport(7));\n}"
+}

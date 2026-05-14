@@ -1,0 +1,12 @@
+{
+  "name": "Replace Method with Method Object",
+  "problem": "You have a complex method with local variables that prevent you from using Extract Method.",
+  "steps": [
+    "Create a new class with the method name",
+    "Move the original method as the compute() method",
+    "Convert local variables to fields",
+    "Create a method for each computation that can be extracted"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Account {\n  int gamma(int inputVal, int quantity, int yearToDate) {\n    int importantValue1 = (inputVal * quantity) + delta();\n    int importantValue2 = (inputVal * yearToDate) + 100;\n    if (yearToDate - importantValue1 > 0) {\n      return importantValue2 - 20;\n    }\n    return importantValue2 - importantValue1;\n  }\n}\n\n// After\nclass Gamma {\n  private int inputVal, quantity, yearToDate;\n  Gamma(int inputVal, int quantity, int yearToDate) {\n    this.inputVal = inputVal;\n    this.quantity = quantity;\n    this.yearToDate = yearToDate;\n  }\n  int compute() {\n    int importantValue1 = (inputVal * quantity) + delta();\n    int importantValue2 = (inputVal * yearToDate) + 100;\n    if (yearToDate - importantValue1 > 0) {\n      return importantValue2 - 20;\n    }\n    return importantValue2 - importantValue1;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testMethodObject() {\n  Gamma gamma = new Gamma(10, 5, 2024);\n  int result = gamma.compute();\n  assertTrue(result > 0);\n}"
+}

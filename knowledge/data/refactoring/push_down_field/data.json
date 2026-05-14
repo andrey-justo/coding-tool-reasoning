@@ -1,0 +1,10 @@
+{
+  "name": "Push Down Field",
+  "problem": "A field is used only by some subclasses.",
+  "steps": [
+    "Move the field to the subclasses that use it",
+    "Remove the field from the superclass"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Employee {\n  String quota; // only used by Salesman\n}\n\n// After\nclass Employee {}\n\nclass Salesman extends Employee {\n  String quota;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testPushDownField() {\n  Salesman salesman = new Salesman();\n  salesman.setQuota(\"1000\");\n  assertEquals(\"1000\", salesman.getQuota());\n}"
+}

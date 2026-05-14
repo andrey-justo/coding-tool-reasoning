@@ -1,0 +1,11 @@
+{
+  "name": "Add Parameter",
+  "problem": "A method needs information from its caller.",
+  "steps": [
+    "Add the parameter to the method signature",
+    "Update all callers to pass the new parameter",
+    "Remove any code that derives the parameter value"
+  ],
+  "CODE_EXAMPLE": "// Before\nint getPrice() {\n  int basePrice = quantity * itemPrice;\n  int discountLevel = getDiscountLevel();\n  return basePrice - discountLevel;\n}\n\n// After\nint getPrice(int discountLevel) {\n  int basePrice = quantity * itemPrice;\n  return basePrice - discountLevel;\n}\n\n// Call\ngetPrice(getDiscountLevel());",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testAddParameter() {\n  Order order = new Order(10, 100);\n  int price = order.getPrice(10);\n  assertTrue(price > 0);\n}"
+}

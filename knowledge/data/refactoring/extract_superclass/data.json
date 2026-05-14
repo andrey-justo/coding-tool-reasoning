@@ -1,0 +1,11 @@
+{
+  "name": "Extract Superclass",
+  "problem": "Two classes have similar features.",
+  "steps": [
+    "Create a new superclass",
+    "Move common features to the superclass",
+    "Make the classes extend the superclass"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Dog {\n  String name;\n  void display() { ... }\n}\n\nclass Cat {\n  String name;\n  void display() { ... }\n}\n\n// After\nclass Animal {\n  String name;\n  void display() { ... }\n}\n\nclass Dog extends Animal {}\nclass Cat extends Animal {}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExtractSuperclass() {\n  Animal dog = new Dog();\n  dog.setName(\"Buddy\");\n  assertEquals(\"Buddy\", dog.getName());\n}"
+}

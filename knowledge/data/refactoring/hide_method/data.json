@@ -1,0 +1,11 @@
+{
+  "name": "Hide Method",
+  "problem": "A method is not used by other classes or in subclasses.",
+  "steps": [
+    "Change the visibility from public to private",
+    "Check all usages to ensure they are within the class",
+    "Consider removing it if not used"
+  ],
+  "CODE_EXAMPLE": "// Before\npublic void process() { ... }\n\n// After\nprivate void process() { ... }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testHideMethod() {\n  Service service = new Service();\n  service.execute();\n}"
+}

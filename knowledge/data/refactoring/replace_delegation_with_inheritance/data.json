@@ -1,0 +1,11 @@
+{
+  "name": "Replace Delegation with Inheritance",
+  "problem": "A class delegates all its operations to another.",
+  "steps": [
+    "Change the class to extend the delegated class",
+    "Move methods from the wrapper to the superclass where appropriate",
+    "Remove delegation methods"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Stack {\n  private List items = new ArrayList();\n  \n  void push(Object item) { items.add(item); }\n  Object pop() { return items.remove(items.size() - 1); }\n}\n\n// After\nclass Stack extends List {\n  void push(Object item) { add(item); }\n  Object pop() { return remove(size() - 1); }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testInheritance() {\n  Stack stack = new Stack();\n  stack.push(5);\n  assertEquals(5, stack.pop());\n}"
+}

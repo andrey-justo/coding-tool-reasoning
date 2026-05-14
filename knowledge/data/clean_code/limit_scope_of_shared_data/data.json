@@ -1,0 +1,16 @@
+{
+  "name": "Limit Scope of Shared Data",
+  "source": "Clean Code by Robert C. Martin, Chapter 13: Concurrency",
+  "category": "concurrency",
+  "problem": "Shared mutable data spread across many classes or methods is accessed and mutated by multiple threads, causing race conditions, data corruption, and non-deterministic bugs that are extremely hard to reproduce and fix.",
+  "steps": [
+    "Identify all data fields accessed by more than one thread.",
+    "Reduce the number of places that read or write shared data to an absolute minimum.",
+    "Use the synchronized keyword, locks, or concurrent data structures only around those minimal access points.",
+    "Prefer passing copies of data between threads instead of sharing a reference to a mutable object.",
+    "Consider using immutable objects for shared data; immutability eliminates the need for synchronization."
+  ],
+  "bad_example": "// counter accessed and mutated from many places\nclass Stats {\n    public int counter = 0; // public mutable shared state\n}\n\n// Thread A\nstats.counter++;\n// Thread B — race condition\nstats.counter++;",
+  "CODE_EXAMPLE": "// Shared state encapsulated and access points minimized\nclass Stats {\n    private final AtomicInteger counter = new AtomicInteger(0);\n\n    // Single, thread-safe mutation point\n    public void increment() { counter.incrementAndGet(); }\n    public int getCount() { return counter.get(); }\n}\n\n// Alternatively, pass immutable snapshots\nrecord StatsSnapshot(int count) {}\nStatsSnapshot snapshot = new StatsSnapshot(stats.getCount());",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void increment_isThreadSafe() throws InterruptedException {\n    Stats stats = new Stats();\n    int threads = 100;\n    ExecutorService pool = Executors.newFixedThreadPool(threads);\n    for (int i = 0; i < threads; i++) pool.submit(stats::increment);\n    pool.shutdown();\n    pool.awaitTermination(5, TimeUnit.SECONDS);\n    assertEquals(threads, stats.getCount());\n}"
+}

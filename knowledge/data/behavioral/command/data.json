@@ -1,0 +1,13 @@
+{
+  "name": "Command Design Pattern",
+  "problem": "Encapsulate requests as objects so they can be parameterized, queued, logged, and undone.",
+  "steps": [
+    "Define a command interface with an execute operation.",
+    "Implement concrete commands encapsulating receiver actions.",
+    "Define receiver classes that perform actual business logic.",
+    "Create an invoker that triggers command execution.",
+    "Optionally persist or queue command objects for deferred execution."
+  ],
+  "CODE_EXAMPLE": "public interface ICommand {\n  void Execute();\n}\n\npublic class Light {\n  public bool IsOn { get; private set; }\n  public void TurnOn() => IsOn = true;\n}\n\npublic class TurnOnLightCommand : ICommand {\n  private readonly Light _light;\n  public TurnOnLightCommand(Light light) { _light = light; }\n  public void Execute() => _light.TurnOn();\n}\n\npublic class RemoteControl {\n  public void Press(ICommand command) => command.Execute();\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Invoker_ExecutesCommand() {\n  var light = new Light();\n  var command = new TurnOnLightCommand(light);\n  var remote = new RemoteControl();\n\n  remote.Press(command);\n\n  Assert.IsTrue(light.IsOn);\n}\n\n[TestMethod]\npublic void Command_EncapsulatesReceiverCall() {\n  var light = new Light();\n  ICommand command = new TurnOnLightCommand(light);\n  command.Execute();\n  Assert.IsTrue(light.IsOn);\n}"
+}

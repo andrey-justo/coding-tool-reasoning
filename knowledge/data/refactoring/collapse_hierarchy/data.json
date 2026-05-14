@@ -1,0 +1,11 @@
+{
+  "name": "Collapse Hierarchy",
+  "problem": "A superclass and a subclass are not very different.",
+  "steps": [
+    "Choose whether to collapse up or down",
+    "Move features to the appropriate class",
+    "Remove the now-empty class"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Employee {}\nclass Salesman extends Employee {}\n\n// After\nclass Employee {} // all features now here\n\n// Remove Salesman if it has no unique behavior",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testCollapseHierarchy() {\n  Employee emp = new Employee();\n  emp.setName(\"John\");\n  assertEquals(\"John\", emp.getName());\n}"
+}

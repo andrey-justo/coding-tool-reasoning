@@ -1,0 +1,10 @@
+{
+  "name": "Introduce Assertion",
+  "problem": "A section of code assumes something about the program state that is not obvious.",
+  "steps": [
+    "Add an assertion that documents the assumption",
+    "Assertions should not affect the program logic when disabled"
+  ],
+  "CODE_EXAMPLE": "// Before\ndouble getExpenseLimit() {\n  return (expenseLimit != NULL_EXPENSE) ? expenseLimit: parent.getExpenseLimit();\n}\n\n// After\ndouble getExpenseLimit() {\n  assert expenseLimit != NULL_EXPENSE || parent != null;\n  return (expenseLimit != NULL_EXPENSE) ? expenseLimit: parent.getExpenseLimit();\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testAssertion() {\n  Employee employee = new Employee();\n  assertTrue(employee.getExpenseLimit() >= 0);\n}"
+}

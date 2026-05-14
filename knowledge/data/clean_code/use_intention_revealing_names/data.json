@@ -1,0 +1,16 @@
+{
+  "name": "Use Intention-Revealing Names",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "Variable, function, and class names do not communicate why they exist, what they do, or how they are used, forcing readers to mentally decode them and consult comments to understand intent.",
+  "steps": [
+    "Choose names that answer why the identifier exists, what it does, and how it is used.",
+    "Eliminate any comment that simply restates what the name should already say.",
+    "Replace single-letter or abbreviated names with descriptive names that convey meaning.",
+    "Use domain-relevant nouns for data and verbs or verb-phrases for functions.",
+    "Rename any identifier whose name misleads or requires mental translation."
+  ],
+  "bad_example": "int d; // elapsed time in days\npublic List<int[]> getThem() {\n    List<int[]> list1 = new ArrayList<>();\n    for (int[] x : theList)\n        if (x[0] == 4) list1.add(x);\n    return list1;\n}",
+  "CODE_EXAMPLE": "int elapsedTimeInDays;\n\npublic List<Cell> getFlaggedCells() {\n    List<Cell> flaggedCells = new ArrayList<>();\n    for (Cell cell : gameBoard)\n        if (cell.isFlagged())\n            flaggedCells.add(cell);\n    return flaggedCells;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void getFlaggedCells_returnsOnlyFlaggedCells() {\n    Board board = new Board();\n    board.addCell(new Cell(STATUS_FLAGGED));\n    board.addCell(new Cell(STATUS_OPEN));\n    List<Cell> result = board.getFlaggedCells();\n    assertEquals(1, result.size());\n    assertTrue(result.get(0).isFlagged());\n}"
+}

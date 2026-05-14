@@ -1,0 +1,13 @@
+{
+  "name": "Composite Design Pattern",
+  "problem": "Represent part-whole hierarchies so clients can treat individual objects and object compositions uniformly.",
+  "steps": [
+    "Define a component interface with common operations.",
+    "Implement leaf objects for terminal elements.",
+    "Implement a composite that stores child components.",
+    "Delegate operations recursively from composite to children.",
+    "Use the same component abstraction in client code for leaves and composites."
+  ],
+  "CODE_EXAMPLE": "public interface IFileNode {\n  int Size();\n}\n\npublic class FileLeaf : IFileNode {\n  private readonly int _size;\n  public FileLeaf(int size) { _size = size; }\n  public int Size() => _size;\n}\n\npublic class FolderComposite : IFileNode {\n  private readonly List<IFileNode> _children = new List<IFileNode>();\n  public void Add(IFileNode node) => _children.Add(node);\n  public int Size() => _children.Sum(child => child.Size());\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void Composite_ComputesTotalSizeRecursively() {\n  var folder = new FolderComposite();\n  folder.Add(new FileLeaf(10));\n  folder.Add(new FileLeaf(20));\n  Assert.AreEqual(30, folder.Size());\n}\n\n[TestMethod]\npublic void Leaf_AndCompositeShareSameInterface() {\n  IFileNode leaf = new FileLeaf(5);\n  IFileNode composite = new FolderComposite();\n  Assert.AreEqual(5, leaf.Size());\n  Assert.AreEqual(0, composite.Size());\n}"
+}

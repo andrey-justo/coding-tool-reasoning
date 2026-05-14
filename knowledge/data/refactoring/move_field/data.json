@@ -1,0 +1,11 @@
+{
+  "name": "Move Field",
+  "problem": "A field is used more by another class than the class in which it is defined.",
+  "steps": [
+    "Create a new field in the target class",
+    "Change all references in the source class to use the new field",
+    "Delete the field from the source class"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  String name;\n  int officeAreaCode;\n  int officeNumber;\n}\n\nclass Company {\n  Person person;\n}\n\n// After\nclass Person {\n  String name;\n}\n\nclass Company {\n  Person person;\n  int areaCode;\n  int number;\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testMoveField() {\n  Person person = new Person(\"John\");\n  Company company = new Company();\n  company.setAreaCode(415);\n  company.setNumber(9999999);\n  \n  assertEquals(415, company.getAreaCode());\n  assertEquals(9999999, company.getNumber());\n}"
+}

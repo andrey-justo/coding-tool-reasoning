@@ -1,0 +1,16 @@
+{
+  "name": "Don't Pass Null",
+  "source": "Clean Code by Robert C. Martin, Chapter 7: Error Handling",
+  "category": "error_handling",
+  "problem": "Passing null as a method argument requires the callee to add defensive null checks, and when it forgets to do so, a NullPointerException occurs deep inside the call stack at a location far from the actual bug.",
+  "steps": [
+    "Avoid passing null as a function argument; treat it as a programming error, not a valid input.",
+    "Add a @NonNull annotation and/or assert parameter != null at the start of methods that must not receive null.",
+    "Redesign APIs that currently require callers to pass null for optional behavior by using method overloading or Optional.",
+    "In languages without built-in null safety, add null guards at public API boundaries and document them.",
+    "Use static analysis tools to detect null argument passing at compile time."
+  ],
+  "bad_example": "// Callee must defensively handle null\npublic double xProjection(Point p1, Point p2) {\n    if (p1 == null || p2 == null)\n        throw new InvalidArgumentException(\"p1 and p2 required\");\n    return (p2.x - p1.x) * 1.5;\n}\n\n// Or worse: no guard, NPE at runtime\ncalculator.xProjection(null, new Point(1, 1));",
+  "CODE_EXAMPLE": "// Contract: nulls are not allowed; callers are responsible\npublic double xProjection(@NonNull Point p1, @NonNull Point p2) {\n    return (p2.x - p1.x) * 1.5;\n}\n\n// Caller always provides real objects\ndouble result = calculator.xProjection(new Point(0, 0), new Point(3, 4));",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void xProjection_computesCorrectly() {\n    MetricsCalculator calc = new MetricsCalculator();\n    assertEquals(4.5, calc.xProjection(new Point(0, 0), new Point(3, 0)), 0.001);\n}\n\n@Test\npublic void xProjection_throwsForNullArgument() {\n    MetricsCalculator calc = new MetricsCalculator();\n    assertThrows(NullPointerException.class, () -> calc.xProjection(null, new Point(1, 0)));\n}"
+}

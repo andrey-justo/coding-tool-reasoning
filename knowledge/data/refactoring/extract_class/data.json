@@ -1,0 +1,12 @@
+{
+  "name": "Extract Class",
+  "problem": "A class has too many responsibilities.",
+  "steps": [
+    "Create a new class for part of the old class responsibility",
+    "Create a field in the old class pointing to the new class",
+    "Move data and methods from the old to the new class",
+    "Adjust methods to use the new class"
+  ],
+  "CODE_EXAMPLE": "// Before\nclass Person {\n  String name;\n  String areaCode;\n  String number;\n  String getPhoneNumber() { return areaCode + number; }\n}\n\n// After\nclass Person {\n  String name;\n  Telephone telephone;\n}\n\nclass Telephone {\n  String areaCode;\n  String number;\n  String getPhoneNumber() { return areaCode + number; }\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testExtractClass() {\n  Person person = new Person(\"John\");\n  Telephone tel = new Telephone(\"415\", \"9999999\");\n  person.setTelephone(tel);\n  \n  assertEquals(\"4159999999\", person.getTelephone().getPhoneNumber());\n}"
+}

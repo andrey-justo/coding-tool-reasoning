@@ -1,0 +1,16 @@
+{
+  "name": "Pick One Word per Concept",
+  "source": "Clean Code by Robert C. Martin, Chapter 2: Meaningful Names",
+  "category": "naming",
+  "problem": "The same abstract operation is named differently across classes (e.g., fetch, retrieve, get), forcing developers to remember which synonym belongs to which class and making the codebase inconsistent.",
+  "steps": [
+    "Establish a single verb for each abstract operation and apply it consistently across all classes (e.g., always use get, never mix with fetch or retrieve).",
+    "Build a team-wide lexicon or glossary for domain concepts.",
+    "Use the same noun for the same concept across the codebase.",
+    "Audit method names across classes with similar responsibilities and rename for consistency.",
+    "Avoid multiple controller/manager/driver names for things that serve the same role."
+  ],
+  "bad_example": "class UserRepository  { User fetch(int id)    { ... } }\nclass OrderRepository { Order retrieve(int id) { ... } }\nclass ProductService  { Product get(int id)    { ... } }",
+  "CODE_EXAMPLE": "class UserRepository   { User get(int id)    { ... } }\nclass OrderRepository  { Order get(int id)   { ... } }\nclass ProductRepository{ Product get(int id) { ... } }",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void repositories_useConsistentGetMethod() {\n    UserRepository users = new UserRepository();\n    OrderRepository orders = new OrderRepository();\n    assertNotNull(users.get(1));\n    assertNotNull(orders.get(1));\n}"
+}

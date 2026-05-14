@@ -1,0 +1,12 @@
+{
+  "name": "Speculative Generality",
+  "problem": "Unused classes, methods, fields, or parameters created for anticipated future use.",
+  "steps": [
+    "Use Collapse Hierarchy to remove abstract classes not doing much",
+    "Use Inline Class to merge unnecessary delegation",
+    "Use Remove Parameter to eliminate unused parameters",
+    "Rename Method for abstract names that exist only to support speculative functionality"
+  ],
+  "CODE_EXAMPLE": "// Before (smell - prepared for future that may never come)\nabstract class Formatter {\n  abstract String format(Object obj);\n  String formatWithMetadata(Object obj, Map<String, Object> meta) {\n    // never actually used with metadata\n    return format(obj);\n  }\n}\n\n// After (refactored)\nabstract class Formatter {\n  abstract String format(Object obj);\n}",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testSpeculativeGenerality() {\n  Formatter formatter = new JsonFormatter();\n  String result = formatter.format(new Order());\n  assertNotNull(result);\n}"
+}

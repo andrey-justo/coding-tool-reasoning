@@ -1,0 +1,13 @@
+{
+  "name": "Inline Method Refactoring Pattern",
+  "problem": "A method adds unnecessary indirection because it only delegates trivial behavior and obscures the main flow.",
+  "steps": [
+    "Find a method that only forwards or wraps a simple expression.",
+    "Verify call sites and side effects are minimal.",
+    "Replace calls with the method body at call sites.",
+    "Remove the now-unused method.",
+    "Run tests to confirm behavior remains unchanged."
+  ],
+  "CODE_EXAMPLE": "public class PricingService {\n  public decimal FinalPrice(decimal amount) {\n    return ApplyVat(amount);\n  }\n\n  private decimal ApplyVat(decimal amount) {\n    return amount * 1.2m;\n  }\n\n  public decimal FinalPriceInlined(decimal amount) {\n    return amount * 1.2m;\n  }\n}",
+  "UNIT_TEST_EXAMPLE": "[TestMethod]\npublic void FinalPriceAndInlinedVersion_ReturnSameValue() {\n  var service = new PricingService();\n  Assert.AreEqual(service.FinalPrice(100m), service.FinalPriceInlined(100m));\n}\n\n[TestMethod]\npublic void FinalPriceInlined_AppliesVat() {\n  var service = new PricingService();\n  Assert.AreEqual(120m, service.FinalPriceInlined(100m));\n}"
+}

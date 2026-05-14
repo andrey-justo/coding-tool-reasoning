@@ -1,0 +1,11 @@
+{
+  "name": "Introduce Foreign Method",
+  "problem": "You need a method that belongs in a class you cannot modify.",
+  "steps": [
+    "Create a method in the client class",
+    "Pass an instance of the class you need the method for as a parameter",
+    "Implement the method using the passed object"
+  ],
+  "CODE_EXAMPLE": "// Before\nDate newDate = new Date(previousEnd.getTime() + 1);\n\n// After (in client class)\nprivate Date nextDay(Date date) {\n  return new Date(date.getTime() + 1);\n}\n\nDate newDate = nextDay(previousEnd);",
+  "UNIT_TEST_EXAMPLE": "@Test\npublic void testForeignMethod() {\n  Date date = new Date(1000);\n  Date nextDate = nextDay(date);\n  \n  assertEquals(1001, nextDate.getTime());\n}"
+}
