@@ -54,6 +54,24 @@ class LocalAIClient:
         return headers
 
     def chat(self, prompt, model=None, **kwargs):
+        """
+        Send a chat completion request to LocalAI.
+        
+        Args:
+            prompt: The user message to send
+            model: Model name to use (defaults to self.default_model)
+            **kwargs: Optional parameters:
+                - max_tokens: Maximum tokens in response (default: 512)
+                - temperature: Sampling temperature for determinism (0.0-2.0)
+                             Lower values make output more deterministic
+                - seed: Random seed for deterministic generation (int)
+                
+        Returns:
+            str: The model's response message content
+            
+        Raises:
+            TextLLMException: On network errors or request failures
+        """
         # Use chat completions endpoint format
         url = f"{self.endpoint}/v1/chat/completions"
         payload = {
@@ -61,6 +79,12 @@ class LocalAIClient:
             "messages": [{"role": "user", "content": prompt}],
             "max_tokens": kwargs.get("max_tokens", 512),
         }
+
+        # Optional deterministic controls for reproducibility
+        if "temperature" in kwargs:
+            payload["temperature"] = kwargs["temperature"]
+        if "seed" in kwargs:
+            payload["seed"] = kwargs["seed"]
 
         try:
             # Use session with connection pooling for better stability
