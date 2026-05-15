@@ -30,7 +30,8 @@ to specific thresholds.
 
 RQ1 is a **design question** about the structure of the taxonomy artifact.
 It is answered through the proposed taxonomy schema, ISO 25010 traceability,
-and its ability to support planning for C# legacy refactoring tasks (should we include other programming languages???).
+and its ability to support planning for C# legacy refactoring tasks. Support
+for other programming languages is out of scope for v1.
 
 RQ2–RQ4 are the **empirical evaluation questions**. A null result in RQ2 would
 weaken the practical value of the supervisor, but it would not logically
