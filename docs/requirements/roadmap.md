@@ -47,6 +47,7 @@ Status legend used below:
 - **Requirements**: FR-4, FR-5, NFR-3, NFR-4
 - **Outcome**: issue-centric experiments can be executed safely.
 - **Deliverables**:
+  - Subject data schemas committed for issue-centric tracking (`data/subjects/subject_data.csv` and `data/subjects/experiment_runs.csv`). **Status**: Done.
   - Issue-centric inputs recorded with stable identifiers. **Status**: Partial (CSV schema exists in `data/subjects/*`, not yet wired into an execution pipeline).
   - Baseline (no-taxonomy supervision) condition runnable. **Status**: Not started (experiment runner baseline path is scaffold only).
   - Prompt-ingestion safety rule is enforced and sources are logged. **Status**: Not started (no enforcement found).
