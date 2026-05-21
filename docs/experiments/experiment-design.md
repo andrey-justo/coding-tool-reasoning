@@ -5,6 +5,8 @@ Links back to RQ definitions: [`docs/risks/rq-scope-falsifiability.md`](../risks
 Subject/corpus tracking (repo + issue/commit/PR metadata): [`data/subjects/subject_data.csv`](../../data/subjects/subject_data.csv)
 Run-level comparison tracking (baseline vs supervised vs human studies): [`data/subjects/experiment_runs.csv`](../../data/subjects/experiment_runs.csv)
 
+Canonical location for both CSV trackers in this repository: `data/subjects/`.
+
 ---
 
 ## Summary Table
