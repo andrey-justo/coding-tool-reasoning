@@ -1,0 +1,59 @@
+SourceId,Relation,TargetId,Description
+nfr_maintainability,maps_to_folder,folder_clean_code,The clean-code folder contains maintainability-oriented guidance and examples.
+nfr_readability,maps_to_folder,folder_clean_code,The clean-code folder contains readability-oriented naming and formatting guidance.
+nfr_maintainability,maps_to_folder,folder_code_smells,The code-smells folder catalogs maintainability risks and bad structures.
+nfr_maintainability,maps_to_folder,folder_refactoring,The refactoring folder contains maintainability improvements and corrective transformations.
+nfr_testability,maps_to_folder,folder_refactoring,Refactoring techniques create seams and abstractions that improve testability.
+nfr_maintainability,maps_to_folder,folder_behavioral,Behavioral patterns can reduce conditionals and isolate responsibilities.
+nfr_maintainability,maps_to_folder,folder_creational,Creational patterns encapsulate object construction and reduce coupling.
+nfr_maintainability,maps_to_folder,folder_structural,Structural patterns organize responsibilities and dependencies more cleanly.
+nfr_reliability,maps_to_folder,folder_reliability,The reliability knowledge folder contains patterns used for resilience-oriented generation.
+nfr_performance,maps_to_folder,folder_reliability,Several reliability patterns in the folder also improve throughput and resource usage.
+nfr_scalability,maps_to_folder,folder_reliability,The reliability knowledge folder contains scaling-oriented pattern guidance.
+nfr_security,maps_to_folder,folder_reliability,Security-relevant traffic-control patterns live under the reliability knowledge folder.
+folder_clean_code,contains,category_naming,The clean-code folder contains naming guidance entries.
+folder_clean_code,contains,category_functions,The clean-code folder contains function-focused guidance entries.
+folder_clean_code,contains,category_comments,The clean-code folder contains comment-focused guidance entries.
+folder_clean_code,contains,category_error_handling,The clean-code folder contains error-handling guidance entries.
+folder_clean_code,contains,category_classes,The clean-code folder contains class-focused guidance entries.
+folder_clean_code,contains,category_concurrency,The clean-code folder contains concurrency guidance entries.
+folder_clean_code,contains,category_unit_tests,The clean-code folder contains unit-test guidance entries.
+folder_clean_code,contains,category_formatting,The clean-code folder contains formatting guidance entries.
+folder_clean_code,contains,category_systems,The clean-code folder contains system-level guidance entries.
+folder_clean_code,contains,category_general,The clean-code folder contains general heuristics and guidance entries.
+folder_code_smells,contains,smell_long_method,The code-smells folder includes long-method guidance.
+folder_code_smells,contains,smell_large_class,The code-smells folder includes large-class guidance.
+folder_code_smells,contains,smell_duplicate_code,The code-smells folder includes duplicate-code guidance.
+folder_code_smells,contains,smell_long_parameter_list,The code-smells folder includes long-parameter-list guidance.
+folder_code_smells,contains,smell_feature_envy,The code-smells folder includes feature-envy guidance.
+folder_code_smells,contains,smell_primitive_obsession,The code-smells folder includes primitive-obsession guidance.
+folder_refactoring,contains,refactoring_extract_method,The refactoring folder includes extract-method guidance.
+folder_refactoring,contains,refactoring_extract_interface,The refactoring folder includes extract-interface guidance.
+folder_refactoring,contains,refactoring_replace_conditional_with_polymorphism,The refactoring folder includes replace-conditional-with-polymorphism guidance.
+folder_refactoring,contains,refactoring_replace_nested_conditional_with_guard_clauses,The refactoring folder includes guard-clause guidance.
+folder_refactoring,contains,refactoring_replace_error_code_with_exception,The refactoring folder includes error-code-to-exception guidance.
+folder_refactoring,contains,refactoring_introduce_null_object,The refactoring folder includes null-object guidance.
+folder_reliability,contains,pattern_circuit_breaker,Pattern data lives in knowledge/data/reliability/circuit_breaker.
+folder_reliability,contains,pattern_load_balancing,Pattern data lives in knowledge/data/reliability/load_balancing.
+folder_reliability,contains,pattern_nhpp,Pattern data lives in knowledge/data/reliability/nhpp.
+folder_reliability,contains,pattern_rate_limiting,Pattern data lives in knowledge/data/reliability/rate_limiting.
+folder_reliability,contains,pattern_sharding_partitioning,Pattern data lives in knowledge/data/reliability/sharding_partitioning.
+folder_reliability,contains,pattern_throttling,Pattern data lives in knowledge/data/reliability/throttling.
+nfr_maintainability,improved_by,refactoring_extract_method,Extracting methods reduces duplication and clarifies responsibilities.
+nfr_testability,improved_by,refactoring_extract_interface,Extracting interfaces creates seams for mocks and isolated tests.
+nfr_maintainability,improved_by,refactoring_replace_conditional_with_polymorphism,Polymorphism removes brittle conditional logic and centralizes behavior.
+nfr_readability,improved_by,refactoring_replace_nested_conditional_with_guard_clauses,Guard clauses simplify complex branching and reduce nesting.
+nfr_reliability,improved_by,refactoring_replace_error_code_with_exception,Exceptions standardize failure handling and reduce silent error propagation.
+nfr_reliability,improved_by,refactoring_introduce_null_object,Null objects remove repeated null handling and stabilize edge-case behavior.
+nfr_reliability,implemented_by,pattern_circuit_breaker,Circuit breaker reduces cascading failures and improves resilience.
+nfr_reliability,implemented_by,pattern_throttling,Throttling prevents overload and stabilizes degraded systems.
+nfr_performance,implemented_by,pattern_load_balancing,Load balancing distributes requests to improve throughput and utilization.
+nfr_performance,implemented_by,pattern_nhpp,NHPP models variable workloads to optimize capacity decisions.
+nfr_performance,implemented_by,pattern_throttling,Throttling controls resource usage under contention.
+nfr_scalability,implemented_by,pattern_load_balancing,Load balancing spreads work across nodes to scale horizontally.
+nfr_scalability,implemented_by,pattern_sharding_partitioning,Partitioning data across shards enables scale-out growth.
+nfr_security,implemented_by,pattern_rate_limiting,Rate limiting protects endpoints from abusive traffic patterns.
+smell_long_method,addressed_by,refactoring_extract_method,Extract Method is a standard response to overly long methods.
+smell_tight_coupling,addressed_by,refactoring_extract_interface,Extract Interface reduces direct dependencies on concrete collaborators.
+smell_complex_conditionals,addressed_by,refactoring_replace_nested_conditional_with_guard_clauses,Guard clauses flatten complex branching logic.
+smell_inconsistent_error_handling,addressed_by,refactoring_replace_error_code_with_exception,Exceptions provide a consistent error path.

@@ -11,17 +11,23 @@ class TaxonomyConfig(BaseModel):
     """Configuration for SWE taxonomies used by the MCP server.
 
     Paths are optional; when omitted, the server falls back to the default
-    `taxonomies/ground_data` and `taxonomies/linked_data` folders under the
-    repository root.
+    `knowledge/linked_data` root under the repository, where node and edge
+    CSVs are discovered recursively.
     """
 
     ground_data_dir: Optional[str] = Field(
         default=None,
-        description="Optional absolute or repo‑relative path for ground taxonomy CSVs.",
+        description=(
+            "Optional absolute or repo-relative root for taxonomy node CSVs. "
+            "Defaults to knowledge/linked_data and is scanned recursively."
+        ),
     )
     linked_data_dir: Optional[str] = Field(
         default=None,
-        description="Optional absolute or repo‑relative path for linked taxonomy CSVs.",
+        description=(
+            "Optional absolute or repo-relative root for taxonomy edge CSVs. "
+            "Defaults to knowledge/linked_data and is scanned recursively."
+        ),
     )
     relationship_depth: int = Field(
         default=1,
@@ -112,14 +118,13 @@ class ConcernAssetsConfig(BaseModel):
     """Configuration for concern-specific data and prompt templates.
 
     Files are loaded from:
-    - templates/data/<swe_concern>/*.md
-    - templates/data/<swe_concern>/<swe_subject>/(base_design.json|test_design.json)
+    - knowledge/template/*.md
     - knowledge/data/<swe_concern>/<swe_subject>/data.json
     """
 
     swe_concern: str = Field(
         default="reliability",
-        description="Concern name used under knowledge/data and templates/data.",
+        description="Concern name used under knowledge/data.",
     )
     swe_subject: Optional[str] = Field(
         default=None,
@@ -139,7 +144,7 @@ class ConcernAssetsConfig(BaseModel):
         default=None,
         description=(
             "Optional absolute or repo-relative root for concern templates. "
-            "Defaults to templates/data."
+            "Defaults to knowledge/template."
         ),
     )
 

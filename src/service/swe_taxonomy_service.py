@@ -14,8 +14,9 @@ class SweKnowledgeBase:
 
     Directory paths must be provided explicitly via constructor arguments,
     environment variables, or configuration. This is intentionally generic:
-    it will load all CSVs in those folders that match the expected column
-    names, so you can add more taxonomies later.
+    it will recursively load all CSVs under those roots that match the
+    expected column names, so you can colocate taxonomy data under
+    knowledge/linked_data without separate node and edge roots.
     """
 
     def __init__(
@@ -49,6 +50,13 @@ class SweKnowledgeBase:
     @staticmethod
     def _clean_cell(value: Optional[str]) -> str:
         return (value or "").strip()
+
+    @staticmethod
+    def _iter_csv_paths(root_dir: str) -> Iterator[str]:
+        for current_root, _, files in os.walk(root_dir):
+            for name in sorted(files):
+                if name.lower().endswith(".csv"):
+                    yield os.path.join(current_root, name)
 
     def load(self) -> None:
         """Load all known node and edge CSVs into memory.
@@ -93,10 +101,7 @@ class SweKnowledgeBase:
         if not os.path.isdir(self.ground_data_dir):
             logger.warning(f"ground_data_dir does not exist: {self.ground_data_dir}")
             return
-        for name in os.listdir(self.ground_data_dir):
-            if not name.lower().endswith(".csv"):
-                continue
-            path = os.path.join(self.ground_data_dir, name)
+        for path in self._iter_csv_paths(self.ground_data_dir):
             with open(path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(self._iter_csv_lines(f))
                 if not expected_cols.issubset(reader.fieldnames or []):
@@ -117,10 +122,7 @@ class SweKnowledgeBase:
         expected_cols = {"SourceId", "Relation", "TargetId", "Description"}
         if not os.path.isdir(self.linked_data_dir):
             return
-        for name in os.listdir(self.linked_data_dir):
-            if not name.lower().endswith(".csv"):
-                continue
-            path = os.path.join(self.linked_data_dir, name)
+        for path in self._iter_csv_paths(self.linked_data_dir):
             with open(path, newline="", encoding="utf-8") as f:
                 reader = csv.DictReader(self._iter_csv_lines(f))
                 if not reader.fieldnames or not set(reader.fieldnames).issuperset(

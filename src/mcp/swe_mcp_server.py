@@ -42,13 +42,13 @@ class SweMcpServerContextProvider:
         config = SweMcpConfig.load(repo_root=self._repo_root)
 
         ground_dir = config.taxonomy.ground_data_dir or os.path.join(
-            self._repo_root, "taxonomies", "ground_data"
+            self._repo_root, "knowledge", "linked_data"
         )
         if not os.path.isabs(ground_dir):
             ground_dir = os.path.join(self._repo_root, ground_dir)
 
         linked_dir = config.taxonomy.linked_data_dir or os.path.join(
-            self._repo_root, "taxonomies", "linked_data"
+            self._repo_root, "knowledge", "linked_data"
         )
         if not os.path.isabs(linked_dir):
             linked_dir = os.path.join(self._repo_root, linked_dir)
@@ -74,7 +74,7 @@ class SweMcpServerContextProvider:
         return os.path.join(self._repo_root, configured_path)
 
     def _load_concern_assets(self, config: SweMcpConfig) -> List[dict]:
-        """Load concern templates and concern-group data from configurable roots."""
+        """Load concern templates and concern-group data from knowledge roots."""
 
         results: List[dict] = []
         swe_concern = config.concern_assets.swe_concern
@@ -85,10 +85,12 @@ class SweMcpServerContextProvider:
         )
         templates_root = self._resolve_path(
             config.concern_assets.templates_root_dir
-            or os.path.join("templates", "data"),
+            or os.path.join("knowledge", "template"),
         )
 
         concern_templates_dir = os.path.join(templates_root, swe_concern)
+        if not os.path.isdir(concern_templates_dir):
+            concern_templates_dir = templates_root
         if os.path.isdir(concern_templates_dir):
             for template_path in sorted(
                 glob.glob(os.path.join(concern_templates_dir, "*.md"))
@@ -106,49 +108,6 @@ class SweMcpServerContextProvider:
                         }
                     )
 
-            subject_dirs = sorted(
-                [
-                    folder
-                    for folder in os.listdir(concern_templates_dir)
-                    if os.path.isdir(os.path.join(concern_templates_dir, folder))
-                ]
-            )
-            if swe_subject:
-                subject_dirs = [
-                    folder for folder in subject_dirs if folder == swe_subject
-                ]
-
-            for subject in subject_dirs:
-                subject_dir = os.path.join(concern_templates_dir, subject)
-                concern_data_path = os.path.join(
-                    data_root, swe_concern, subject, "data.json"
-                )
-
-                code_example = self._resolve_code_example(subject=subject)
-                unit_test_example = self._resolve_unit_test_example(concern_data_path)
-                if not code_example and not unit_test_example:
-                    continue
-
-                payload = {
-                    "EXAMPLE_DESCRIPTION": f"{subject.replace('_', ' ').title()} example",
-                    "DESIGN_PATTERN_NAME": subject.replace("_", " ").title(),
-                }
-                if code_example:
-                    payload["CODE_EXAMPLE"] = code_example
-                if unit_test_example:
-                    payload["UNIT_TEST_EXAMPLE"] = unit_test_example
-
-                results.append(
-                    {
-                        "kind": "swe_concern_data",
-                        "concern": swe_concern,
-                        "concern_group": subject,
-                        "name": subject,
-                        "path": subject_dir,
-                        "content": json.dumps(payload, ensure_ascii=False),
-                    }
-                )
-
         concern_data_dir = os.path.join(data_root, swe_concern)
         if os.path.isdir(concern_data_dir):
             concern_groups = sorted(os.listdir(concern_data_dir))
@@ -164,18 +123,63 @@ class SweMcpServerContextProvider:
                 data_path = os.path.join(group_dir, "data.json")
                 if not os.path.exists(data_path):
                     continue
-                with open(data_path, "r", encoding="utf-8") as f:
-                    results.append(
-                        {
-                            "kind": "swe_concern_data",
-                            "concern": swe_concern,
-                            "concern_group": concern_group,
-                            "path": data_path,
-                            "content": f.read(),
-                        }
-                    )
+
+                payload = self._build_concern_data_payload(
+                    subject=concern_group,
+                    data_path=data_path,
+                )
+                if not payload:
+                    continue
+
+                results.append(
+                    {
+                        "kind": "swe_concern_data",
+                        "concern": swe_concern,
+                        "concern_group": concern_group,
+                        "name": concern_group,
+                        "path": data_path,
+                        "content": json.dumps(payload, ensure_ascii=False),
+                    }
+                )
 
         return results
+
+    def _build_concern_data_payload(self, subject: str, data_path: str) -> dict:
+        payload = self._load_json_payload(data_path)
+        if not payload:
+            return {}
+
+        if not payload.get("EXAMPLE_DESCRIPTION"):
+            payload["EXAMPLE_DESCRIPTION"] = (
+                f"{subject.replace('_', ' ').title()} example"
+            )
+        if not payload.get("DESIGN_PATTERN_NAME"):
+            payload["DESIGN_PATTERN_NAME"] = str(
+                payload.get("name") or subject.replace("_", " ").title()
+            )
+
+        code_example = str(payload.get("CODE_EXAMPLE") or "").strip()
+        if not code_example:
+            code_example = self._resolve_code_example(subject=subject)
+            if code_example:
+                payload["CODE_EXAMPLE"] = code_example
+
+        unit_test_example = str(payload.get("UNIT_TEST_EXAMPLE") or "").strip()
+        if not unit_test_example:
+            unit_test_example = self._extract_unit_test_example(payload)
+            if unit_test_example:
+                payload["UNIT_TEST_EXAMPLE"] = unit_test_example
+
+        return payload
+
+    @staticmethod
+    def _load_json_payload(file_path: str) -> dict:
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                payload = json.load(f) or {}
+        except (OSError, json.JSONDecodeError):
+            return {}
+        return payload if isinstance(payload, dict) else {}
 
     @staticmethod
     def _safe_read_text(file_path: str) -> str:
@@ -197,17 +201,8 @@ class SweMcpServerContextProvider:
                 return self._safe_read_text(example_path)
         return ""
 
-    def _resolve_unit_test_example(self, concern_data_path: str) -> str:
-        """Extract unit-test examples only when present in concern data.json."""
-
-        if not os.path.exists(concern_data_path):
-            return ""
-
-        try:
-            with open(concern_data_path, "r", encoding="utf-8") as f:
-                payload = json.load(f) or {}
-        except (OSError, json.JSONDecodeError):
-            return ""
+    def _extract_unit_test_example(self, payload: dict) -> str:
+        """Extract unit-test examples only when present in a concern payload."""
 
         direct_keys = [
             "unit_test_example",

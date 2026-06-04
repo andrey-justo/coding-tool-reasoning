@@ -1,0 +1,70 @@
+SourceId,Relation,TargetId,Description
+
+# NFRs linked to knowledge categories
+nfr_maintainability,organized_as,category_classes,Maintainability guidance is grouped under class-level clean-code material.
+nfr_maintainability,organized_as,category_systems,Maintainability guidance is grouped under system-level clean-code material.
+nfr_maintainability,organized_as,category_general,Maintainability guidance is grouped under general clean-code heuristics.
+nfr_readability,organized_as,category_naming,Readability guidance is grouped under naming-focused knowledge folders.
+nfr_readability,organized_as,category_functions,Readability guidance is grouped under function-focused knowledge folders.
+nfr_readability,organized_as,category_comments,Readability guidance is grouped under comment-focused knowledge folders.
+nfr_readability,organized_as,category_formatting,Readability guidance is grouped under formatting-focused knowledge folders.
+nfr_reliability,organized_as,category_error_handling,Reliability guidance is grouped under error-handling knowledge folders.
+nfr_reliability,organized_as,category_concurrency,Reliability guidance is grouped under concurrency knowledge folders.
+nfr_testability,organized_as,category_unit_tests,Testability guidance is grouped under unit-testing knowledge folders.
+
+# Principles supporting NFRs
+nfr_maintainability,supported_by,principle_single_responsibility,Single responsibility makes changes localized and reduces side effects.
+nfr_maintainability,supported_by,principle_dry,Removing duplication means fewer places to change when requirements evolve.
+nfr_maintainability,supported_by,principle_low_coupling,Low coupling reduces ripple effects of changes.
+nfr_maintainability,supported_by,principle_high_cohesion,High cohesion clarifies responsibilities and simplifies reasoning.
+nfr_maintainability,supported_by,principle_encapsulation,Encapsulation hides implementation details behind stable contracts.
+nfr_maintainability,supported_by,principle_separation_of_concerns,Separated concerns reduce the scope of each change.
+nfr_maintainability,supported_by,principle_open_closed,Open/closed design reduces risky modifications to existing code.
+nfr_maintainability,supported_by,principle_interface_segregation,Small interfaces keep changes focused and easier to evolve.
+nfr_readability,supported_by,principle_meaningful_names,Clear names make code intent easier to understand.
+nfr_readability,supported_by,principle_small_functions,Small focused functions reduce cognitive load.
+nfr_readability,supported_by,principle_clear_error_handling,Clear error paths make code easier to follow.
+nfr_testability,supported_by,principle_small_functions,Focused behavior is easier to test in isolation.
+nfr_testability,supported_by,principle_low_coupling,Loosely coupled components are easier to mock or stub.
+nfr_testability,supported_by,principle_dependency_injection,Injected dependencies allow isolated and repeatable tests.
+nfr_reliability,supported_by,principle_defensive_programming,Defensive checks prevent invalid states and unexpected failures.
+nfr_reliability,supported_by,principle_fail_fast,Fail fast exposes problems early making them easier to diagnose.
+nfr_reliability,supported_by,principle_immutability,Immutable data avoids subtle bugs from shared mutable state.
+nfr_reliability,supported_by,principle_logging_monitoring,Logging and monitoring support detection and recovery from failures.
+nfr_reliability,supported_by,principle_clear_error_handling,Consistent error handling improves predictability of failure modes.
+nfr_security,supported_by,principle_input_validation,Strong validation blocks malformed or malicious input.
+nfr_performance,supported_by,principle_dry,Shared optimized implementations avoid repeating inefficient code.
+nfr_performance,supported_by,principle_small_functions,Smaller functions make hotspots easier to profile and optimize.
+nfr_scalability,supported_by,principle_low_coupling,Loose coupling enables independent scaling of services or components.
+nfr_scalability,supported_by,principle_logging_monitoring,Operational insight helps teams scale systems safely.
+nfr_usability,supported_by,principle_clear_error_handling,Clear error reporting improves user experience when things go wrong.
+
+# Principles implemented by practices
+principle_meaningful_names,implemented_by,practice_code_reviews,Reviews enforce naming and style conventions.
+principle_meaningful_names,implemented_by,practice_coding_standards,Standards require expressive names and consistent patterns.
+principle_single_responsibility,implemented_by,practice_code_reviews,Reviews challenge classes and methods that take on too many concerns.
+principle_dry,implemented_by,practice_static_analysis,Static analysis can detect duplication and suggest extraction.
+principle_low_coupling,implemented_by,practice_static_analysis,Tools highlight overly dependent modules and cyclic dependencies.
+principle_fail_fast,implemented_by,practice_continuous_integration,Frequent builds and tests surface integration issues early.
+principle_fail_fast,implemented_by,practice_continuous_delivery,Smaller deploys expose defects quickly and make rollback easier.
+principle_dependency_injection,implemented_by,practice_test_automation,Automated tests encourage injectable boundaries and abstractions.
+principle_small_functions,implemented_by,practice_refactoring,Refactoring gradually breaks down large functions into smaller ones.
+principle_high_cohesion,implemented_by,practice_refactoring,Refactoring clusters related behavior and data.
+principle_clear_error_handling,implemented_by,practice_pair_programming,Pairs are more likely to notice inconsistent error handling.
+principle_logging_monitoring,implemented_by,practice_observability,Instrumented code provides metrics logs and traces.
+
+# Principles mitigating smells
+principle_single_responsibility,mitigates,smell_large_class,Splitting responsibilities reduces overly large classes.
+principle_single_responsibility,mitigates,smell_long_method,Focused responsibilities lead to shorter methods.
+principle_dry,mitigates,smell_duplicate_code,Shared abstractions replace repeated logic.
+principle_meaningful_names,mitigates,smell_magic_numbers,Named constants and types replace unexplained literals.
+principle_separation_of_concerns,mitigates,smell_mixed_concerns,Layers and modules keep concerns independent.
+principle_low_coupling,mitigates,smell_tight_coupling,Designing to abstractions reduces direct dependencies.
+principle_encapsulation,mitigates,smell_global_state,Encapsulation hides mutable state behind clear interfaces.
+principle_immutability,mitigates,smell_global_state,Immutable data can replace shared mutable fields.
+principle_clear_error_handling,mitigates,smell_inconsistent_error_handling,A standard strategy for errors makes behavior predictable.
+principle_logging_monitoring,mitigates,smell_no_logging,Logging and metrics fill observability gaps.
+principle_dependency_injection,mitigates,smell_tight_coupling,Injected dependencies allow substitutable implementations.
+principle_small_functions,mitigates,smell_complex_conditionals,Smaller functions and guard clauses simplify branches.
+principle_input_validation,mitigates,smell_poor_validation,Centralized validation checks inputs consistently.
+principle_dry,mitigates,smell_comment_debt,Expressive code and shared abstractions reduce the need for explanatory comments.
