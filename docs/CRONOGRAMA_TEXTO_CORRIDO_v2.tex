@@ -1,0 +1,183 @@
+\documentclass[12pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[brazil]{babel}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{setspace}
+\usepackage{hyperref}
+
+\hypersetup{
+  colorlinks=true,
+  linkcolor=black,
+  urlcolor=blue,
+  citecolor=black,
+  pdftitle={Cronograma de Execução da Pesquisa (v2)},
+  pdfauthor={Andrey Victor Justo}
+}
+
+\setstretch{1.15}
+
+\title{Cronograma de Execução da Pesquisa (v2)\\
+\large Supervisor Agent for LLM-Assisted Legacy Software Modernization}
+\author{}
+\date{Junho de 2026}
+
+\begin{document}
+
+\maketitle
+
+\noindent\textbf{Duração:} 24 meses (junho de 2026 a maio de 2028).
+
+\section*{Visão Geral da Estrutura}
+
+A pesquisa segue uma arquitetura de \textit{Design Science Research} (DSR) com dois ciclos completos de coleta, análise e escrita, permitindo replicação interna e publicação em múltiplos venues. O enquadramento metodológico combina princípios de DSR, experimentação em engenharia de software e desenho experimental orientado a hipóteses, conforme proposto por Hevner et al., Wohlin et al. e Basili et al. \cite{hevner2004, wohlin2012, basili1986}. Em termos de problema aplicado, o cronograma foi concebido para sustentar a modernização de software legado com foco em mantenibilidade, rastreabilidade e avaliação rigorosa de qualidade, em linha com a literatura de código legado, refatoração e qualidade de software \cite{feathers2004, fowler1999, seacord2003, iso25010}.
+
+Os três ciclos DSR, nomeadamente Relevance, Design e Rigor, distribuem-se ao longo de 24 meses, com decisões \textit{go/no-go} explícitas em marcos críticos. O objetivo é detectar anomalias cedo, congelar o protocolo no momento apropriado e sustentar refinamento iterativo sem comprometer a validade confirmatória.
+
+\section*{Ciclo 1: Relevância (Junho--Setembro de 2026 / Meses 1--4)}
+
+A pesquisa inicia-se com o ciclo de relevância, estabelecendo a fundação científica do projeto. Durante os primeiros quatro meses, valida-se o problema de pesquisa, operacionalizam-se as \textit{Research Questions} (RQs), define-se o corpus de experimentação e congela-se o protocolo via pré-registro. No primeiro mês, finaliza-se a especificação de requisitos com base em Volere, ajustando prioridades \textit{Must}, \textit{Should} e \textit{Could} com o orientador e estabilizando o documento de requisitos para que a fase seguinte se inicie com escopo bem definido.
+
+Em paralelo, integra-se a \textit{Systematic Literature Review} na seção de \textit{Related Work}, identificando trabalhos próximos como SWE-bench, SWE-agent, Plan4Code e OpenHands, além de abordagens clássicas de refatoração e modernização \cite{yang2024sweagent, feathers2004, fowler1999}. A partir disso, constrói-se um \textit{Gap Ledger} que explicita a arte prévia mais próxima, o que cada trabalho cobre, o que permanece em aberto e como cada contribuição proposta responde a uma lacuna específica.
+
+Na sequência, revisa-se o enquadramento de DSR mapeando os sete \textit{guidelines} de Hevner et al. ao projeto. Esse mapeamento cobre o artefato como objeto de design, a relevância do problema, a avaliação do design, a contribuição de pesquisa, o rigor metodológico, o design como processo de busca e a comunicação científica \cite{hevner2004}. Em paralelo, operacionaliza-se cada RQ. Para RQ1, definem-se hipótese, variáveis dependentes, protocolo de inspeção e validação manual com $\kappa$. Para RQ2 a RQ4, definem-se hipóteses sobre o delta de qualidade estrutural, testes pareados e critérios de sucesso. Para RQ3, especifica-se consistência sob paráfrases semanticamente equivalentes. Para RQ4a, define-se o efeito esperado de configurações de \textit{strictness}.
+
+Da terceira semana de junho até o final de julho, identifica-se e valida-se o corpus experimental: cinco repositórios públicos em C\#, com licenças permissivas, \textit{issue trackers} funcionais e equilíbrio entre sistemas legados e sistemas ativamente mantidos. Cada repositório é avaliado quanto à presença de violações observáveis por análise estática, volume de issues potencialmente tratáveis, atividade da comunidade e disponibilidade de \textit{git hashes} e artefatos de build. Em seguida, desenha-se o experimento com \textit{flowchart} de execução, definindo condições supervisionada e baseline, coleta de saídas, validação humana, survey e auditoria de \textit{provenance}.
+
+Em agosto, o protocolo é pré-registrado no \textit{Open Science Framework}. Hipóteses, variáveis, testes estatísticos, corpus e procedimento são congelados e vinculados publicamente. Isso reduz margem para \textit{p-hacking} e fortalece a validade conclusiva do estudo \cite{wohlin2012}. Até o final do mesmo período, redige-se um primeiro rascunho de introdução e trabalhos relacionados. Ao final de M4, toma-se a decisão \textit{go/no-go}: se as RQs estiverem operacionalizadas, o corpus validado e o pré-registro publicado, o projeto avança para a fase de design; caso contrário, a fase de relevância é estendida por duas a três semanas.
+
+\section*{Ciclo 2: Design (Outubro de 2026--Fevereiro de 2027 / Meses 5--9)}
+
+O ciclo de design inicia-se em outubro de 2026 com o objetivo de resolver os gaps de implementação que impedem experimentos reproduzíveis. Durante cinco meses, o foco recai sobre controles de determinismo, captura de dados SOLID, endurecimento do \textit{harness} experimental e validação do pipeline por meio de um piloto com dez issues.
+
+Na primeira semana de M5, adicionam-se os parâmetros \texttt{temperature=0} e \texttt{seed} ao cliente LLM, garantindo persistência desses valores nos logs de cada \textit{trial}. A premissa é simples: com temperatura nula e semente fixa, a execução deve reduzir variabilidade residual ao mínimo observável. Em seguida, executa-se um microestudo de determinismo com 5 a 10 issues, cada uma rodada duas vezes nas mesmas condições, para medir a variância dos outputs.
+
+Em paralelo, integra-se o motor de análise estática para observar princípios SOLID. Define-se uma versão específica de regras, seja por SonarQube, seja por \textit{Roslyn analyzers}, e documenta-se o mapeamento entre princípios como SRP, OCP e DIP e seus indicadores operacionais. Implementa-se também a captura do número de violações antes e depois de cada mudança, armazenando tudo em um esquema versionado de \textit{TrialResult}.
+
+Ainda em outubro, implementa-se a condição baseline \textit{zero-shot}. Para isso, configura-se \texttt{nfr\_focus=[]} e \texttt{relationship\_depth=0} no \textit{IntentPlanner}, desligando a supervisão taxonômica. A condição baseline preserva modelo, temperatura, semente e pipeline de avaliação, diferindo apenas pela ausência de supervisão explícita. Também se completa o wireamento das rotinas \texttt{\_run\_supervised\_trial} e \texttt{\_run\_baseline\_trial} em \texttt{src/evaluation/reproducibility\_experiment.py}, armazenando os artefatos gerados em arquivos JSON versionados.
+
+Em novembro, implementa-se a captura completa de \textit{execution traces}. Cada execução passa a registrar repositório, revisão, aprovações, prompts, saídas intermediárias, \textit{timestamps}, configuração e versão do modelo. Na mesma etapa, define-se um \textit{testability gate}, registrando status de build, status de testes, contagem de testes adicionados e, quando possível, delta de cobertura. A interpretação do resultado passa a depender de o código ao menos compilar e não quebrar a suíte essencial.
+
+Ainda em novembro, coletam-se métricas adicionais de qualidade, como complexidade ciclomática, cobertura, duplicação, aderência a convenções e sinais de segurança. No mesmo mês, substitui-se o \textit{scorer} de similaridade de código por \texttt{microsoft/codebert-base}, mais adequado ao domínio de código-fonte. Em dezembro, implementa-se o protocolo de paráfrases para RQ3, definindo dez estilos semanticamente equivalentes, mas superficialmente distintos, e constrói-se um executor capaz de gerar e rodar essas variantes sob as duas condições experimentais.
+
+No mesmo período, adicionam-se testes unitários mais abrangentes para \textit{IntentPlanner} e \textit{ExplanationService}, cobrindo validade de esquema, determinismo e casos de borda. Em janeiro, realiza-se um piloto com dez issues. Parte desse piloto observa a cobertura explícita de SRP, OCP e DIP nos planos; a outra parte mede delta SOLID, validação por três ou mais engenheiros e coerência das paráfrases. Ao final de fevereiro, a decisão \textit{go/no-go} de M9 exige CI verde, $\kappa \geq 0{,}6$, delta mensurável em ao menos 8 das 10 issues, comportamento determinístico suficientemente estável e cobertura de design de pelo menos 80\%.
+
+\section*{Ciclo 3a: Rigor -- Coleta I (Março--Agosto de 2027 / Meses 10--15)}
+
+Com a aprovação do marco M9, inicia-se a primeira coleta em escala completa. Durante seis meses, executam-se experimentos pareados entre condição supervisionada e condição baseline, mantendo o protocolo congelado. Para RQ1, o \textit{IntentPlanner} é executado em 30 a 50 planos distribuídos em conjuntos de issues, sempre com documentação da cobertura de SRP, OCP, DIP e rastreabilidade à taxonomia. Para RQ2, coleta-se o delta SOLID por issue e por condição, registrando o número de violações antes e depois das mudanças.
+
+Para RQ3, constrói-se um corpus de 30 a 50 tarefas-base e, para cada uma, geram-se dez paráfrases. Isso produz 300 a 500 execuções no total, todas com registro de \textit{verdict} sob as duas condições. Para RQ4, filtra-se o subconjunto \textit{legacy} definido a priori e repete-se o experimento pareado. Para RQ4a, introduz-se a variação de \textit{strictness}, com três níveis configuracionais, \texttt{low}, \texttt{medium} e \texttt{high}, medindo distribuição de \textit{verdicts}, delta SOLID, taxa de aceitação e taxa de escalonamento.
+
+Durante toda a coleta, monitoram-se falhas de modelo, erros de análise, \textit{timeouts} e corrupção de dados. Ao final de M15, executa-se validação formal da qualidade dos dados, verificando \textit{missing values}, outliers, falhas de LLM e integridade de \textit{provenance}. O resultado esperado é um conjunto de dados versionado, anonimizado e pronto para análise preliminar.
+
+\section*{Ciclo 3b: Rigor -- Análise Preliminar I (Setembro--Outubro de 2027 / Meses 16--17)}
+
+Antes da análise confirmativa, executa-se uma fase preliminar para detectar anomalias e autorizar eventuais refinamentos pontuais. Primeiro, realiza-se \textit{data cleaning}, verificando consistência das versões de regras, \textit{model tags}, sementes, parâmetros e completude dos registros. Em seguida, conduz-se análise exploratória. Para RQ1, revisam-se planos amostrados e observa-se se a cobertura ainda se mantém em 80\% ou mais. Para RQ2, calcula-se o delta preliminar, incluindo mediana, dispersão e inspeção da forma da distribuição. Para RQ3, observa-se a razão preliminar de consistência sob paráfrases. Para RQ4 e RQ4a, analisam-se respectivamente o efeito no subconjunto \textit{legacy} e o comportamento visual das configurações de \textit{strictness}.
+
+No início de M17, os resultados são discutidos com o orientador. Caso surjam anomalias fundamentais, como efeito muito fraco, distribuição altamente assimétrica ou falhas sistemáticas em um subconjunto do corpus, documentam-se as adaptações necessárias como alterações pós hoc. Caso contrário, define-se o \textit{protocol lockdown}. A partir daí, hipóteses, baselines, variáveis e testes estatísticos ficam congelados, e o código de análise recebe uma tag específica de versionamento.
+
+\section*{Ciclo 3b: Rigor -- Análise Confirmativa I (Julho--Outubro de 2027 / Meses 16--19)}
+
+Em paralelo à fase preliminar, inicia-se a análise confirmativa sob protocolo congelado. Para RQ1, conduz-se uma revisão formal de 15 a 20 planos, verificando cobertura, explicitação de restrições e rastreabilidade à taxonomia. Para RQ2, aplica-se o teste de Wilcoxon \textit{signed-rank} pareado sobre os 30 a 50 pares de delta SOLID, reportando mediana, intervalo de confiança de 95\%, valor de $p$ e tamanho de efeito $r = Z / \sqrt{N}$. Para RQ3, aplica-se o teste de McNemar sobre os \textit{verdicts} obtidos sob paráfrases. Para RQ4, repete-se Wilcoxon no subconjunto \textit{legacy}. Para RQ4a, utiliza-se ANOVA ou Kruskal--Wallis conforme a distribuição dos dados, seguido de pós hoc adequado.
+
+Na mesma fase, aplica-se correção para comparações múltiplas, seja por Bonferroni, seja por Benjamini--Hochberg. Paralelamente, executa-se um estudo de validação humana com ao menos três engenheiros, que rotulam de forma independente uma amostra estratificada de saídas, permitindo calcular $\kappa$ tanto para o \textit{overall verdict} quanto para adoção de padrão. Também se aplica um survey com escala Likert de cinco pontos cobrindo confiança, controle percebido e usabilidade, com análise descritiva, alfa de Cronbach e correlações de Spearman.
+
+Ao final de M19, consolida-se a seção de resultados com tabelas, gráficos e narrativa científica capazes de sustentar a redação do primeiro artigo.
+
+\section*{Ciclo 3c: Escrita e Submissão I (Outubro--Dezembro de 2027 / Meses 16--20)}
+
+Em paralelo com a análise confirmativa, inicia-se a redação de um artigo para venue de conferência. Entre M16 e M17, redige-se a introdução, descrevendo problema, motivação prática, lacuna de pesquisa e alinhamento com DSR. Em M17, escreve-se a seção de trabalhos relacionados, cobrindo benchmarks e agentes relevantes, assim como literatura de qualidade de software e modernização. Entre M17 e M18, redige-se a metodologia DSR, explicando os três ciclos e o papel de cada um na robustez do estudo. Em M18, descrevem-se o artefato e o desenho experimental. Em M19, escreve-se a seção de resultados com base nos achados confirmativos.
+
+Entre M19 e M20, o texto passa por revisão interna com o orientador. Em seguida, escolhe-se a venue mais adequada, ajusta-se o artigo ao template LaTeX correspondente e realiza-se a submissão. O resultado esperado ao final de M20 é um artigo submetido, com número de rastreamento, além de um pacote inicial de replicação com dados e código analítico versionados.
+
+\section*{Ciclo 3d: Coleta de Dados II (Novembro--Dezembro de 2027 / Meses 21--22)}
+
+Enquanto a submissão do primeiro artigo é finalizada, inicia-se a segunda coleta. A estratégia é definida com o orientador entre três possibilidades: replicação em novo subconjunto dos mesmos repositórios, expansão para novos repositórios com perfil \textit{legacy}, ou subanálise focada em um padrão observado no ciclo anterior. Assumindo a estratégia de replicação em novo subconjunto, executam-se novamente as coletas para RQ1 a RQ4a em 30 a 50 pares adicionais, mantendo o protocolo congelado, os controles de qualidade dos dados e os requisitos de \textit{provenance}.
+
+\section*{Ciclo 3e: Análise Preliminar II (Janeiro--Fevereiro de 2028 / Meses 23--24)}
+
+Em janeiro de 2028, repetem-se os procedimentos de \textit{data cleaning} e análise exploratória para a segunda coleta. O objetivo é comparar os deltas preliminares e os tamanhos de efeito entre o primeiro e o segundo ciclo. Em fevereiro, esses resultados são discutidos com o orientador para verificar se o segundo ciclo confirma, complementa ou contradiz de forma substantiva os resultados anteriores. Na metade de M24, define-se o segundo \textit{protocol lockdown}, e o código analítico recebe uma nova tag de versionamento.
+
+\section*{Ciclo 3e: Análise Confirmativa II (Março--Abril de 2028 / Meses 25--26)}
+
+Durante março e abril de 2028, executa-se a análise confirmativa da segunda coleta. Repetem-se Wilcoxon, McNemar, Kruskal--Wallis, validação humana e survey, agora focados no material do segundo ciclo. Em paralelo, conduz-se uma meta-análise ou análise combinada dos ciclos I e II, por meio de efeitos agregados, valores de $p$ combinados e testes de heterogeneidade. Se os dois ciclos convergirem, reforça-se a robustez do artefato e do protocolo. Se divergirem, a divergência é tratada como resultado relevante, com potencial valor explicativo para discussão de subgrupos, limitações e validade externa.
+
+\section*{Ciclo 3f: Escrita e Submissão II (Abril--Maio de 2028 / Meses 27--29)}
+
+Em abril de 2028, inicia-se a redação do artigo final para journal, com integração dos resultados dos dois ciclos. Atualizam-se introdução e trabalhos relacionados, agora incorporando a replicação interna como elemento central da contribuição. Redigem-se a metodologia final, o desenho experimental consolidado, a seção de resultados integrados e a discussão, enfatizando implicações práticas e teóricas.
+
+Em M28, escreve-se a seção de ameaças à validade, cobrindo validade interna, de construto, externa e de conclusão. Na mesma fase, redige-se a conclusão e o encaminhamento de trabalhos futuros. Entre M28 e M29, realiza-se revisão interna final com o orientador, seguida da adequação ao template do journal selecionado e da submissão formal.
+
+Também em M29, redige-se o capítulo de tese consolidando os 24 meses de pesquisa. Esse capítulo cobre metodologia, desenho do artefato, desenho experimental, resultados, discussão e perspectivas futuras. Em paralelo, prepara-se o pacote final de replicação, incluindo \textit{git hashes}, versões exatas de regras, modelos, \textit{prompts}, amostras anotadas, scripts de reexecução e datasets anonimizados. Ao final do processo, espera-se um artigo de journal submetido, um capítulo de tese maduro e um pacote público de replicação com DOI.
+
+\section*{Síntese de Milestones e Decisões Críticas}
+
+O cronograma de 24 meses contém marcos críticos nos quais decisões \textit{go/no-go} são tomadas. Em M4, avalia-se se as RQs estão operacionalizadas, se o corpus foi validado e se o pré-registro foi congelado. Em M9, verifica-se se a infraestrutura experimental está estável, se o piloto atingiu $\kappa \geq 0{,}6$ e se o determinismo está sob controle. Em M17, decide-se se o protocolo pode ser congelado para a análise confirmativa. Em M20, verifica-se a prontidão para submissão do primeiro artigo. Em M24, avalia-se a coerência entre o primeiro e o segundo ciclo antes do segundo congelamento do protocolo. Em M26, examina-se se a meta-análise sustenta robustez suficiente para a escrita final. Em M29, consolida-se a submissão do artigo de journal, o arquivamento do pacote de replicação e a redação do capítulo de tese.
+
+\section*{Estrutura DSR Alinhada com Hevner et al.}
+
+Todo o cronograma é fundamentado nos sete princípios de Hevner et al. \cite{hevner2004}. O artefato é concebido e refinado ao longo dos ciclos de design e rigor; a relevância do problema é estabelecida na fase inicial com base em modernização de software legado e necessidades de desenvolvedores; a avaliação combina piloto, análise preliminar, análise confirmativa, validação humana e survey; a contribuição de pesquisa é explicitada pelo \textit{Gap Ledger}; o rigor aparece no pré-registro, nos testes estatísticos, na correção para comparações múltiplas e na replicação; o design é tratado como processo de busca com refinamentos controlados; por fim, a comunicação científica é endereçada por meio de artigo de conferência, artigo de journal e capítulo de tese.
+
+Essa combinação de três ciclos DSR com dois ciclos completos de coleta, análise e escrita busca oferecer robustez metodológica, replicação interna e condições reais de publicabilidade em múltiplos canais científicos.
+
+\section*{Versionamento e Status}
+
+\noindent\textbf{v1.0} (31 de maio de 2026): cronograma de 14 meses com \textit{feedback loops} explícitos.
+
+\noindent\textbf{v2.0} (31 de maio de 2026): cronograma de 24 meses com dois ciclos DSR completos.
+
+\noindent\textbf{Status:} pronto para execução, condicionado à assinatura do orientador em M1.
+
+\noindent\textbf{Próximo passo:} assinar o documento de cronograma com o orientador e iniciar a fase 1 em junho de 2026.
+
+\begin{thebibliography}{99}
+
+\bibitem{basili1986}
+Basili, V. R., Selby, R. W., and Hutchens, D. H.
+Experimentation in software engineering.
+\textit{IEEE Transactions on Software Engineering}, 12(7):733--743, 1986.
+
+\bibitem{feathers2004}
+Feathers, M.
+\textit{Working Effectively with Legacy Code}.
+Prentice Hall, 2004.
+
+\bibitem{fowler1999}
+Fowler, M., Beck, K., Brant, J., Opdyke, W., and Roberts, D.
+\textit{Refactoring: Improving the Design of Existing Code}.
+Addison-Wesley, 1999.
+
+\bibitem{hevner2004}
+Hevner, A. R., March, S. T., Park, J., and Ram, S.
+Design science in information systems research.
+\textit{MIS Quarterly}, 28(1):75--105, 2004.
+
+\bibitem{iso25010}
+International Organization for Standardization and International Electrotechnical Commission.
+\textit{Systems and Software Engineering -- Systems and Software Quality Requirements and Evaluation (SQuaRE) -- Quality Models}.
+Geneva, 2023.
+
+\bibitem{martin2003}
+Martin, R. C.
+The SOLID principles.
+Object Mentor, 2003.
+
+\bibitem{seacord2003}
+Seacord, R. C., Plakosh, D., and Lewis, G. A.
+\textit{Modernizing Legacy Systems: Software Technologies, Engineering Processes, and Business Practices}.
+Addison-Wesley, 2003.
+
+\bibitem{wohlin2012}
+Wohlin, C., Runeson, P., H{"o}st, M., Ohlsson, M. C., Regnell, B., and Wessl{\'e}n, A.
+\textit{Experimentation in Software Engineering}.
+Springer, 2012.
+
+\bibitem{yang2024sweagent}
+Yang, J., Jimenez, C. E., Wettig, A., Lieret, K., Yao, S., Narasimhan, K., and Press, O.
+SWE-agent: Agent-computer interfaces enable automated software engineering.
+\textit{arXiv preprint arXiv:2405.15793}, 2024.
+
+\end{thebibliography}
+
+\end{document}
