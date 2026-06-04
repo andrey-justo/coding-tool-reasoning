@@ -60,7 +60,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     repo_root = tmp_path / "repo"
     repo_root.mkdir(parents=True)
 
-    templates_dir = repo_root / "templates" / "data" / "reliability"
+    templates_dir = repo_root / "knowledge" / "template"
     templates_dir.mkdir(parents=True)
     (templates_dir / "base_template.md").write_text(
         "Template content", encoding="utf-8"
@@ -92,6 +92,12 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     assert "swe_concern_template" in kinds
     assert "swe_concern_data" in kinds
     assert isinstance(ctx.kb, FakeKnowledgeBase)
+    assert ctx.kb.ground_data_dir.endswith("knowledge\\linked_data")
+    assert ctx.kb.linked_data_dir.endswith("knowledge\\linked_data")
+
+    data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
+    assert len(data_items) == 1
+    assert '"DESIGN_PATTERN_NAME": "group_a"' in data_items[0]["content"]
 
 
 def test_tools_registrar_registers_expected_tool_names(tmp_path):

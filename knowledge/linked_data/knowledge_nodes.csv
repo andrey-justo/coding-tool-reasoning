@@ -1,0 +1,30 @@
+Id,Type,Name,NFRCategory,Description
+category_naming,Category,Naming,Readability,Clean-code guidance grouped under the naming category in knowledge/data/clean_code.
+category_functions,Category,Functions,Readability,Clean-code guidance grouped under the functions category in knowledge/data/clean_code.
+category_comments,Category,Comments,Maintainability,Clean-code guidance grouped under the comments category in knowledge/data/clean_code.
+category_error_handling,Category,Error Handling,Reliability,Clean-code guidance grouped under the error_handling category in knowledge/data/clean_code.
+category_classes,Category,Classes,Maintainability,Clean-code guidance grouped under the classes category in knowledge/data/clean_code.
+category_concurrency,Category,Concurrency,Reliability,Clean-code guidance grouped under the concurrency category in knowledge/data/clean_code.
+category_unit_tests,Category,Unit Tests,Testability,Clean-code guidance grouped under the unit_tests category in knowledge/data/clean_code.
+category_formatting,Category,Formatting,Readability,Clean-code guidance grouped under the formatting category in knowledge/data/clean_code.
+category_systems,Category,Systems,Maintainability,Clean-code guidance grouped under the systems category in knowledge/data/clean_code.
+category_general,Category,General,Maintainability,Clean-code guidance grouped under the general category in knowledge/data/clean_code.
+folder_clean_code,Folder,knowledge/data/clean_code,Maintainability,Root folder for clean-code heuristics and examples.
+folder_code_smells,Folder,knowledge/data/code_smells,Maintainability,Root folder for code-smell reference material.
+folder_refactoring,Folder,knowledge/data/refactoring,Maintainability,Root folder for refactoring techniques and recipes.
+folder_behavioral,Folder,knowledge/data/behavioral,Maintainability,Root folder for behavioral design patterns.
+folder_creational,Folder,knowledge/data/creational,Maintainability,Root folder for creational design patterns.
+folder_structural,Folder,knowledge/data/structural,Maintainability,Root folder for structural design patterns.
+folder_reliability,Folder,knowledge/data/reliability,Reliability,Root folder for reliability design-pattern knowledge and prompt templates.
+refactoring_extract_method,Refactoring,Extract Method Refactoring Pattern,Maintainability,Knowledge entry under knowledge/data/refactoring/extract_method.
+refactoring_extract_interface,Refactoring,Extract Interface,Testability,Knowledge entry under knowledge/data/refactoring/extract_interface.
+refactoring_replace_conditional_with_polymorphism,Refactoring,Replace Conditional with Polymorphism,Maintainability,Knowledge entry under knowledge/data/refactoring/replace_conditional_with_polymorphism.
+refactoring_replace_nested_conditional_with_guard_clauses,Refactoring,Replace Nested Conditional with Guard Clauses,Readability,Knowledge entry under knowledge/data/refactoring/replace_nested_conditional_with_guard_clauses.
+refactoring_replace_error_code_with_exception,Refactoring,Replace Error Code with Exception,Reliability,Knowledge entry under knowledge/data/refactoring/replace_error_code_with_exception.
+refactoring_introduce_null_object,Refactoring,Introduce Null Object,Reliability,Knowledge entry under knowledge/data/refactoring/introduce_null_object.
+pattern_circuit_breaker,Pattern,Circuit Breaker Design Pattern,Reliability,Pattern folder under knowledge/data/reliability/circuit_breaker.
+pattern_load_balancing,Pattern,Load Balancing Design Pattern,Scalability,Pattern folder under knowledge/data/reliability/load_balancing.
+pattern_nhpp,Pattern,Non-homogeneous Poisson Process (NHPP) Design Pattern,Performance,Pattern folder under knowledge/data/reliability/nhpp.
+pattern_rate_limiting,Pattern,Rate Limiting Design Pattern,Security,Pattern folder under knowledge/data/reliability/rate_limiting.
+pattern_sharding_partitioning,Pattern,Sharding and Partitioning Design Pattern,Scalability,Pattern folder under knowledge/data/reliability/sharding_partitioning.
+pattern_throttling,Pattern,Throttling Design Pattern,Performance,Pattern folder under knowledge/data/reliability/throttling.
