@@ -41,22 +41,24 @@ def test_swe_knowledge_base_validates_directory_existence():
 
 
 def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
-    ground_dir = tmp_path / "taxonomies" / "ground_data"
+    ground_dir = tmp_path / "knowledge" / "data"
     linked_dir = tmp_path / "taxonomies" / "linked_data"
-    ground_dir.mkdir(parents=True)
+    item_dir = ground_dir / "reliability" / "retry_logic"
+    item_dir.mkdir(parents=True)
     linked_dir.mkdir(parents=True)
 
-    (ground_dir / "nodes.csv").write_text(
-        "Id,Type,Name,NFRCategory,Description\n"
-        "NFR-1,NFR,Reliability,Reliability,Improves uptime\n"
-        "PRA-1,Practice,Retry Logic,Reliability,Retries transient failures\n"
-        "SMELL-1,Smell,Long Method,Maintainability,Hard to read\n",
+    (item_dir / "data.json").write_text(
+        json.dumps(
+            {
+                "name": "Retry Logic",
+                "problem": "Retries transient failures to improve resilience.",
+            }
+        ),
         encoding="utf-8",
     )
     (linked_dir / "edges.csv").write_text(
         "SourceId,Relation,TargetId,Description\n"
-        "NFR-1,related_to,PRA-1,Supports reliability\n"
-        "NFR-1,avoids,SMELL-1,Prevents complex logic\n",
+        "nfr_reliability,related_to,pattern_retry_logic,Supports reliability\n",
         encoding="utf-8",
     )
 
@@ -66,11 +68,11 @@ def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
     )
     kb.load()
 
-    assert kb.find_nfr_ids(["Reliability"]) == ["NFR-1"]
-    assert kb.get_neighbors(["NFR-1"])["NFR-1"][0].target_id == "PRA-1"
-    assert [node.id for node in kb.get_all_nfrs()] == ["NFR-1"]
+    assert kb.find_nfr_ids(["Reliability"]) == ["nfr_reliability"]
+    assert kb.get_neighbors(["nfr_reliability"])["nfr_reliability"][0].target_id == "pattern_retry_logic"
+    assert "nfr_reliability" in [node.id for node in kb.get_all_nfrs()]
 
-    summary = kb.summarize_for_prompt(["NFR-1"], depth=1)
+    summary = kb.summarize_for_prompt(["nfr_reliability"], depth=1)
     assert "NFR: Reliability" in summary
     assert "related_to: Retry Logic" in summary
 
@@ -521,7 +523,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     kinds = {item["kind"] for item in ctx.templates}
     assert "swe_concern_template" in kinds
     assert "swe_concern_data" in kinds
-    assert ctx.kb.ground_data_dir.endswith("knowledge\\linked_data")
+    assert ctx.kb.ground_data_dir.endswith("knowledge\\data")
     assert ctx.kb.linked_data_dir.endswith("knowledge\\linked_data")
 
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]

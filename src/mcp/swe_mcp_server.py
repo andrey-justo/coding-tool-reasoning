@@ -42,7 +42,7 @@ class SweMcpServerContextProvider:
         config = SweMcpConfig.load(repo_root=self._repo_root)
 
         ground_dir = config.taxonomy.ground_data_dir or os.path.join(
-            self._repo_root, "knowledge", "linked_data"
+            self._repo_root, "knowledge", "data"
         )
         if not os.path.isabs(ground_dir):
             ground_dir = os.path.join(self._repo_root, ground_dir)

@@ -11,15 +11,15 @@ class TaxonomyConfig(BaseModel):
     """Configuration for SWE taxonomies used by the MCP server.
 
     Paths are optional; when omitted, the server falls back to the default
-    `knowledge/linked_data` root under the repository, where node and edge
-    CSVs are discovered recursively.
+    `knowledge/data` for node discovery and `knowledge/linked_data` for edge
+    discovery under the repository root.
     """
 
     ground_data_dir: Optional[str] = Field(
         default=None,
         description=(
-            "Optional absolute or repo-relative root for taxonomy node CSVs. "
-            "Defaults to knowledge/linked_data and is scanned recursively."
+            "Optional absolute or repo-relative root for taxonomy nodes. "
+            "Defaults to knowledge/data."
         ),
     )
     linked_data_dir: Optional[str] = Field(
