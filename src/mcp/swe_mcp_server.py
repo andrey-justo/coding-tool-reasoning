@@ -42,7 +42,7 @@ class SweMcpServerContextProvider:
         config = SweMcpConfig.load(repo_root=self._repo_root)
 
         ground_dir = config.taxonomy.ground_data_dir or os.path.join(
-            self._repo_root, "knowledge", "linked_data"
+            self._repo_root, "knowledge", "data"
         )
         if not os.path.isabs(ground_dir):
             ground_dir = os.path.join(self._repo_root, ground_dir)
@@ -56,6 +56,7 @@ class SweMcpServerContextProvider:
         kb = SweKnowledgeBase(
             ground_data_dir=ground_dir,
             linked_data_dir=linked_dir,
+            lazy_load_nodes=config.taxonomy.lazy_load_nodes,
         )
         kb.load()
         templates = self._load_concern_assets(config=config)

@@ -73,9 +73,12 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     config = SweMcpConfig()
 
     class FakeKnowledgeBase:
-        def __init__(self, ground_data_dir, linked_data_dir):
+        def __init__(
+            self, ground_data_dir, linked_data_dir, lazy_load_nodes=False
+        ):
             self.ground_data_dir = ground_data_dir
             self.linked_data_dir = linked_data_dir
+            self.lazy_load_nodes = lazy_load_nodes
 
         def load(self):
             return None
@@ -92,8 +95,10 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     assert "swe_concern_template" in kinds
     assert "swe_concern_data" in kinds
     assert isinstance(ctx.kb, FakeKnowledgeBase)
-    assert ctx.kb.ground_data_dir.endswith("knowledge\\linked_data")
-    assert ctx.kb.linked_data_dir.endswith("knowledge\\linked_data")
+    assert ctx.kb.ground_data_dir.replace("\\", "/").endswith("knowledge/data")
+    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith(
+        "knowledge/linked_data"
+    )
 
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1

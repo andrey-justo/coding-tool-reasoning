@@ -24,6 +24,7 @@ class JudgeCodeChangesStep:
         ground_data_dir: Optional[str] = None,
         linked_data_dir: Optional[str] = None,
     ) -> None:
+        self.config = config or SweMcpConfig()
         if kb is None:
             if not ground_data_dir or not linked_data_dir:
                 raise ValueError(
@@ -33,11 +34,11 @@ class JudgeCodeChangesStep:
             kb = SweKnowledgeBase(
                 ground_data_dir=ground_data_dir,
                 linked_data_dir=linked_data_dir,
+                lazy_load_nodes=self.config.taxonomy.lazy_load_nodes,
             )
         self.kb = kb
         self.kb.load()
         self.llm_client = llm_client or MultiModelLLMClient()
-        self.config = config or SweMcpConfig()
         self.service = ExplanationService(
             kb=self.kb,
             llm_client=self.llm_client,
