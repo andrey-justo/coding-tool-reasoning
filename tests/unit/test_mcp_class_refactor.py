@@ -73,9 +73,12 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     config = SweMcpConfig()
 
     class FakeKnowledgeBase:
-        def __init__(self, ground_data_dir, linked_data_dir):
+        def __init__(
+            self, ground_data_dir, linked_data_dir, lazy_load_nodes=False
+        ):
             self.ground_data_dir = ground_data_dir
             self.linked_data_dir = linked_data_dir
+            self.lazy_load_nodes = lazy_load_nodes
 
         def load(self):
             return None
