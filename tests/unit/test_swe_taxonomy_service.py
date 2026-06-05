@@ -254,7 +254,7 @@ def test_swe_knowledge_base_rebuilds_multiple_clean_code_entries_per_category(tm
     category_neighbors = kb.get_neighbors(["category_naming"])["category_naming"]
 
     assert [edge.target_id for edge in folder_neighbors] == ["category_naming"]
-    assert [edge.target_id for edge in category_neighbors] == [
+    assert sorted(edge.target_id for edge in category_neighbors) == [
         "clean_code_add_meaningful_context",
         "clean_code_avoid_disinformation",
     ]

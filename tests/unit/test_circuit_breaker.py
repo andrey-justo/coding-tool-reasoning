@@ -526,8 +526,10 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     kinds = {item["kind"] for item in ctx.templates}
     assert "swe_concern_template" in kinds
     assert "swe_concern_data" in kinds
-    assert ctx.kb.ground_data_dir.endswith("knowledge\\data")
-    assert ctx.kb.linked_data_dir.endswith("knowledge\\linked_data")
+    assert ctx.kb.ground_data_dir.replace("\\", "/").endswith("knowledge/data")
+    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith(
+        "knowledge/linked_data"
+    )
 
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1
