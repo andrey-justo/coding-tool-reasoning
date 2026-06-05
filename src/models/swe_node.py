@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any, Dict
 
 
 @dataclass
@@ -8,3 +9,5 @@ class SweNode:
     name: str
     nfr_category: str
     description: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    source_path: str = ""

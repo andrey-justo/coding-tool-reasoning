@@ -56,6 +56,7 @@ class SweMcpServerContextProvider:
         kb = SweKnowledgeBase(
             ground_data_dir=ground_dir,
             linked_data_dir=linked_dir,
+            lazy_load_nodes=config.taxonomy.lazy_load_nodes,
         )
         kb.load()
         templates = self._load_concern_assets(config=config)

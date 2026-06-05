@@ -37,6 +37,13 @@ class TaxonomyConfig(BaseModel):
             "building summaries (1 = direct neighbors only)."
         ),
     )
+    lazy_load_nodes: bool = Field(
+        default=False,
+        description=(
+            "When true, discover taxonomy nodes from knowledge/data eagerly but "
+            "defer loading rich data.json payload details until a node is read."
+        ),
+    )
 
 
 class PlanningConfig(BaseModel):

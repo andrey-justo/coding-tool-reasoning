@@ -2,179 +2,23 @@ import csv
 import json
 import logging
 import os
-from typing import Dict, Iterator, List, Optional, TextIO
+from typing import Dict, Iterator, List, Optional, TextIO, Tuple
 
 from src.models.swe_edge import SweEdge
 from src.models.swe_node import SweNode
 
 logger = logging.getLogger(__name__)
 
-_STATIC_NFR_NODES = {
-    "nfr_maintainability": (
-        "NFR",
-        "Maintainability",
-        "Maintainability",
-        "How easily the system can be changed or extended over time.",
-    ),
-    "nfr_readability": (
-        "NFR",
-        "Readability",
-        "Readability",
-        "How easily developers can understand the code intent and structure.",
-    ),
-    "nfr_testability": (
-        "NFR",
-        "Testability",
-        "Testability",
-        "How easily the system can be verified through automated and manual tests.",
-    ),
-    "nfr_reliability": (
-        "NFR",
-        "Reliability",
-        "Reliability",
-        "How consistently the system performs its required functions without failure.",
-    ),
-    "nfr_performance": (
-        "NFR",
-        "Performance",
-        "Performance",
-        "How efficiently the system uses resources such as CPU memory and network.",
-    ),
-    "nfr_security": (
-        "NFR",
-        "Security",
-        "Security",
-        "How well the system protects data and behavior from unauthorized access or misuse.",
-    ),
-    "nfr_scalability": (
-        "NFR",
-        "Scalability",
-        "Scalability",
-        "How well the system handles increasing load by adding resources.",
-    ),
-    "nfr_usability": (
-        "NFR",
-        "Usability",
-        "Usability",
-        "How easy it is for users to learn and effectively use the system.",
-    ),
-}
+_STRUCTURAL_RELATIONS = {"maps_to_folder", "organized_as", "contains"}
 
-_STATIC_CONCEPT_NODES = {
-    "principle_meaningful_names": ("Principle", "Meaningful Names", "Readability"),
-    "principle_low_coupling": ("Principle", "Low Coupling", "Maintainability"),
-    "principle_encapsulation": ("Principle", "Encapsulation", "Maintainability"),
-    "principle_defensive_programming": (
-        "Principle",
-        "Defensive Programming",
-        "Reliability",
-    ),
-    "principle_fail_fast": ("Principle", "Fail Fast", "Reliability"),
-    "principle_immutability": ("Principle", "Immutability", "Reliability"),
-    "principle_logging_monitoring": (
-        "Principle",
-        "Logging and Monitoring",
-        "Reliability",
-    ),
-    "principle_input_validation": (
-        "Principle",
-        "Input Validation",
-        "Security",
-    ),
-    "principle_separation_of_concerns": (
-        "Principle",
-        "Separation of Concerns",
-        "Maintainability",
-    ),
-    "principle_interface_segregation": (
-        "Principle",
-        "Interface Segregation Principle",
-        "Maintainability",
-    ),
-    "principle_clear_error_handling": (
-        "Principle",
-        "Clear Error Handling",
-        "Reliability",
-    ),
-    "practice_code_reviews": ("Practice", "Code Reviews", "Maintainability"),
-    "practice_static_analysis": ("Practice", "Static Analysis", "Maintainability"),
-    "practice_continuous_integration": (
-        "Practice",
-        "Continuous Integration",
-        "Reliability",
-    ),
-    "practice_test_automation": ("Practice", "Test Automation", "Testability"),
-    "practice_refactoring": ("Practice", "Refactoring", "Maintainability"),
-    "practice_coding_standards": ("Practice", "Coding Standards", "Readability"),
-    "practice_pair_programming": ("Practice", "Pair Programming", "Maintainability"),
-    "practice_observability": ("Practice", "Observability", "Reliability"),
-    "practice_continuous_delivery": (
-        "Practice",
-        "Continuous Delivery",
-        "Reliability",
-    ),
-    "legacy_system": ("Context", "Legacy System", "Maintainability"),
-    "legacy_hotspot": ("Context", "Legacy Hotspot", "Maintainability"),
-    "tech_debt_cluster": ("Smell", "Technical Debt Cluster", "Maintainability"),
-    "regression_risk": ("Risk", "Regression Risk", "Reliability"),
-    "legacy_missing_abstraction": (
-        "Smell",
-        "Missing Abstraction",
-        "Maintainability",
-    ),
-    "legacy_god_service": ("Smell", "God Service", "Maintainability"),
-    "legacy_concrete_dependency": (
-        "Smell",
-        "Concrete Dependency",
-        "Maintainability",
-    ),
-    "legacy_change_cascade": ("Smell", "Change Cascade", "Maintainability"),
-    "legacy_anemic_domain": ("Smell", "Anemic Domain Model", "Maintainability"),
-    "sec_input_validation": ("Principle", "Input Validation", "Security"),
-    "sec_least_privilege": ("Principle", "Least Privilege", "Security"),
-    "sec_authentication": ("Principle", "Authentication", "Security"),
-    "sec_authorization": ("Principle", "Authorization", "Security"),
-    "sec_audit_logging": ("Principle", "Security Audit Logging", "Security"),
-    "sec_secrets_management": ("Practice", "Secrets Management", "Security"),
-    "sec_secure_defaults": ("Practice", "Secure Defaults", "Security"),
-    "sec_injection": ("Smell", "Injection Risk", "Security"),
-    "sec_insecure_deserialization": (
-        "Smell",
-        "Insecure Deserialization",
-        "Security",
-    ),
-}
-
-_CLEAN_CODE_NODE_ALIASES = {
-    "single_responsibility_principle": "principle_single_responsibility",
-    "small_functions": "principle_small_functions",
-    "dont_repeat_yourself": "principle_dry",
-    "class_cohesion": "principle_high_cohesion",
-    "open_closed_principle": "principle_open_closed",
-    "dependency_inversion_principle": "principle_dependency_injection",
-}
-
-_CATEGORY_NFRS = {
-    "naming": "Readability",
-    "functions": "Readability",
-    "comments": "Maintainability",
-    "error_handling": "Reliability",
-    "classes": "Maintainability",
-    "concurrency": "Reliability",
-    "unit_tests": "Testability",
-    "formatting": "Readability",
-    "systems": "Maintainability",
-    "general": "Maintainability",
-}
-
-_FOLDER_NODE_METADATA = {
-    "clean_code": ("folder_clean_code", "Folder", "knowledge/data/clean_code", "Maintainability"),
-    "code_smells": ("folder_code_smells", "Folder", "knowledge/data/code_smells", "Maintainability"),
-    "refactoring": ("folder_refactoring", "Folder", "knowledge/data/refactoring", "Maintainability"),
-    "behavioral": ("folder_behavioral", "Folder", "knowledge/data/behavioral", "Maintainability"),
-    "creational": ("folder_creational", "Folder", "knowledge/data/creational", "Maintainability"),
-    "structural": ("folder_structural", "Folder", "knowledge/data/structural", "Maintainability"),
-    "reliability": ("folder_reliability", "Folder", "knowledge/data/reliability", "Reliability"),
+_KNOWLEDGE_DOMAIN_NODE_KINDS = {
+    "clean_code": ("Principle", "clean_code_"),
+    "code_smells": ("Smell", "smell_"),
+    "refactoring": ("Refactoring", "refactoring_"),
+    "reliability": ("Pattern", "pattern_"),
+    "behavioral": ("Pattern", "pattern_"),
+    "creational": ("Pattern", "pattern_"),
+    "structural": ("Pattern", "pattern_"),
 }
 
 
@@ -192,13 +36,21 @@ class SweKnowledgeBase:
         self,
         ground_data_dir: Optional[str] = None,
         linked_data_dir: Optional[str] = None,
+        lazy_load_nodes: bool = False,
     ) -> None:
         # Allow directory paths to be provided explicitly, or read from
         # environment variables as a fallback.
         self._ground_data_dir = ground_data_dir or os.environ.get("SWE_GROUND_DATA_DIR")
         self._linked_data_dir = linked_data_dir or os.environ.get("SWE_LINKED_DATA_DIR")
+        self._lazy_load_nodes = lazy_load_nodes
         self.nodes: Dict[str, SweNode] = {}
         self.edges: List[SweEdge] = []
+        self._node_specs: Dict[str, Tuple[str, str, str]] = {}
+        self._hydrated_node_ids: set[str] = set()
+        self._knowledge_entries: Dict[str, Dict[str, str]] = {}
+        self._folder_nfr_hints: Dict[str, set[str]] = {}
+        self._category_nfr_hints: Dict[str, set[str]] = {}
+        self._edge_keys: set[Tuple[str, str, str]] = set()
 
     @property
     def ground_data_dir(self) -> Optional[str]:
@@ -207,6 +59,10 @@ class SweKnowledgeBase:
     @property
     def linked_data_dir(self) -> Optional[str]:
         return self._linked_data_dir
+
+    @property
+    def lazy_load_nodes(self) -> bool:
+        return self._lazy_load_nodes
 
     @staticmethod
     def _iter_csv_lines(file_obj: TextIO) -> Iterator[str]:
@@ -257,10 +113,18 @@ class SweKnowledgeBase:
         # Rebuild in-memory state on each call so repeated loads are idempotent.
         self.nodes.clear()
         self.edges.clear()
+        self._node_specs.clear()
+        self._hydrated_node_ids.clear()
+        self._knowledge_entries.clear()
+        self._folder_nfr_hints.clear()
+        self._category_nfr_hints.clear()
+        self._edge_keys.clear()
 
         self._load_nodes()
         self._load_edges()
+        self._rebuild_edges_from_ground_truth()
         self._ensure_nodes_for_edges()
+        self._infer_nfr_categories()
         logger.info(
             f"Loaded {len(self.nodes)} nodes and {len(self.edges)} edges "
             f"from {self.ground_data_dir} and {self.linked_data_dir}"
@@ -270,7 +134,6 @@ class SweKnowledgeBase:
         if not os.path.isdir(self.ground_data_dir):
             logger.warning(f"ground_data_dir does not exist: {self.ground_data_dir}")
             return
-        self.nodes.update(self._build_static_nodes())
         self._load_nodes_from_knowledge_data()
         self._load_nodes_from_csv()
 
@@ -304,17 +167,40 @@ class SweKnowledgeBase:
                 continue
 
             domain, slug = parts
-            payload = self._load_json_payload(os.path.join(current_root, "data.json"))
+            data_path = os.path.join(current_root, "data.json")
+            node_id = self._resolve_node_id(domain=domain, slug=slug)
+            if not node_id:
+                continue
+
+            payload = self._load_json_payload(data_path)
             if not payload:
                 continue
 
             self._register_folder_node(domain)
-            if domain == "clean_code":
-                self._register_category_node(str(payload.get("category") or ""))
+            self._node_specs[node_id] = (domain, slug, data_path)
+            self._knowledge_entries[node_id] = {
+                "domain": domain,
+                "slug": slug,
+                "source_path": data_path,
+                "category": str(payload.get("category") or "").strip(),
+            }
 
-            node = self._build_node_from_payload(domain=domain, slug=slug, payload=payload)
+            node_payload: Optional[Dict[str, object]] = None
+            if not self.lazy_load_nodes:
+                node_payload = payload
+
+            node = self._build_node_from_payload(
+                domain=domain,
+                slug=slug,
+                payload=node_payload,
+                source_path=data_path,
+            )
             if node is not None:
                 self.nodes[node.id] = node
+                if node_payload:
+                    self._hydrated_node_ids.add(node.id)
+                    if domain == "clean_code":
+                        self._register_category_node(str(payload.get("category") or ""))
 
     @staticmethod
     def _load_json_payload(path: str) -> Dict[str, object]:
@@ -329,29 +215,18 @@ class SweKnowledgeBase:
         self,
         domain: str,
         slug: str,
-        payload: Dict[str, object],
+        payload: Optional[Dict[str, object]],
+        source_path: str,
     ) -> Optional[SweNode]:
-        name = str(payload.get("name") or self._humanize(slug))
-        description = str(payload.get("problem") or payload.get("source") or "")
-
-        if domain == "clean_code":
-            node_id = _CLEAN_CODE_NODE_ALIASES.get(slug, f"clean_code_{slug}")
-            node_type = "Principle"
-            nfr_category = _CATEGORY_NFRS.get(str(payload.get("category") or ""), "Maintainability")
-        elif domain == "code_smells":
-            node_id = f"smell_{slug}"
-            node_type = "Smell"
-            nfr_category = "Maintainability"
-        elif domain == "refactoring":
-            node_id = f"refactoring_{slug}"
-            node_type = "Refactoring"
-            nfr_category = "Maintainability"
-        elif domain in {"reliability", "behavioral", "creational", "structural"}:
-            node_id = f"pattern_{slug}"
-            node_type = "Pattern"
-            nfr_category = self._infer_pattern_nfr_category(domain=domain, payload=payload)
-        else:
+        node_id = self._resolve_node_id(domain=domain, slug=slug)
+        node_type = self._resolve_node_type(domain=domain)
+        if not node_id or not node_type:
             return None
+
+        payload = payload or {}
+        name = str(payload.get("name") or self._humanize(slug))
+        description = self._build_node_description(payload)
+        nfr_category = str(payload.get("nfr_category") or "").strip()
 
         return SweNode(
             id=node_id,
@@ -359,33 +234,46 @@ class SweKnowledgeBase:
             name=name,
             nfr_category=nfr_category,
             description=description,
+            metadata=dict(payload),
+            source_path=source_path,
         )
 
     @staticmethod
-    def _infer_pattern_nfr_category(domain: str, payload: Dict[str, object]) -> str:
-        if domain == "reliability":
-            problem = str(payload.get("problem") or "").lower()
-            if "security" in problem or "abuse" in problem:
-                return "Security"
-            if "scale" in problem or "shard" in problem or "partition" in problem:
-                return "Scalability"
-            if "performance" in problem or "throughput" in problem:
-                return "Performance"
-            return "Reliability"
-        return "Maintainability"
+    def _build_node_description(payload: Dict[str, object]) -> str:
+        if not payload:
+            return ""
+        problem = str(payload.get("problem") or "").strip()
+        source = str(payload.get("source") or "").strip()
+        if problem and source:
+            return f"{problem} Source: {source}"
+        return problem or source
+
+    @staticmethod
+    def _resolve_node_id(domain: str, slug: str) -> Optional[str]:
+        node_kind = _KNOWLEDGE_DOMAIN_NODE_KINDS.get(domain)
+        if not node_kind:
+            return None
+
+        _, node_prefix = node_kind
+        return f"{node_prefix}{slug}"
+
+    @staticmethod
+    def _resolve_node_type(domain: str) -> Optional[str]:
+        node_kind = _KNOWLEDGE_DOMAIN_NODE_KINDS.get(domain)
+        if not node_kind:
+            return None
+        node_type, _ = node_kind
+        return node_type
 
     def _register_folder_node(self, domain: str) -> None:
-        metadata = _FOLDER_NODE_METADATA.get(domain)
-        if not metadata:
-            return
-        node_id, node_type, name, nfr_category = metadata
+        node_id = f"folder_{domain}"
         self.nodes.setdefault(
             node_id,
             SweNode(
                 id=node_id,
-                type=node_type,
-                name=name,
-                nfr_category=nfr_category,
+                type="Folder",
+                name=f"knowledge/data/{domain}",
+                nfr_category="",
                 description=f"Root folder for {domain.replace('_', ' ')} knowledge entries.",
             ),
         )
@@ -400,31 +288,10 @@ class SweKnowledgeBase:
                 id=node_id,
                 type="Category",
                 name=self._humanize(category),
-                nfr_category=_CATEGORY_NFRS.get(category, "Maintainability"),
+                nfr_category="",
                 description=f"Clean-code guidance grouped under the {category} category.",
             ),
         )
-
-    @staticmethod
-    def _build_static_nodes() -> Dict[str, SweNode]:
-        nodes: Dict[str, SweNode] = {}
-        for node_id, (node_type, name, nfr_category, description) in _STATIC_NFR_NODES.items():
-            nodes[node_id] = SweNode(
-                id=node_id,
-                type=node_type,
-                name=name,
-                nfr_category=nfr_category,
-                description=description,
-            )
-        for node_id, (node_type, name, nfr_category) in _STATIC_CONCEPT_NODES.items():
-            nodes[node_id] = SweNode(
-                id=node_id,
-                type=node_type,
-                name=name,
-                nfr_category=nfr_category,
-                description="",
-            )
-        return nodes
 
     def _ensure_nodes_for_edges(self) -> None:
         for edge in self.edges:
@@ -434,12 +301,23 @@ class SweKnowledgeBase:
 
     def _build_fallback_node(self, node_id: str) -> SweNode:
         node_type = "Concept"
-        nfr_category = "Maintainability"
+        nfr_category = ""
+        name = self._humanize(node_id)
+        description = ""
         if node_id.startswith("category_"):
             node_type = "Category"
-            nfr_category = _CATEGORY_NFRS.get(node_id.replace("category_", ""), "Maintainability")
+            name = self._humanize(node_id.replace("category_", ""))
+            description = f"Taxonomy category discovered for {name.lower()} guidance."
         elif node_id.startswith("folder_"):
             node_type = "Folder"
+            folder_name = node_id.replace("folder_", "")
+            name = f"knowledge/data/{folder_name}"
+            description = f"Root folder for {folder_name.replace('_', ' ')} knowledge entries."
+        elif node_id.startswith("nfr_"):
+            node_type = "NFR"
+            name = self._humanize(node_id.replace("nfr_", ""))
+            nfr_category = name
+            description = f"Non-functional requirement related to {name.lower()}."
         elif node_id.startswith("practice_"):
             node_type = "Practice"
         elif node_id.startswith("principle_"):
@@ -453,14 +331,178 @@ class SweKnowledgeBase:
         return SweNode(
             id=node_id,
             type=node_type,
-            name=self._humanize(node_id),
+            name=name,
             nfr_category=nfr_category,
-            description="",
+            description=description,
         )
+
+    def _infer_nfr_categories(self) -> None:
+        adjacency: Dict[str, List[str]] = {}
+        for edge in self.edges:
+            adjacency.setdefault(edge.source_id, []).append(edge.target_id)
+            adjacency.setdefault(edge.target_id, []).append(edge.source_id)
+
+        known_categories: Dict[str, str] = {}
+        for node_id, node in self.nodes.items():
+            existing_category = (node.nfr_category or "").strip()
+            if existing_category:
+                known_categories[node_id] = existing_category
+                continue
+
+            if node.type.upper() == "NFR":
+                inferred_category = node.name or self._humanize(node_id.replace("nfr_", ""))
+                node.nfr_category = inferred_category
+                known_categories[node_id] = inferred_category
+
+        changed = True
+        while changed:
+            changed = False
+            for node_id, node in self.nodes.items():
+                if (node.nfr_category or "").strip():
+                    continue
+                for neighbor_id in adjacency.get(node_id, []):
+                    inferred_category = known_categories.get(neighbor_id, "").strip()
+                    if not inferred_category:
+                        continue
+                    node.nfr_category = inferred_category
+                    known_categories[node_id] = inferred_category
+                    changed = True
+                    break
+
+    def _ensure_node_details_loaded(self, node_id: str) -> None:
+        if node_id in self._hydrated_node_ids:
+            return
+
+        spec = self._node_specs.get(node_id)
+        if not spec:
+            return
+
+        domain, slug, source_path = spec
+        payload = self._load_json_payload(source_path)
+        if not payload:
+            return
+
+        hydrated_node = self._build_node_from_payload(
+            domain=domain,
+            slug=slug,
+            payload=payload,
+            source_path=source_path,
+        )
+        if hydrated_node is None:
+            return
+
+        existing_node = self.nodes.get(node_id)
+        if existing_node and not hydrated_node.nfr_category:
+            hydrated_node.nfr_category = existing_node.nfr_category
+
+        self.nodes[node_id] = hydrated_node
+        self._hydrated_node_ids.add(node_id)
+
+        if domain == "clean_code":
+            self._register_category_node(str(payload.get("category") or ""))
+
+    def get_node(self, node_id: str, load_details: bool = True) -> Optional[SweNode]:
+        if load_details:
+            self._ensure_node_details_loaded(node_id)
+        return self.nodes.get(node_id)
+
+    @staticmethod
+    def _format_node_summary(node: SweNode) -> str:
+        category = node.nfr_category or "Uncategorized"
+        details: List[str] = []
+        if node.description:
+            details.append(node.description)
+
+        source = str(node.metadata.get("source") or "").strip()
+        if source and source not in details:
+            details.append(f"Source: {source}")
+
+        steps = node.metadata.get("steps")
+        if isinstance(steps, list):
+            clean_steps = [str(step).strip() for step in steps if str(step).strip()]
+            if clean_steps:
+                details.append(f"Key steps: {'; '.join(clean_steps[:2])}")
+
+        label = f"{node.type}: {node.name} ({category})"
+        if not details:
+            return label
+        return f"{label} - {' '.join(details)}"
 
     @staticmethod
     def _humanize(value: str) -> str:
         return " ".join(part.capitalize() for part in value.replace("-", "_").split("_") if part)
+
+    def _add_edge(
+        self,
+        source_id: str,
+        relation: str,
+        target_id: str,
+        description: str,
+    ) -> None:
+        edge_key = (source_id, relation, target_id)
+        if edge_key in self._edge_keys:
+            return
+        self._edge_keys.add(edge_key)
+        self.edges.append(
+            SweEdge(
+                source_id=source_id,
+                relation=relation,
+                target_id=target_id,
+                description=description,
+            )
+        )
+
+    def _is_ground_truth_endpoint(self, node_id: str) -> bool:
+        if node_id in self.nodes or node_id in self._node_specs:
+            return True
+        return node_id.startswith(("nfr_", "folder_", "category_"))
+
+    def _rebuild_edges_from_ground_truth(self) -> None:
+        for folder_id, nfr_ids in self._folder_nfr_hints.items():
+            domain = folder_id.replace("folder_", "", 1)
+            for nfr_id in sorted(nfr_ids):
+                self._add_edge(
+                    nfr_id,
+                    "maps_to_folder",
+                    folder_id,
+                    f"Discovered knowledge/data/{domain} entries contribute to {self._humanize(nfr_id.replace('nfr_', ''))} guidance.",
+                )
+
+        for node_id, entry in self._knowledge_entries.items():
+            domain = entry["domain"]
+            folder_id = f"folder_{domain}"
+            category = entry["category"]
+
+            if domain == "clean_code" and category:
+                category_id = f"category_{category}"
+                self._register_category_node(category)
+                self._add_edge(
+                    folder_id,
+                    "contains",
+                    category_id,
+                    f"The clean-code folder contains {category.replace('_', ' ')} guidance discovered from knowledge/data.",
+                )
+                for nfr_id in sorted(self._category_nfr_hints.get(category_id, set())):
+                    self._add_edge(
+                        nfr_id,
+                        "organized_as",
+                        category_id,
+                        f"{self._humanize(nfr_id.replace('nfr_', ''))} guidance is organized under the {category.replace('_', ' ')} category discovered from knowledge/data.",
+                    )
+                self._add_edge(
+                    category_id,
+                    "contains",
+                    node_id,
+                    f"The {category.replace('_', ' ')} category contains the {entry['slug'].replace('_', ' ')} entry from knowledge/data.",
+                )
+                continue
+
+            self._add_edge(
+                folder_id,
+                "contains",
+                node_id,
+                f"The {domain.replace('_', ' ')} folder contains the {entry['slug'].replace('_', ' ')} entry from knowledge/data.",
+            )
 
     def _load_edges(self) -> None:
         expected_cols = {"SourceId", "Relation", "TargetId", "Description"}
@@ -476,16 +518,23 @@ class SweKnowledgeBase:
                 for row in reader:
                     source = self._clean_cell(row.get("SourceId"))
                     target = self._clean_cell(row.get("TargetId"))
+                    relation = self._clean_cell(row.get("Relation"))
+                    description = self._clean_cell(row.get("Description"))
                     if not source or not target:
                         continue
-                    self.edges.append(
-                        SweEdge(
-                            source_id=source,
-                            relation=self._clean_cell(row.get("Relation")),
-                            target_id=target,
-                            description=self._clean_cell(row.get("Description")),
-                        )
-                    )
+                    if relation == "maps_to_folder" and target.startswith("folder_"):
+                        self._folder_nfr_hints.setdefault(target, set()).add(source)
+                    elif relation == "organized_as" and target.startswith("category_"):
+                        self._category_nfr_hints.setdefault(target, set()).add(source)
+
+                    if relation in _STRUCTURAL_RELATIONS:
+                        continue
+                    if not self._is_ground_truth_endpoint(source):
+                        continue
+                    if not self._is_ground_truth_endpoint(target):
+                        continue
+
+                    self._add_edge(source, relation, target, description)
 
     def find_nfr_ids(self, nfr_names_or_ids: List[str]) -> List[str]:
         """Resolve a list of NFR names or IDs to node IDs."""
@@ -529,12 +578,10 @@ class SweKnowledgeBase:
             if node_id in visited or current_depth > depth:
                 return
             visited.add(node_id)
-            node = self.nodes.get(node_id)
+            node = self.get_node(node_id)
             if not node:
                 return
-            label = (
-                f"{node.type}: {node.name} ({node.nfr_category}) - {node.description}"
-            )
+            label = self._format_node_summary(node)
             lines.append(f"{indent}{label}")
             if current_depth < depth:
                 for e in self.edges:
@@ -545,7 +592,7 @@ class SweKnowledgeBase:
             else:
                 for e in self.edges:
                     if e.source_id == node_id:
-                        target = self.nodes.get(e.target_id)
+                        target = self.get_node(e.target_id)
                         target_label = target.name if target else e.target_id
                         lines.append(
                             f"{indent}  - {e.relation}: {target_label} - {e.description}"
