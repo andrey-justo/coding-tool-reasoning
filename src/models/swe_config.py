@@ -154,6 +154,14 @@ class ConcernAssetsConfig(BaseModel):
             "Defaults to knowledge/template."
         ),
     )
+    enable_related_subject_discovery: bool = Field(
+        default=False,
+        description="When True, automatically discover and attach related subjects.",
+    )
+    max_related_subjects: int = Field(
+        default=3,
+        description="Maximum number of related subjects to attach when discovery is enabled.",
+    )
 
 
 class SweMcpConfig(BaseModel):
