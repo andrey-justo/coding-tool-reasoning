@@ -24,3 +24,17 @@ class SweContext(BaseModel):
             "augment planning and explanations when Security is in focus."
         ),
     )
+    related_subjects: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Purpose-matched knowledge subjects resolved from the planned change "
+            "and used to attach multiple relevant knowledge entries."
+        ),
+    )
+    attached_knowledge: List[dict] = Field(
+        default_factory=list,
+        description=(
+            "Knowledge entries selected from concern data (knowledge/data) for "
+            "the explanation workflow."
+        ),
+    )

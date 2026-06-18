@@ -105,6 +105,71 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     assert '"DESIGN_PATTERN_NAME": "group_a"' in data_items[0]["content"]
 
 
+def test_build_swe_code_context_resolves_related_subjects_and_knowledge(tmp_path):
+    class FakeKnowledgeBase:
+        def find_nfr_ids(self, nfr_focus):
+            return ["NFR-1"] if nfr_focus else []
+
+        def summarize_for_prompt(self, nfr_ids):
+            return "NFR summary"
+
+    config = SweMcpConfig()
+    config.concern_assets.max_related_subjects = 3
+
+    fake_ctx = SimpleNamespace(
+        repo_root=str(tmp_path),
+        kb=FakeKnowledgeBase(),
+        config=config,
+        templates=[
+            {
+                "kind": "swe_concern_data",
+                "concern_group": "circuit_breaker",
+                "content": '{"problem": "fallback on downstream failures", "related_subjects": ["throttling"]}',
+            },
+            {
+                "kind": "swe_concern_data",
+                "concern_group": "throttling",
+                "content": '{"problem": "slow requests when overloaded"}',
+            },
+            {
+                "kind": "swe_concern_data",
+                "concern_group": "sharding_partitioning",
+                "content": '{"problem": "split data across partitions"}',
+            },
+        ],
+    )
+
+    class FakePlanner:
+        def __init__(self, kb, config):
+            self.kb = kb
+            self.config = config
+
+        def plan(
+            self, problem_description, target_language, nfr_focus, user_prompt_data
+        ):
+            return SimpleNamespace(
+                inferred_target_language=target_language or "python",
+                nfr_focus=nfr_focus or ["Reliability"],
+                high_level_steps=["Add fallback path"],
+                resolved_nfr_ids=["NFR-1"],
+            )
+
+    registry = SweMcpToolRegistry(lambda: fake_ctx, planner_cls=FakePlanner)
+    plan = registry.plan_swe_code_change(
+        problem_description="Add fallback and circuit breaker for downstream failures",
+        nfr_focus=["Reliability"],
+    )
+
+    context = registry.build_swe_code_context(
+        plan=plan,
+        include_templates=True,
+    )
+
+    assert "circuit_breaker" in context.related_subjects
+    assert "throttling" in context.related_subjects
+    assert len(context.attached_knowledge) >= 2
+
+
 def test_tools_registrar_registers_expected_tool_names(tmp_path):
     class FakeMCP:
         def __init__(self):

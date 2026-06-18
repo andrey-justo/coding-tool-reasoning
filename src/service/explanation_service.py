@@ -1,4 +1,5 @@
 import json
+import os
 from typing import List, Optional
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
@@ -110,6 +111,36 @@ class ExplanationService:
             f"Judging strictness (0-1): {strictness:.2f} ({strictness_text}).\n\n"
         )
 
+        high_level_steps = "\n".join(f"- {step}" for step in plan.high_level_steps)
+        security_context_section = ""
+        if swe_context.security_context:
+            security_context_section = (
+                "\n=== Additional Security Context (client-provided) ===\n"
+                f"{swe_context.security_context}\n"
+            )
+
+        related_knowledge_section = self._build_related_knowledge_section(swe_context)
+
+        template_values = {
+            "[[HEADER]]": header,
+            "[[PROBLEM_DESCRIPTION]]": plan.problem_description,
+            "[[NFR_FOCUS_LABEL]]": nfr_focus_label,
+            "[[HIGH_LEVEL_STEPS]]": high_level_steps,
+            "[[TAXONOMY_SUMMARY]]": taxonomy_summary,
+            "[[SWE_SUMMARY]]": swe_context.swe_summary,
+            "[[SECURITY_CONTEXT_SECTION]]": security_context_section,
+            "[[RELATED_KNOWLEDGE_SECTION]]": related_knowledge_section,
+            "[[ORIGINAL_CODE]]": original_code,
+            "[[MODIFIED_CODE]]": modified_code,
+        }
+
+        external_template = self._load_prompt_template()
+        if external_template:
+            rendered = external_template
+            for key, value in template_values.items():
+                rendered = rendered.replace(key, value)
+            return rendered
+
         sections = [
             f"=== Problem Description ===\n{plan.problem_description}\n",
             f"\n=== NFR Focus ===\n{nfr_focus_label}\n",
@@ -130,6 +161,9 @@ class ExplanationService:
                 "\n=== Additional Security Context (client-provided) ===\n"
                 + f"{swe_context.security_context}\n"
             )
+
+        if related_knowledge_section:
+            sections.append(related_knowledge_section)
 
         sections.append(f"\n=== Original Code ===\n{original_code}\n")
         sections.append(f"\n=== Modified Code ===\n{modified_code}\n")
@@ -161,6 +195,57 @@ class ExplanationService:
         )
 
         return header + "".join(sections) + instructions
+
+    def _build_related_knowledge_section(self, swe_context: SweContext) -> str:
+        if not swe_context.attached_knowledge:
+            return ""
+
+        lines: List[str] = [
+            "\n=== Related Knowledge From knowledge/data ===",
+        ]
+        if swe_context.related_subjects:
+            lines.append(
+                "Subjects inferred from change purpose: "
+                + ", ".join(swe_context.related_subjects)
+            )
+
+        for item in swe_context.attached_knowledge:
+            subject = str(item.get("concern_group") or item.get("name") or "subject")
+            content = str(item.get("content") or "")
+            lines.append(f"\n--- Subject: {subject} ---")
+            lines.append(content)
+
+        return "\n".join(lines) + "\n"
+
+    def _load_prompt_template(self) -> Optional[str]:
+        configured_path = self.config.judging.prompt_template_path
+        if configured_path:
+            candidate = configured_path
+            if not os.path.isabs(candidate):
+                candidate = os.path.abspath(
+                    os.path.join(self._repo_root(), configured_path)
+                )
+            try:
+                with open(candidate, "r", encoding="utf-8") as f:
+                    return f.read()
+            except Exception:
+                return None
+
+        default_path = os.path.join(
+            self._repo_root(),
+            "templates",
+            "utils",
+            "explain_code_change_prompt.md",
+        )
+        try:
+            with open(default_path, "r", encoding="utf-8") as f:
+                return f.read()
+        except Exception:
+            return None
+
+    @staticmethod
+    def _repo_root() -> str:
+        return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 
     def _from_llm_json(self, plan_json: dict, data: dict) -> SweCodeChangeExplanation:
         overall_verdict = str(data.get("overall_verdict", "manual-review-required"))
