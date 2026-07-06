@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
@@ -43,8 +44,6 @@ class IntentAdherenceMetricsStrategy:
 
     @staticmethod
     def _tokenize(text: str) -> set[str]:
-        import re
-
         tokens = {
             token
             for token in re.findall(r"[a-zA-Z_][a-zA-Z0-9_]+", text.lower())
