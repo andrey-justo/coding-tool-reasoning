@@ -14,3 +14,5 @@ class IntentPlanningResult:
     resolved_nfr_ids: List[str]
     high_level_steps: List[str]
     inferred_target_language: Optional[str] = None
+    llm_prompt: Optional[str] = None
+    llm_raw_response: Optional[str] = None

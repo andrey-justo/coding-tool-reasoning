@@ -1,0 +1,57 @@
+from __future__ import annotations
+
+_CODE_EXTENSIONS = {
+    ".py",
+    ".cs",
+    ".java",
+    ".js",
+    ".jsx",
+    ".ts",
+    ".tsx",
+    ".go",
+    ".rs",
+    ".php",
+    ".rb",
+    ".kt",
+    ".swift",
+    ".c",
+    ".cc",
+    ".cpp",
+    ".h",
+    ".hpp",
+}
+
+_EXCLUDED_DIRS = {
+    ".git",
+    ".venv",
+    ".venv-1",
+    "venv",
+    "node_modules",
+    "dist",
+    "build",
+    "coverage",
+    "models",
+    "data",
+    "docs",
+}
+
+_STOPWORDS = {
+    "issue",
+    "with",
+    "that",
+    "this",
+    "from",
+    "into",
+    "when",
+    "where",
+    "paths",
+    "path",
+    "code",
+    "change",
+    "changes",
+    "file",
+    "files",
+    "legacy",
+    "project",
+    "repository",
+}

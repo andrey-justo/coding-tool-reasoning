@@ -156,6 +156,46 @@ class ConcernAssetsConfig(BaseModel):
     )
 
 
+class ToolExecutionConfig(BaseModel):
+    """Runtime limits for MCP tool execution behavior."""
+
+    max_summary_chars: int = Field(
+        default=6000,
+        ge=500,
+        description="Maximum characters included from SWE summary in generation prompts.",
+    )
+    max_security_context_chars: int = Field(
+        default=2000,
+        ge=200,
+        description="Maximum characters included from security context in generation prompts.",
+    )
+    max_single_shot_code_chars: int = Field(
+        default=12000,
+        ge=2000,
+        description=(
+            "If original code exceeds this size, generation switches from single-shot "
+            "to chunked mode."
+        ),
+    )
+    chunk_lines: int = Field(
+        default=160,
+        ge=20,
+        description="Chunk size in lines when chunked generation mode is used.",
+    )
+
+
+class LocalizerConfig(BaseModel):
+    """Configuration for repository issue localizer behavior."""
+
+    enable_semantic_nlp: bool = Field(
+        default=False,
+        description=(
+            "Enable local semantic NLP strategy (TF-IDF cosine). Keep disabled "
+            "when minimizing model-related overhead is preferred."
+        ),
+    )
+
+
 class SweMcpConfig(BaseModel):
     """Top‑level configuration object for the SWE MCP server and tools."""
 
@@ -164,6 +204,8 @@ class SweMcpConfig(BaseModel):
     judging: JudgingConfig = Field(default_factory=JudgingConfig)
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
     concern_assets: ConcernAssetsConfig = Field(default_factory=ConcernAssetsConfig)
+    execution: ToolExecutionConfig = Field(default_factory=ToolExecutionConfig)
+    localizer: LocalizerConfig = Field(default_factory=LocalizerConfig)
 
     @classmethod
     def load(cls, repo_root: str) -> "SweMcpConfig":

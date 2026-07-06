@@ -25,7 +25,7 @@ class SweMcpServerContextProvider:
 
     def __init__(self, repo_root: str | None = None) -> None:
         self._repo_root = repo_root or os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "..")
+            os.path.join(os.path.dirname(__file__), "..", "..")
         )
         self._server_context: SweServerContext | None = None
 

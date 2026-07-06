@@ -41,11 +41,11 @@ def test_clients_loaded_for_localai_providers():
     assert "m2" in client.clients
 
 
-def test_azure_provider_raises_value_error():
+def test_azure_provider_is_loaded():
     with tempfile.TemporaryDirectory() as tmp:
         path = _write_yaml(tmp, _YAML_AZURE)
-        with pytest.raises(ValueError, match="AzureOpenAI"):
-            _make_client(path)
+        client = _make_client(path)
+    assert "az" in client.clients
 
 
 def test_get_client_returns_correct_client():

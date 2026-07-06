@@ -25,7 +25,7 @@ import argparse
 import json
 import statistics
 from dataclasses import dataclass, field
-from typing import List, Optional, Sequence
+from typing import Any, List, Optional, Sequence
 
 # ---------------------------------------------------------------------------
 # Data classes
@@ -42,6 +42,7 @@ class TrialResult:
     bertscore_f1: Optional[float]
     plan_step_count: int
     nfr_coverage: float  # fraction of expected NFRs covered in nfr_impacts
+    metrics: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -110,6 +111,7 @@ class ReproducibilityReport:
                         "bertscore_f1": t.bertscore_f1,
                         "plan_step_count": t.plan_step_count,
                         "nfr_coverage": t.nfr_coverage,
+                        "metrics": t.metrics,
                     }
                     for t in self.supervised
                 ],
@@ -127,6 +129,7 @@ class ReproducibilityReport:
                         "bertscore_f1": t.bertscore_f1,
                         "plan_step_count": t.plan_step_count,
                         "nfr_coverage": t.nfr_coverage,
+                        "metrics": t.metrics,
                     }
                     for t in self.baseline
                 ],

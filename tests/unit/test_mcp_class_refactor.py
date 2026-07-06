@@ -4,6 +4,7 @@ from src.mcp.swe_mcp_server import SweMcpServerContextProvider
 from src.mcp.tools.swe_mcp_tools import SweMcpToolRegistry, SweMcpToolsRegistrar
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
+from src.models.issue_candidate_ranking import IssueCandidate, PullRequestContext
 
 
 def test_tool_registry_direct_method_usage(tmp_path):
@@ -54,6 +55,71 @@ def test_tool_registry_direct_method_usage(tmp_path):
 
     assert isinstance(context, SweContext)
     assert context.swe_summary == "NFR summary"
+
+
+def test_tool_registry_ranks_issue_candidates_from_current_pr(tmp_path):
+    class FakeKnowledgeBase:
+        def find_nfr_ids(self, nfr_focus):
+            return ["NFR-1"] if nfr_focus else []
+
+        def summarize_for_prompt(self, nfr_ids):
+            return "NFR summary"
+
+    fake_ctx = SimpleNamespace(
+        repo_root=str(tmp_path),
+        kb=FakeKnowledgeBase(),
+        templates=[],
+        config=SweMcpConfig(),
+    )
+
+    class FakePlanner:
+        def __init__(self, kb, config):
+            self.kb = kb
+            self.config = config
+
+        def plan(
+            self, problem_description, target_language, nfr_focus, user_prompt_data
+        ):
+            return SimpleNamespace(
+                inferred_target_language=target_language or "python",
+                nfr_focus=nfr_focus or ["Reliability", "Maintainability"],
+                high_level_steps=["Step A"],
+                resolved_nfr_ids=["NFR-1"],
+            )
+
+    registry = SweMcpToolRegistry(lambda: fake_ctx, planner_cls=FakePlanner)
+
+    result = registry.find_best_issue_candidates_for_current_pr(
+        current_pr=PullRequestContext(
+            title="Improve reliability of auth retry flow",
+            description="Refactor retry backoff and cleanup duplicated logic.",
+            changed_files=["src/service/auth_service.py"],
+        ),
+        issue_candidates=[
+            IssueCandidate(
+                issue_id="101",
+                title="Auth retry flow fails under transient errors",
+                body="Reliability issue in auth service retries.",
+                labels=["reliability"],
+                related_files=["src/service/auth_service.py"],
+            ),
+            IssueCandidate(
+                issue_id="102",
+                title="Update landing page styles",
+                body="Pure UI tweak request.",
+                labels=["frontend"],
+                related_files=["src/ui/home.css"],
+            ),
+        ],
+        top_k=2,
+        min_score=0.0,
+    )
+
+    assert result.inferred_nfr_focus == ["Reliability", "Maintainability"]
+    assert result.total_candidates == 2
+    assert result.returned_candidates == 2
+    assert result.ranked_candidates[0].issue_id == "101"
+    assert result.ranked_candidates[0].score > result.ranked_candidates[1].score
 
 
 def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
@@ -141,3 +207,4 @@ def test_tools_registrar_registers_expected_tool_names(tmp_path):
     assert "plan_swe_code_change" in mcp.tools
     assert "build_swe_code_context" in mcp.tools
     assert "judge_swe_code_change" in mcp.tools
+    assert "find_best_issue_candidates_for_current_pr" in mcp.tools
