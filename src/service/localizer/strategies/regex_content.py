@@ -25,7 +25,10 @@ class RegexContentMatchingStrategy:
             return {}
 
         # Match word boundaries for extracted symbols.
-        pattern = re.compile(r"\b(" + "|".join(re.escape(s) for s in symbols[:20]) + r")\b", re.IGNORECASE)
+        pattern = re.compile(
+            r"\b(" + "|".join(re.escape(s) for s in symbols[:20]) + r")\b",
+            re.IGNORECASE,
+        )
         results: dict[str, LocalizationHit] = {}
 
         for rel_path in candidate_paths:

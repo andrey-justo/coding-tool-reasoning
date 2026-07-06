@@ -39,7 +39,9 @@ def f(x, y):
             return x + y
     return 0
 """
-    assert evaluator.cognitive_complexity(nested_code) > evaluator.cognitive_complexity(flat_code)
+    assert evaluator.cognitive_complexity(nested_code) > evaluator.cognitive_complexity(
+        flat_code
+    )
 
 
 def test_requirements_coverage_reports_matches():
@@ -100,9 +102,13 @@ def add(a, b):
 
 def test_llm_readability_evaluation_parses_json_payload():
     evaluator = ExperimentMetricsEvaluator()
-    llm = _FakeLLMClient('{"score": 0.82, "rationale": "Clear naming and simple flow."}')
+    llm = _FakeLLMClient(
+        '{"score": 0.82, "rationale": "Clear naming and simple flow."}'
+    )
 
-    evaluation = evaluator.llm_readability_evaluation("def f():\n    return 1", llm_client=llm)
+    evaluation = evaluator.llm_readability_evaluation(
+        "def f():\n    return 1", llm_client=llm
+    )
 
     assert evaluation.score == 0.82
     assert "Clear naming" in evaluation.rationale
@@ -136,10 +142,14 @@ def test_solid_violation_delta_handles_standard_and_zero_baseline_cases():
     assert improved.delta == 0.4
     assert improved.absolute_delta == -4
 
-    clean_kept_clean = evaluator.solid_violation_delta(violations_before=0, violations_after=0)
+    clean_kept_clean = evaluator.solid_violation_delta(
+        violations_before=0, violations_after=0
+    )
     assert clean_kept_clean.delta == 0.0
     assert clean_kept_clean.absolute_delta == 0
 
-    clean_regressed = evaluator.solid_violation_delta(violations_before=0, violations_after=3)
+    clean_regressed = evaluator.solid_violation_delta(
+        violations_before=0, violations_after=3
+    )
     assert clean_regressed.delta == -1.0
     assert clean_regressed.absolute_delta == 3

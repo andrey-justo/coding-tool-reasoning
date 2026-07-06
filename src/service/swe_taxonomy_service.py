@@ -312,7 +312,9 @@ class SweKnowledgeBase:
             node_type = "Folder"
             folder_name = node_id.replace("folder_", "")
             name = f"knowledge/data/{folder_name}"
-            description = f"Root folder for {folder_name.replace('_', ' ')} knowledge entries."
+            description = (
+                f"Root folder for {folder_name.replace('_', ' ')} knowledge entries."
+            )
         elif node_id.startswith("nfr_"):
             node_type = "NFR"
             name = self._humanize(node_id.replace("nfr_", ""))
@@ -350,7 +352,9 @@ class SweKnowledgeBase:
                 continue
 
             if node.type.upper() == "NFR":
-                inferred_category = node.name or self._humanize(node_id.replace("nfr_", ""))
+                inferred_category = node.name or self._humanize(
+                    node_id.replace("nfr_", "")
+                )
                 node.nfr_category = inferred_category
                 known_categories[node_id] = inferred_category
 
@@ -430,7 +434,9 @@ class SweKnowledgeBase:
 
     @staticmethod
     def _humanize(value: str) -> str:
-        return " ".join(part.capitalize() for part in value.replace("-", "_").split("_") if part)
+        return " ".join(
+            part.capitalize() for part in value.replace("-", "_").split("_") if part
+        )
 
     def _add_edge(
         self,

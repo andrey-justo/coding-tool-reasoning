@@ -43,9 +43,10 @@ def test_issue_candidate_ranking_service_orders_more_relevant_issue_first():
         min_score=0.0,
     )
 
-    assert "PR title: Improve reliability of auth retry flow" in captured[
-        "problem_description"
-    ]
+    assert (
+        "PR title: Improve reliability of auth retry flow"
+        in captured["problem_description"]
+    )
     assert captured["user_prompt_data"] == "Issue candidate ranking context"
 
     assert result.total_candidates == 2

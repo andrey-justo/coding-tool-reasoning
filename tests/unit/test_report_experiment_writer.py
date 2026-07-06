@@ -27,13 +27,30 @@ def _base_report() -> dict:
             },
         },
         "run_config": {
-            "github": {"api_base": "https://api.github.com", "authenticated": True, "detected_pr": 10},
-            "llm": {"model": "m", "endpoint": "e", "temperature": 0.1, "seed": 42, "notes": "n"},
+            "github": {
+                "api_base": "https://api.github.com",
+                "authenticated": True,
+                "detected_pr": 10,
+            },
+            "llm": {
+                "model": "m",
+                "endpoint": "e",
+                "temperature": 0.1,
+                "seed": 42,
+                "notes": "n",
+            },
             "mcp_server": {"command": "python", "args": ["-m", "src.main"]},
             "metrics": {"semantic_similarity_model": "codebert"},
         },
-        "mcp": {"tool_names": ["a", "b"], "judgement": {"overall_verdict": "acceptable"}},
-        "testability_gate": {"build_status": "pass", "test_status": "pass", "reason": "ok"},
+        "mcp": {
+            "tool_names": ["a", "b"],
+            "judgement": {"overall_verdict": "acceptable"},
+        },
+        "testability_gate": {
+            "build_status": "pass",
+            "test_status": "pass",
+            "reason": "ok",
+        },
         "metrics": {
             "design_quality": {
                 "solid_violation_delta": {
@@ -49,7 +66,10 @@ def _base_report() -> dict:
                     "semantic_similarity_codebert": {"f1": 0.7},
                     "test_pass_rate": {"rate": 0.8},
                 },
-                "readability": {"buse_weimer_proxy": 0.4, "llm_evaluation": {"score": 0.6}},
+                "readability": {
+                    "buse_weimer_proxy": 0.4,
+                    "llm_evaluation": {"score": 0.6},
+                },
             },
             "modified": {
                 "complexity": {"cognitive_complexity": 3, "cyclomatic_complexity": 2},
@@ -58,7 +78,10 @@ def _base_report() -> dict:
                     "semantic_similarity_codebert": {"f1": 0.8},
                     "test_pass_rate": {"rate": 0.95},
                 },
-                "readability": {"buse_weimer_proxy": 0.7, "llm_evaluation": {"score": 0.75}},
+                "readability": {
+                    "buse_weimer_proxy": 0.7,
+                    "llm_evaluation": {"score": 0.75},
+                },
             },
             "delta": {
                 "cognitive_complexity": -1,
@@ -108,14 +131,23 @@ def test_write_reports_generate_expected_files(tmp_path: Path) -> None:
     assert "src/a.py" in md
 
 
-def test_write_markdown_report_handles_missing_target_files_branch(tmp_path: Path) -> None:
+def test_write_markdown_report_handles_missing_target_files_branch(
+    tmp_path: Path,
+) -> None:
     report = _base_report()
     report["subject"].pop("target_files", None)
     report["subject"]["target_file"] = "single.py"
 
     rows = metrics_rows(report)
     md_path = tmp_path / "summary.md"
-    write_markdown_report(md_path, report, rows, tmp_path / "r.json", tmp_path / "r.csv", tmp_path / "r.log")
+    write_markdown_report(
+        md_path,
+        report,
+        rows,
+        tmp_path / "r.json",
+        tmp_path / "r.csv",
+        tmp_path / "r.log",
+    )
 
     content = md_path.read_text(encoding="utf-8")
     assert "Arquivo avaliado: single.py" in content

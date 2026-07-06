@@ -1,5 +1,9 @@
 from src.service.localizer.discovery import discover_repository_code_files
-from src.service.localizer.models import LocalizerResult, LocalizationHit, LocalizationStrategy
+from src.service.localizer.models import (
+    LocalizationHit,
+    LocalizationStrategy,
+    LocalizerResult,
+)
 from src.service.localizer.orchestrator import RepositoryIssueLocalizer
 from src.service.localizer.strategies import (
     AstMatchingStrategy,

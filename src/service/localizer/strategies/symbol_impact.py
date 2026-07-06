@@ -119,10 +119,18 @@ class SymbolImpactStrategy:
 
         results: dict[str, LocalizationHit] = {}
         for rel_path in defs_by_file.keys():
-            definition_overlap = defs_by_file.get(rel_path, set()).intersection(target_symbols)
-            direct_overlap = refs_by_file.get(rel_path, set()).intersection(target_symbols)
-            impact_overlap = refs_by_file.get(rel_path, set()).intersection(seed_definitions)
-            import_overlap = imports_by_file.get(rel_path, set()).intersection(target_symbols)
+            definition_overlap = defs_by_file.get(rel_path, set()).intersection(
+                target_symbols
+            )
+            direct_overlap = refs_by_file.get(rel_path, set()).intersection(
+                target_symbols
+            )
+            impact_overlap = refs_by_file.get(rel_path, set()).intersection(
+                seed_definitions
+            )
+            import_overlap = imports_by_file.get(rel_path, set()).intersection(
+                target_symbols
+            )
 
             score = 0.0
             reasons: list[str] = []

@@ -46,7 +46,9 @@ def _build_swe_context() -> SweContext:
     )
 
 
-def _build_registry(llm_cls, *, max_single_shot_code_chars: int = 12000, chunk_lines: int = 3):
+def _build_registry(
+    llm_cls, *, max_single_shot_code_chars: int = 12000, chunk_lines: int = 3
+):
     execution_cfg = SimpleNamespace(
         max_summary_chars=200,
         max_security_context_chars=120,
@@ -99,7 +101,9 @@ def test_apply_plan_tool_returns_fallback_on_llm_error() -> None:
 
 
 def test_apply_plan_tool_chunked_mode_uses_multiple_chunks() -> None:
-    registry = _build_registry(_FakeLlmChunked, max_single_shot_code_chars=5, chunk_lines=2)
+    registry = _build_registry(
+        _FakeLlmChunked, max_single_shot_code_chars=5, chunk_lines=2
+    )
     tool = ApplyPlanSweCodeChangeTool(registry)
 
     original = "\n".join(["a", "b", "c", "d", "e"])

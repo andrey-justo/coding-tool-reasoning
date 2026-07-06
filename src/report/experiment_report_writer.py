@@ -36,7 +36,9 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     original = report["metrics"]["original"]
     modified = report["metrics"]["modified"]
     delta = report["metrics"]["delta"]
-    solid = ((report.get("metrics") or {}).get("design_quality") or {}).get("solid_violation_delta")
+    solid = ((report.get("metrics") or {}).get("design_quality") or {}).get(
+        "solid_violation_delta"
+    )
 
     req_original = _to_float(
         original["intent_adherence"]["requirements_coverage"].get("coverage")
@@ -59,69 +61,81 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
             }
         )
 
-    rows.extend([
-        {
-            "dimension": "Complexidade",
-            "metric": "Cognitive Complexity",
-            "original": original["complexity"]["cognitive_complexity"],
-            "modified": modified["complexity"]["cognitive_complexity"],
-            "delta": delta["cognitive_complexity"],
-            "unit": "score",
-        },
-        {
-            "dimension": "Complexidade",
-            "metric": "Complexidade Ciclomatica",
-            "original": original["complexity"]["cyclomatic_complexity"],
-            "modified": modified["complexity"]["cyclomatic_complexity"],
-            "delta": delta["cyclomatic_complexity"],
-            "unit": "score",
-        },
-        {
-            "dimension": "Aderencia a intencao",
-            "metric": "Similaridade semantica (CodeBERT)",
-            "original": _semantic_similarity_score(
-                original["intent_adherence"].get("semantic_similarity_codebert")
-            ),
-            "modified": _semantic_similarity_score(
-                modified["intent_adherence"].get("semantic_similarity_codebert")
-            ),
-            "delta": None,
-            "unit": "n/a",
-        },
-        {
-            "dimension": "Aderencia a intencao",
-            "metric": "Cobertura dos requisitos",
-            "original": req_original,
-            "modified": req_modified,
-            "delta": req_modified - req_original,
-            "unit": "ratio",
-        },
-        {
-            "dimension": "Aderencia a intencao",
-            "metric": "Taxa de testes aprovados",
-            "original": _to_float(original["intent_adherence"]["test_pass_rate"].get("rate")),
-            "modified": _to_float(modified["intent_adherence"]["test_pass_rate"].get("rate")),
-            "delta": _to_float(modified["intent_adherence"]["test_pass_rate"].get("rate"))
-            - _to_float(original["intent_adherence"]["test_pass_rate"].get("rate")),
-            "unit": "ratio",
-        },
-        {
-            "dimension": "Legibilidade",
-            "metric": "Buse-Weimer (proxy)",
-            "original": original["readability"].get("buse_weimer_proxy"),
-            "modified": modified["readability"].get("buse_weimer_proxy"),
-            "delta": delta["buse_weimer_proxy"],
-            "unit": "ratio",
-        },
-        {
-            "dimension": "Legibilidade",
-            "metric": "Avaliacao por LLM",
-            "original": (original["readability"].get("llm_evaluation") or {}).get("score"),
-            "modified": (modified["readability"].get("llm_evaluation") or {}).get("score"),
-            "delta": None,
-            "unit": "ratio",
-        },
-    ])
+    rows.extend(
+        [
+            {
+                "dimension": "Complexidade",
+                "metric": "Cognitive Complexity",
+                "original": original["complexity"]["cognitive_complexity"],
+                "modified": modified["complexity"]["cognitive_complexity"],
+                "delta": delta["cognitive_complexity"],
+                "unit": "score",
+            },
+            {
+                "dimension": "Complexidade",
+                "metric": "Complexidade Ciclomatica",
+                "original": original["complexity"]["cyclomatic_complexity"],
+                "modified": modified["complexity"]["cyclomatic_complexity"],
+                "delta": delta["cyclomatic_complexity"],
+                "unit": "score",
+            },
+            {
+                "dimension": "Aderencia a intencao",
+                "metric": "Similaridade semantica (CodeBERT)",
+                "original": _semantic_similarity_score(
+                    original["intent_adherence"].get("semantic_similarity_codebert")
+                ),
+                "modified": _semantic_similarity_score(
+                    modified["intent_adherence"].get("semantic_similarity_codebert")
+                ),
+                "delta": None,
+                "unit": "n/a",
+            },
+            {
+                "dimension": "Aderencia a intencao",
+                "metric": "Cobertura dos requisitos",
+                "original": req_original,
+                "modified": req_modified,
+                "delta": req_modified - req_original,
+                "unit": "ratio",
+            },
+            {
+                "dimension": "Aderencia a intencao",
+                "metric": "Taxa de testes aprovados",
+                "original": _to_float(
+                    original["intent_adherence"]["test_pass_rate"].get("rate")
+                ),
+                "modified": _to_float(
+                    modified["intent_adherence"]["test_pass_rate"].get("rate")
+                ),
+                "delta": _to_float(
+                    modified["intent_adherence"]["test_pass_rate"].get("rate")
+                )
+                - _to_float(original["intent_adherence"]["test_pass_rate"].get("rate")),
+                "unit": "ratio",
+            },
+            {
+                "dimension": "Legibilidade",
+                "metric": "Buse-Weimer (proxy)",
+                "original": original["readability"].get("buse_weimer_proxy"),
+                "modified": modified["readability"].get("buse_weimer_proxy"),
+                "delta": delta["buse_weimer_proxy"],
+                "unit": "ratio",
+            },
+            {
+                "dimension": "Legibilidade",
+                "metric": "Avaliacao por LLM",
+                "original": (original["readability"].get("llm_evaluation") or {}).get(
+                    "score"
+                ),
+                "modified": (modified["readability"].get("llm_evaluation") or {}).get(
+                    "score"
+                ),
+                "delta": None,
+                "unit": "ratio",
+            },
+        ]
+    )
 
     return rows
 
@@ -172,7 +186,9 @@ def write_markdown_report(
         for file_path in target_files:
             lines.append(f"  - {file_path}")
     else:
-        lines.append(f"- Arquivo avaliado: {report['subject'].get('target_file', 'n/a')}")
+        lines.append(
+            f"- Arquivo avaliado: {report['subject'].get('target_file', 'n/a')}"
+        )
     lines.append(f"- Base ref: {report['subject']['base_ref']}")
     lines.append(f"- Head ref: {report['subject']['head_ref']}")
     lines.append(f"- Verdict MCP: {verdict}")
@@ -197,7 +213,9 @@ def write_markdown_report(
     lines.append("")
     lines.append(f"- GitHub API base: {github_cfg.get('api_base', 'n/a')}")
     lines.append(f"- GitHub autenticado: {github_cfg.get('authenticated', 'n/a')}")
-    lines.append(f"- PR detectado automaticamente: {github_cfg.get('detected_pr', 'n/a')}")
+    lines.append(
+        f"- PR detectado automaticamente: {github_cfg.get('detected_pr', 'n/a')}"
+    )
     lines.append(f"- LLM model: {llm_cfg.get('model', 'n/a')}")
     lines.append(f"- LLM endpoint: {llm_cfg.get('endpoint', 'n/a')}")
     lines.append(f"- LLM temperature: {llm_cfg.get('temperature', 'n/a')}")
@@ -205,7 +223,9 @@ def write_markdown_report(
     lines.append(f"- LLM notes: {llm_cfg.get('notes', 'n/a')}")
     lines.append(f"- MCP command: {mcp_cfg.get('command', 'n/a')}")
     lines.append(f"- MCP args: {mcp_cfg.get('args', 'n/a')}")
-    lines.append(f"- Metrics semantic scorer: {metrics_cfg.get('semantic_similarity_model', 'n/a')}")
+    lines.append(
+        f"- Metrics semantic scorer: {metrics_cfg.get('semantic_similarity_model', 'n/a')}"
+    )
     lines.append("")
     lines.append("## Artefatos")
     lines.append("")
@@ -216,7 +236,9 @@ def write_markdown_report(
     lines.append("## Logs e Ferramentas MCP")
     lines.append("")
     tool_names = report["mcp"].get("tool_names", [])
-    lines.append(f"- Ferramentas registradas: {', '.join(tool_names) if tool_names else 'n/a'}")
+    lines.append(
+        f"- Ferramentas registradas: {', '.join(tool_names) if tool_names else 'n/a'}"
+    )
     lines.append(f"- Build status: {report['testability_gate']['build_status']}")
     lines.append(f"- Test status: {report['testability_gate']['test_status']}")
     lines.append(f"- Justificativa gate: {report['testability_gate']['reason']}")

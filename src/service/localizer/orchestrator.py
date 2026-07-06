@@ -3,7 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 
 from src.service.localizer.discovery import discover_repository_code_files
-from src.service.localizer.models import LocalizationHit, LocalizationStrategy, LocalizerResult
+from src.service.localizer.models import (
+    LocalizationHit,
+    LocalizationStrategy,
+    LocalizerResult,
+)
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
 from src.service.localizer.strategies.filename import FilenameMatchingStrategy
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
@@ -47,7 +51,8 @@ class RepositoryIssueLocalizer:
             return LocalizerResult(selected_files=[], details=[])
 
         aggregate: dict[str, LocalizationHit] = {
-            path: LocalizationHit(path=path, score=0.0, reasons=[]) for path in candidates
+            path: LocalizationHit(path=path, score=0.0, reasons=[])
+            for path in candidates
         }
 
         for strategy in self.strategies:
@@ -58,7 +63,9 @@ class RepositoryIssueLocalizer:
                     LocalizationHit(path=rel_path, score=0.0),
                 )
                 current.score += hit.score
-                current.reasons.extend(f"[{strategy.name}] {reason}" for reason in hit.reasons)
+                current.reasons.extend(
+                    f"[{strategy.name}] {reason}" for reason in hit.reasons
+                )
 
         ranked = sorted(
             aggregate.values(),

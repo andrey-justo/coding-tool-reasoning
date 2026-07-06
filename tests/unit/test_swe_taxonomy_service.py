@@ -139,10 +139,15 @@ def test_swe_knowledge_base_lazy_loads_node_payload_details(tmp_path):
     summary = kb.summarize_for_prompt(["nfr_security"], depth=2)
 
     assert "Rate Limiting Design Pattern" in summary
-    assert "Key steps: Count requests per bucket.; Reject requests above the limit." in summary
+    assert (
+        "Key steps: Count requests per bucket.; Reject requests above the limit."
+        in summary
+    )
 
 
-def test_swe_knowledge_base_filters_stale_semantic_edges_without_ground_truth_nodes(tmp_path):
+def test_swe_knowledge_base_filters_stale_semantic_edges_without_ground_truth_nodes(
+    tmp_path,
+):
     ground_dir = tmp_path / "knowledge" / "data"
     linked_dir = tmp_path / "knowledge" / "linked_data"
 

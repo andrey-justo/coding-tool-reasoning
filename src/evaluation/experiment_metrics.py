@@ -68,8 +68,12 @@ class ExperimentMetricsEvaluator:
         return self._intent.requirements_coverage(requirements, artifacts)
 
     @staticmethod
-    def test_pass_rate_from_counts(total: int, failures: int, errors: int = 0) -> TestPassRate:
-        return IntentAdherenceMetricsStrategy.test_pass_rate_from_counts(total, failures, errors)
+    def test_pass_rate_from_counts(
+        total: int, failures: int, errors: int = 0
+    ) -> TestPassRate:
+        return IntentAdherenceMetricsStrategy.test_pass_rate_from_counts(
+            total, failures, errors
+        )
 
     def test_pass_rate_from_junit_xml(self, xml_path: str | Path) -> TestPassRate:
         return self._intent.test_pass_rate_from_junit_xml(xml_path)

@@ -33,7 +33,9 @@ class ApplyPlanSweCodeChangeTool:
         raw_text: str,
     ) -> str:
         if extracted_blocks:
-            ordered = sorted(extracted_blocks, key=lambda b: len(b["code"]), reverse=True)
+            ordered = sorted(
+                extracted_blocks, key=lambda b: len(b["code"]), reverse=True
+            )
             return ordered[0]["code"]
 
         stripped = raw_text.strip()
@@ -63,7 +65,9 @@ class ApplyPlanSweCodeChangeTool:
             "nfr_focus": plan.nfr_focus or [],
             "target_language": plan.target_language,
             "high_level_steps": plan.high_level_steps,
-            "swe_summary": cls._truncate_text(swe_context.swe_summary, max_summary_chars),
+            "swe_summary": cls._truncate_text(
+                swe_context.swe_summary, max_summary_chars
+            ),
             "security_context": cls._truncate_text(
                 swe_context.security_context,
                 max_security_context_chars,
@@ -72,7 +76,9 @@ class ApplyPlanSweCodeChangeTool:
         }
 
     @staticmethod
-    def _split_code_chunks(original_code: str, chunk_lines: int) -> list[dict[str, Any]]:
+    def _split_code_chunks(
+        original_code: str, chunk_lines: int
+    ) -> list[dict[str, Any]]:
         lines = original_code.splitlines()
         if not lines:
             return [{"start": 1, "end": 1, "code": ""}]
@@ -202,7 +208,9 @@ class ApplyPlanSweCodeChangeTool:
             try:
                 raw_response = llm_client.chat(prompt, **chat_kwargs)
             except Exception as exc:  # pragma: no cover
-                self._registry._logger.warning("apply_plan_swe_code_change failed: %s", exc)
+                self._registry._logger.warning(
+                    "apply_plan_swe_code_change failed: %s", exc
+                )
                 return {
                     "target_file": target_path,
                     "generated_code": original_code,
@@ -216,10 +224,14 @@ class ApplyPlanSweCodeChangeTool:
                 }
 
             extracted_blocks = self._extract_code_blocks(raw_response)
-            generated_code = self._select_generated_code(original_code, extracted_blocks, raw_response)
+            generated_code = self._select_generated_code(
+                original_code, extracted_blocks, raw_response
+            )
             chunk_errors: list[dict[str, Any]] = []
         else:
-            chunks = self._split_code_chunks(original_code, chunk_lines=config.chunk_lines)
+            chunks = self._split_code_chunks(
+                original_code, chunk_lines=config.chunk_lines
+            )
             updated_chunks: list[str] = []
             raw_responses: list[str] = []
             chunk_errors = []
@@ -273,12 +285,15 @@ class ApplyPlanSweCodeChangeTool:
             "generated_code": generated_code,
             "raw_response": raw_response,
             "extracted_code_blocks": extracted_blocks,
-            "used_fallback_to_original": generated_code.strip() == original_code.strip(),
+            "used_fallback_to_original": generated_code.strip()
+            == original_code.strip(),
             "prompt": prompt,
             "compact_context": compact_context,
             "chunked": chunked,
             "chunk_line_size": config.chunk_lines if chunked else None,
-            "chunk_count": len(self._split_code_chunks(original_code, chunk_lines=config.chunk_lines))
+            "chunk_count": len(
+                self._split_code_chunks(original_code, chunk_lines=config.chunk_lines)
+            )
             if chunked
             else 1,
             "chunk_errors": chunk_errors if chunked else [],

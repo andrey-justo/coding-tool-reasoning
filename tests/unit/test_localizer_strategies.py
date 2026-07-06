@@ -15,7 +15,10 @@ def _write(path: Path, content: str) -> None:
 
 
 def test_regex_content_strategy_matches_word_boundaries(tmp_path: Path) -> None:
-    _write(tmp_path / "src" / "auth_service.py", "def process_retry(request):\n    return request\n")
+    _write(
+        tmp_path / "src" / "auth_service.py",
+        "def process_retry(request):\n    return request\n",
+    )
 
     strategy = RegexContentMatchingStrategy()
     hits = strategy.score(
@@ -116,4 +119,6 @@ def test_repository_issue_localizer_can_disable_semantic_nlp() -> None:
     assert all(strategy.name != "semantic_nlp" for strategy in localizer.strategies)
 
     localizer_with_nlp = RepositoryIssueLocalizer(enable_semantic_nlp=True)
-    assert any(strategy.name == "semantic_nlp" for strategy in localizer_with_nlp.strategies)
+    assert any(
+        strategy.name == "semantic_nlp" for strategy in localizer_with_nlp.strategies
+    )

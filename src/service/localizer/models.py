@@ -26,5 +26,4 @@ class LocalizationStrategy(Protocol):
         repo_path: Path,
         issue_text: str,
         candidate_paths: Iterable[str],
-    ) -> dict[str, LocalizationHit]:
-        ...
+    ) -> dict[str, LocalizationHit]: ...

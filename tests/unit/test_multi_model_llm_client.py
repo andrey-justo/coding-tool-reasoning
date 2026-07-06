@@ -7,7 +7,6 @@ import yaml
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 
-
 _YAML_LOCALAI = [
     {"model_name": "m1", "provider": "LocalAI", "endpoint": "http://localhost:8080"},
     {"model_name": "m2", "provider": "LocalAI", "endpoint": "http://localhost:8081"},
@@ -27,8 +26,12 @@ def _write_yaml(tmp_dir: str, data: list) -> str:
 
 def _make_client(yaml_path: str) -> MultiModelLLMClient:
     with (
-        patch("src.llm_client.multi_model_llm_client.os.path.join", return_value=yaml_path),
-        patch("src.llm_client.multi_model_llm_client.os.path.exists", return_value=False),
+        patch(
+            "src.llm_client.multi_model_llm_client.os.path.join", return_value=yaml_path
+        ),
+        patch(
+            "src.llm_client.multi_model_llm_client.os.path.exists", return_value=False
+        ),
     ):
         return MultiModelLLMClient()
 

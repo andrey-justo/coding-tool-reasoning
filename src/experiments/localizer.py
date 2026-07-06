@@ -1,9 +1,9 @@
 from src.service.localizer import (
     AstMatchingStrategy,
     FilenameMatchingStrategy,
-    LocalizerResult,
     LocalizationHit,
     LocalizationStrategy,
+    LocalizerResult,
     RegexContentMatchingStrategy,
     RepositoryIssueLocalizer,
     SemanticNlpMatchingStrategy,

@@ -63,7 +63,11 @@ class ReadabilityMetricsStrategy:
             f"Code:\n```\n{code}\n```"
         )
         try:
-            response = llm_client.chat(prompt, model=model) if model else llm_client.chat(prompt)
+            response = (
+                llm_client.chat(prompt, model=model)
+                if model
+                else llm_client.chat(prompt)
+            )
             payload = json.loads(response)
             score = payload.get("score")
             if score is not None:
@@ -72,7 +76,9 @@ class ReadabilityMetricsStrategy:
             rationale = str(payload.get("rationale", ""))
             return LLMEvaluation(score=score, rationale=rationale)
         except Exception as exc:
-            return LLMEvaluation(score=None, rationale=f"LLM evaluation unavailable: {exc}")
+            return LLMEvaluation(
+                score=None, rationale=f"LLM evaluation unavailable: {exc}"
+            )
 
     def compute(
         self,

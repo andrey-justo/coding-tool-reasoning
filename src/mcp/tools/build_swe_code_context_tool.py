@@ -45,13 +45,17 @@ class BuildSweCodeContextTool:
         templates: List[dict] = []
         if include_templates:
             templates = ctx.templates
-            LOGGER.info("Loaded %d concern template/data assets into context", len(templates))
+            LOGGER.info(
+                "Loaded %d concern template/data assets into context", len(templates)
+            )
 
         if prompt_output_folder:
             try:
                 executed_prompts: list[dict] | None = None
                 if write_executed_prompts:
-                    executed_prompts = _PROMPT_TEMPLATE_SERVICE.build_executed_prompts(templates)
+                    executed_prompts = _PROMPT_TEMPLATE_SERVICE.build_executed_prompts(
+                        templates
+                    )
 
                 prompt_context = _PROMPT_TEMPLATE_SERVICE.render_prompt_context(
                     swe_summary=summary,

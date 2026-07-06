@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional, Sequence
+from typing import Sequence
 
 import requests
 
@@ -39,7 +39,9 @@ class SonarQubeClient:
         if query.pull_request:
             params["pullRequest"] = query.pull_request
         if query.rule_keys:
-            params["rules"] = ",".join([value.strip() for value in query.rule_keys if value.strip()])
+            params["rules"] = ",".join(
+                [value.strip() for value in query.rule_keys if value.strip()]
+            )
         if query.severities:
             params["severities"] = ",".join(
                 [value.strip().upper() for value in query.severities if value.strip()]

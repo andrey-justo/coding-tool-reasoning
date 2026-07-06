@@ -3,10 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Iterable
 
-from src.service.localizer.ast.extractors import PythonSymbolExtractor, RegexSymbolExtractor
+from src.service.localizer.ast.extractors import (
+    PythonSymbolExtractor,
+    RegexSymbolExtractor,
+)
 from src.service.localizer.models import LocalizationHit
 from src.service.localizer.utils import extract_symbols, safe_read_text
-
 
 _PYTHON_EXTENSIONS = {".py", ".pyi", ".pyw"}
 

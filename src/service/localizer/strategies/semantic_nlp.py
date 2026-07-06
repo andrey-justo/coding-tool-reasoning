@@ -68,13 +68,17 @@ class SemanticNlpMatchingStrategy:
 
         issue_vector: dict[str, float] = {}
         for token, freq in issue_tf.items():
-            issue_vector[token] = float(freq) * self._idf(num_docs, doc_freq.get(token, 0))
+            issue_vector[token] = float(freq) * self._idf(
+                num_docs, doc_freq.get(token, 0)
+            )
 
         results: dict[str, LocalizationHit] = {}
         for rel_path, tf in docs_tf.items():
             doc_vector: dict[str, float] = {}
             for token, freq in tf.items():
-                doc_vector[token] = float(freq) * self._idf(num_docs, doc_freq.get(token, 0))
+                doc_vector[token] = float(freq) * self._idf(
+                    num_docs, doc_freq.get(token, 0)
+                )
 
             cosine = self._cosine(issue_vector, doc_vector)
             if cosine <= 0.0:

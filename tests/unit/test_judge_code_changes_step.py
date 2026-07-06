@@ -58,7 +58,9 @@ def test_constructor_loads_kb_and_run_delegates(monkeypatch) -> None:
         swe_summary="s",
         templates=[],
     )
-    result = asyncio.run(step.run(swe_context=ctx, original_code="a", modified_code="b"))
+    result = asyncio.run(
+        step.run(swe_context=ctx, original_code="a", modified_code="b")
+    )
 
     assert result["original"] == "a"
     assert result["modified"] == "b"

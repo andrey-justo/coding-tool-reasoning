@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Optional, Sequence
 
-
 _STOPWORDS = {
     "a",
     "an",
@@ -83,7 +82,9 @@ class IntentAdherenceMetricsStrategy:
         }
 
     @staticmethod
-    def test_pass_rate_from_counts(total: int, failures: int, errors: int = 0) -> TestPassRate:
+    def test_pass_rate_from_counts(
+        total: int, failures: int, errors: int = 0
+    ) -> TestPassRate:
         safe_total = max(total, 0)
         failed = max(failures, 0) + max(errors, 0)
         passed = max(safe_total - failed, 0)
@@ -103,7 +104,9 @@ class IntentAdherenceMetricsStrategy:
             failures += int(suite.attrib.get("failures", 0))
             errors += int(suite.attrib.get("errors", 0))
 
-        return self.test_pass_rate_from_counts(total=total, failures=failures, errors=errors)
+        return self.test_pass_rate_from_counts(
+            total=total, failures=failures, errors=errors
+        )
 
     def semantic_similarity_codebert(
         self,
@@ -131,7 +134,9 @@ class IntentAdherenceMetricsStrategy:
         junit_xml_path: Optional[str | Path] = None,
     ) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "requirements_coverage": self.requirements_coverage(requirements, artifacts),
+            "requirements_coverage": self.requirements_coverage(
+                requirements, artifacts
+            ),
         }
 
         if reference_code and scorer is not None:

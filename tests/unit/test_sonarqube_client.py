@@ -30,7 +30,9 @@ class _FakeSession:
 
 
 def test_count_issues_builds_params_and_counts_single_page() -> None:
-    client = SonarQubeClient(base_url="https://sonar.example/", token="token", timeout=7)
+    client = SonarQubeClient(
+        base_url="https://sonar.example/", token="token", timeout=7
+    )
     client._session = _FakeSession(
         [_FakeResponse({"paging": {"pageSize": 500, "total": 2}, "issues": [{}, {}]})]
     )

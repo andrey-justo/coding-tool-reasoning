@@ -5,7 +5,6 @@ import sys
 from pathlib import Path
 from typing import Iterable
 
-
 DEFAULT_TARGETS = ("src", "tests")
 
 
@@ -25,7 +24,9 @@ def iter_python_files(targets: Iterable[str]) -> Iterable[Path]:
         if not root.exists():
             continue
         for file_path in root.rglob("*.py"):
-            if any(part in {".venv", "__pycache__", ".git"} for part in file_path.parts):
+            if any(
+                part in {".venv", "__pycache__", ".git"} for part in file_path.parts
+            ):
                 continue
             yield file_path
 
@@ -89,7 +90,9 @@ def main() -> int:
         print("Import consistency lint passed.")
         return 0
 
-    for violation in sorted(violations, key=lambda item: (str(item.file_path), item.line)):
+    for violation in sorted(
+        violations, key=lambda item: (str(item.file_path), item.line)
+    ):
         print(violation)
 
     print(f"\nFound {len(violations)} import lint violation(s).")

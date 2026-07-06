@@ -51,7 +51,9 @@ def _render_with_execution_id(value: str | None, execution_id: str) -> str | Non
 
 
 def _run_git(repo_path: Path, args: list[str]) -> str:
-    return subprocess.check_output(["git", "-C", str(repo_path), *args], text=True).strip()
+    return subprocess.check_output(
+        ["git", "-C", str(repo_path), *args], text=True
+    ).strip()
 
 
 def _coerce_json(value: Any) -> Any:
@@ -95,7 +97,9 @@ def _write_llm_debug_artifacts(
         old_md.unlink(missing_ok=True)
 
     apply_value = mcp_payload.get("apply")
-    apply_payload = apply_value if isinstance(apply_value, dict) else {"error": str(apply_value)}
+    apply_payload = (
+        apply_value if isinstance(apply_value, dict) else {"error": str(apply_value)}
+    )
     generated_code = apply_payload.get("generated_code", original_code)
 
     plan_payload = mcp_payload.get("plan") or {}
@@ -148,7 +152,9 @@ def _write_llm_debug_artifacts(
         llm_input = str(item.get("llm_input") or "")
         llm_output = item.get("llm_output")
         parsed_output = item.get("parsed_output")
-        extracted_blocks = _extract_code_blocks(llm_output if isinstance(llm_output, str) else None)
+        extracted_blocks = _extract_code_blocks(
+            llm_output if isinstance(llm_output, str) else None
+        )
 
         input_lines: list[str] = []
         input_lines.append(f"# LLM Input Prompt: {item['call_name']}")
@@ -215,7 +221,9 @@ def _write_llm_debug_artifacts(
                 "## Generated Code",
                 "",
                 "```",
-                str(generated_code if isinstance(generated_code, str) else original_code),
+                str(
+                    generated_code if isinstance(generated_code, str) else original_code
+                ),
                 "```",
             ]
         )
@@ -234,7 +242,11 @@ def _write_llm_debug_artifacts(
                 "\n".join(
                     difflib.unified_diff(
                         original_code.splitlines(),
-                        str(generated_code if isinstance(generated_code, str) else original_code).splitlines(),
+                        str(
+                            generated_code
+                            if isinstance(generated_code, str)
+                            else original_code
+                        ).splitlines(),
                         fromfile="original",
                         tofile="generated",
                         lineterm="",
@@ -247,7 +259,9 @@ def _write_llm_debug_artifacts(
                 "```json",
                 _as_pretty_json(
                     {
-                        "used_fallback_to_original": apply_payload.get("used_fallback_to_original"),
+                        "used_fallback_to_original": apply_payload.get(
+                            "used_fallback_to_original"
+                        ),
                         "apply_error": apply_payload.get("error"),
                         "chunked": apply_payload.get("chunked"),
                         "chunk_count": apply_payload.get("chunk_count"),
@@ -270,11 +284,15 @@ def _parse_issue_url(issue_url: str) -> ParsedIssueUrl:
     if not match:
         raise ValueError(f"Unsupported issue URL format: {issue_url}")
     owner, repo, number_text = match.group(1), match.group(2), match.group(3)
-    return ParsedIssueUrl(owner=owner, repo=repo, issue_number=int(number_text), url=issue_url)
+    return ParsedIssueUrl(
+        owner=owner, repo=repo, issue_number=int(number_text), url=issue_url
+    )
 
 
 class GitHubIssueClient:
-    def __init__(self, token: str | None = None, api_base: str = "https://api.github.com") -> None:
+    def __init__(
+        self, token: str | None = None, api_base: str = "https://api.github.com"
+    ) -> None:
         self._api_base = api_base.rstrip("/")
         self._session = requests.Session()
         self._session.headers.update(
@@ -312,7 +330,7 @@ class GitHubIssueClient:
         )
 
     def detect_linked_pr(self, owner: str, repo: str, issue_number: int) -> int | None:
-        query = f"repo:{owner}/{repo} is:pr \"#{issue_number}\" in:body"
+        query = f'repo:{owner}/{repo} is:pr "#{issue_number}" in:body'
         data = self._get("/search/issues", params={"q": query, "per_page": 1})
         items = data.get("items", [])
         if not items:
@@ -365,7 +383,9 @@ def _resolve_head_ref(
 
     local_branch = f"pr-{pull_number}"
     try:
-        _run_git(repo_path, ["fetch", "origin", f"pull/{pull_number}/head:{local_branch}"])
+        _run_git(
+            repo_path, ["fetch", "origin", f"pull/{pull_number}/head:{local_branch}"]
+        )
         log_lines.append(f"Fetched PR #{pull_number} into local branch {local_branch}")
         return local_branch
     except subprocess.CalledProcessError:
@@ -416,7 +436,9 @@ async def _run_mcp_workflow(
                     "nfr_focus": nfr_focus,
                 },
             )
-            plan_content = _coerce_json(plan_result.content[0].text if plan_result.content else None)
+            plan_content = _coerce_json(
+                plan_result.content[0].text if plan_result.content else None
+            )
             log_lines.append("plan_swe_code_change completed")
 
             context_result = await session.call_tool(
@@ -491,7 +513,9 @@ async def _run_mcp_workflow(
                     "modified_code": combined_modified,
                 },
             )
-            judge_content = _coerce_json(judge_result.content[0].text if judge_result.content else None)
+            judge_content = _coerce_json(
+                judge_result.content[0].text if judge_result.content else None
+            )
             log_lines.append("judge_swe_code_change completed")
 
             first_target = target_files[0] if target_files else ""
@@ -525,7 +549,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     token = args.github_token or os.getenv("GITHUB_TOKEN")
     gh_client = GitHubIssueClient(token=token)
 
-    issue = gh_client.fetch_issue(parsed_issue.owner, parsed_issue.repo, parsed_issue.issue_number)
+    issue = gh_client.fetch_issue(
+        parsed_issue.owner, parsed_issue.repo, parsed_issue.issue_number
+    )
     comments = gh_client.fetch_issue_comments(
         parsed_issue.owner,
         parsed_issue.repo,
@@ -621,15 +647,23 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         )
     )
 
-    apply_payload = mcp_payload.get("apply") if isinstance(mcp_payload.get("apply"), dict) else None
-    apply_results = mcp_payload.get("apply_results") if isinstance(mcp_payload.get("apply_results"), dict) else {}
+    apply_payload = (
+        mcp_payload.get("apply") if isinstance(mcp_payload.get("apply"), dict) else None
+    )
+    apply_results = (
+        mcp_payload.get("apply_results")
+        if isinstance(mcp_payload.get("apply_results"), dict)
+        else {}
+    )
     generated_code_by_file = {
         path: str(payload.get("generated_code") or original_code_by_file.get(path, ""))
         for path, payload in apply_results.items()
         if isinstance(payload, dict)
     }
     for target_file in target_files:
-        generated_code_by_file.setdefault(target_file, original_code_by_file.get(target_file, ""))
+        generated_code_by_file.setdefault(
+            target_file, original_code_by_file.get(target_file, "")
+        )
 
     generated_diff_by_file: dict[str, str] = {}
     for target_file in target_files:
@@ -644,20 +678,29 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         )
 
     original_code = "\n\n".join(
-        f"### FILE: {path}\n{original_code_by_file.get(path, '')}" for path in target_files
+        f"### FILE: {path}\n{original_code_by_file.get(path, '')}"
+        for path in target_files
     )
     reference_modified_code = "\n\n".join(
-        f"### FILE: {path}\n{reference_modified_by_file.get(path, '')}" for path in target_files
+        f"### FILE: {path}\n{reference_modified_by_file.get(path, '')}"
+        for path in target_files
     )
     generated_code = "\n\n".join(
-        f"### FILE: {path}\n{generated_code_by_file.get(path, '')}" for path in target_files
+        f"### FILE: {path}\n{generated_code_by_file.get(path, '')}"
+        for path in target_files
     )
 
     reference_unified_diff = "\n\n".join(
-        [f"### FILE: {path}\n{reference_diff_by_file.get(path, '')}" for path in target_files]
+        [
+            f"### FILE: {path}\n{reference_diff_by_file.get(path, '')}"
+            for path in target_files
+        ]
     )
     generated_unified_diff = "\n\n".join(
-        [f"### FILE: {path}\n{generated_diff_by_file.get(path, '')}" for path in target_files]
+        [
+            f"### FILE: {path}\n{generated_diff_by_file.get(path, '')}"
+            for path in target_files
+        ]
     )
 
     llm_debug_files: list[str] = []
@@ -680,9 +723,15 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     solid_delta_payload: dict[str, Any] | None = None
     if args.sonar_url and args.sonar_token and args.sonar_project_key:
         try:
-            sonar_client = SonarQubeClient(base_url=args.sonar_url, token=args.sonar_token)
+            sonar_client = SonarQubeClient(
+                base_url=args.sonar_url, token=args.sonar_token
+            )
 
-            rule_keys = [item.strip() for item in (args.sonar_rule_keys or "").split(",") if item.strip()]
+            rule_keys = [
+                item.strip()
+                for item in (args.sonar_rule_keys or "").split(",")
+                if item.strip()
+            ]
             severities = [
                 item.strip().upper()
                 for item in (args.sonar_severities or "").split(",")
@@ -713,7 +762,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
 
             violations_before = sonar_client.count_issues(before_query)
             violations_after = sonar_client.count_issues(after_query)
-            solid_delta = evaluator.solid_violation_delta(violations_before, violations_after)
+            solid_delta = evaluator.solid_violation_delta(
+                violations_before, violations_after
+            )
             solid_delta_payload = {
                 "violations_before": solid_delta.violations_before,
                 "violations_after": solid_delta.violations_after,
@@ -726,7 +777,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 f"before={violations_before}, after={violations_after}, delta={solid_delta.delta:.4f}"
             )
         except Exception as exc:
-            log_lines.append(f"SOLID SonarQube evaluation skipped due to error: {type(exc).__name__}: {exc}")
+            log_lines.append(
+                f"SOLID SonarQube evaluation skipped due to error: {type(exc).__name__}: {exc}"
+            )
 
     original_metrics = evaluator.evaluate_all(
         generated_code=original_code,
@@ -745,7 +798,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
 
     delta = {
         "solid_violation_delta": (
-            solid_delta_payload.get("delta") if solid_delta_payload is not None else None
+            solid_delta_payload.get("delta")
+            if solid_delta_payload is not None
+            else None
         ),
         "cognitive_complexity": (
             modified_metrics["complexity"]["cognitive_complexity"]
@@ -789,7 +844,8 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "linked_pr_number": detected_pr,
             "generated_code_source": (
                 "mcp_apply_plan_swe_code_change"
-                if apply_payload and not apply_payload.get("used_fallback_to_original", False)
+                if apply_payload
+                and not apply_payload.get("used_fallback_to_original", False)
                 else "original_code_fallback"
             ),
         },
@@ -820,7 +876,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 "readability": ["buse_weimer_proxy", "llm_evaluation"],
                 "solid_delta_source": "sonarqube" if solid_delta_payload else "not-run",
                 "sonarqube": {
-                    "enabled": bool(args.sonar_url and args.sonar_token and args.sonar_project_key),
+                    "enabled": bool(
+                        args.sonar_url and args.sonar_token and args.sonar_project_key
+                    ),
                     "url": args.sonar_url,
                     "project_key": args.sonar_project_key,
                     "before_branch": args.sonar_before_branch,
@@ -828,7 +886,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                     "before_pr": args.sonar_before_pr,
                     "after_pr": args.sonar_after_pr,
                     "rule_keys": [
-                        item.strip() for item in (args.sonar_rule_keys or "").split(",") if item.strip()
+                        item.strip()
+                        for item in (args.sonar_rule_keys or "").split(",")
+                        if item.strip()
                     ],
                     "severities": [
                         item.strip().upper()
@@ -917,7 +977,9 @@ def _build_parser() -> argparse.ArgumentParser:
         default=20,
         help="Maximum number of comments to fetch from GitHub issue API.",
     )
-    parser.add_argument("--github-token", default=None, help="GitHub token for API requests")
+    parser.add_argument(
+        "--github-token", default=None, help="GitHub token for API requests"
+    )
     parser.add_argument(
         "--nfr-focus",
         default="Reliability,Maintainability,Security",
@@ -1065,7 +1127,9 @@ def main(argv: list[str] | None = None) -> int:
     rows = metrics_rows(report)
 
     out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8")
+    out_json.write_text(
+        json.dumps(report, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
     write_csv_report(out_csv, rows)
     write_log_report(out_log, report["logs"]["lines"])
     write_markdown_report(out_md, report, rows, out_json, out_csv, out_log)

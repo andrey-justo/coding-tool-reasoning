@@ -76,9 +76,7 @@ class IssueCandidateRankingService:
                 for lowered, original in pr_nfr_map.items()
                 if lowered in issue_text
             ]
-            nfr_score = (
-                len(matched_nfrs) / len(pr_nfr_map) if pr_nfr_map else 0.0
-            )
+            nfr_score = len(matched_nfrs) / len(pr_nfr_map) if pr_nfr_map else 0.0
 
             issue_file_names = {
                 os.path.basename(path).lower() for path in issue.related_files if path
@@ -128,9 +126,7 @@ class IssueCandidateRankingService:
     @staticmethod
     def _tokenize(value: str) -> set[str]:
         return {
-            token
-            for token in re.findall(r"[a-z0-9_\-/]+", value)
-            if len(token) > 2
+            token for token in re.findall(r"[a-z0-9_\-/]+", value) if len(token) > 2
         }
 
     @staticmethod

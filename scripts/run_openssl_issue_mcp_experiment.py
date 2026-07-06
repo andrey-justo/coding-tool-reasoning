@@ -4,7 +4,6 @@ import sys
 
 from src.experiments.issue_mcp_experiment import main as generic_main
 
-
 DEFAULT_ARGS = [
     "--issue-url",
     "https://github.com/openssl/openssl/issues/31332",

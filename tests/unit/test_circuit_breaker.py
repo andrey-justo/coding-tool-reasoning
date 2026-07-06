@@ -69,7 +69,10 @@ def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
     kb.load()
 
     assert kb.find_nfr_ids(["Reliability"]) == ["nfr_reliability"]
-    assert kb.get_neighbors(["nfr_reliability"])["nfr_reliability"][0].target_id == "pattern_retry_logic"
+    assert (
+        kb.get_neighbors(["nfr_reliability"])["nfr_reliability"][0].target_id
+        == "pattern_retry_logic"
+    )
     assert "nfr_reliability" in [node.id for node in kb.get_all_nfrs()]
 
     summary = kb.summarize_for_prompt(["nfr_reliability"], depth=1)
@@ -505,9 +508,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     config = SweMcpConfig()
 
     class FakeKnowledgeBase:
-        def __init__(
-            self, ground_data_dir, linked_data_dir, lazy_load_nodes=False
-        ):
+        def __init__(self, ground_data_dir, linked_data_dir, lazy_load_nodes=False):
             self.ground_data_dir = ground_data_dir
             self.linked_data_dir = linked_data_dir
             self.lazy_load_nodes = lazy_load_nodes
@@ -527,9 +528,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     assert "swe_concern_template" in kinds
     assert "swe_concern_data" in kinds
     assert ctx.kb.ground_data_dir.replace("\\", "/").endswith("knowledge/data")
-    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith(
-        "knowledge/linked_data"
-    )
+    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith("knowledge/linked_data")
 
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1

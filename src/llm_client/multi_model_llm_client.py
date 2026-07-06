@@ -48,7 +48,9 @@ class MultiModelLLMClient:
             return
 
         load_dotenv(env_path)
-        self.api_key = os.getenv("AUTH_KEY") or os.getenv("auth_key") or os.getenv("API_KEY")
+        self.api_key = (
+            os.getenv("AUTH_KEY") or os.getenv("auth_key") or os.getenv("API_KEY")
+        )
         self.default_model = os.getenv("DEFAULT_MODEL")
 
     def get_client(self, model=None):

@@ -2,9 +2,9 @@ from types import SimpleNamespace
 
 from src.mcp.swe_mcp_server import SweMcpServerContextProvider
 from src.mcp.tools.swe_mcp_tools import SweMcpToolRegistry, SweMcpToolsRegistrar
+from src.models.issue_candidate_ranking import IssueCandidate, PullRequestContext
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
-from src.models.issue_candidate_ranking import IssueCandidate, PullRequestContext
 
 
 def test_tool_registry_direct_method_usage(tmp_path):
@@ -139,9 +139,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     config = SweMcpConfig()
 
     class FakeKnowledgeBase:
-        def __init__(
-            self, ground_data_dir, linked_data_dir, lazy_load_nodes=False
-        ):
+        def __init__(self, ground_data_dir, linked_data_dir, lazy_load_nodes=False):
             self.ground_data_dir = ground_data_dir
             self.linked_data_dir = linked_data_dir
             self.lazy_load_nodes = lazy_load_nodes
@@ -162,9 +160,7 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     assert "swe_concern_data" in kinds
     assert isinstance(ctx.kb, FakeKnowledgeBase)
     assert ctx.kb.ground_data_dir.replace("\\", "/").endswith("knowledge/data")
-    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith(
-        "knowledge/linked_data"
-    )
+    assert ctx.kb.linked_data_dir.replace("\\", "/").endswith("knowledge/linked_data")
 
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1

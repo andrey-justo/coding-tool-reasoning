@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import requests
 import pytest
+import requests
 
 from src.errors.TextLLMException import TextLLMException
 from src.llm_client.azure_responses_client import AzureResponsesClient
@@ -21,7 +21,9 @@ class _FakeResponse:
 
 
 class _FakeSession:
-    def __init__(self, response: _FakeResponse | None = None, exc: Exception | None = None):
+    def __init__(
+        self, response: _FakeResponse | None = None, exc: Exception | None = None
+    ):
         self._response = response or _FakeResponse()
         self._exc = exc
         self.last_post: dict | None = None
@@ -43,7 +45,9 @@ def test_constructor_requires_endpoint() -> None:
 
 
 def test_headers_include_api_key_when_present() -> None:
-    client = AzureResponsesClient(endpoint="https://example", default_model="gpt", api_key="k")
+    client = AzureResponsesClient(
+        endpoint="https://example", default_model="gpt", api_key="k"
+    )
     headers = client._headers()
     assert headers["api-key"] == "k"
 
