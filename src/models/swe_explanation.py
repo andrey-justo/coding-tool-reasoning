@@ -62,3 +62,11 @@ class SweCodeChangeExplanation(BaseModel):
         default_factory=list,
         description="Concrete tests or checks the developer should run to validate the change.",
     )
+    llm_prompt: str | None = Field(
+        default=None,
+        description="Prompt text sent to the explanation/judge LLM call.",
+    )
+    llm_raw_response: str | None = Field(
+        default=None,
+        description="Raw text returned by the explanation LLM call before structured parsing.",
+    )

@@ -10,8 +10,17 @@ class ReliabilityEvaluationTool:
 
     def __init__(self):
         self.name = "ReliabilityEvaluationTool"
-        self.description = "Tool for evaluating code changes based on reliability problems using BERTScore."
-        self.scorer = BERTScorer(model_type="bert-base-uncased", lang="en")
+        self.description = (
+            "Tool for evaluating code changes based on reliability problems "
+            "using CodeBERT-backed BERTScore."
+        )
+        self.scorer = None
+
+    def _get_scorer(self):
+        if self.scorer is None:
+            # Use a code-aware encoder to improve semantic similarity validity.
+            self.scorer = BERTScorer(model_type="microsoft/codebert-base", lang="en")
+        return self.scorer
 
     def extract_csharp_code(self, text: str) -> str:
         match = re.search(r"```csharp(.*?)```", text, re.DOTALL)
@@ -40,5 +49,6 @@ class ReliabilityEvaluationTool:
         Returns:
                 dict: A dictionary with precision, recall, and F1 scores.
         """
-        P, R, F1 = self.scorer.score([generated_code], [reference_code])
+        scorer = self._get_scorer()
+        P, R, F1 = scorer.score([generated_code], [reference_code])
         return {"precision": P[0].item(), "recall": R[0].item(), "f1": F1[0].item()}

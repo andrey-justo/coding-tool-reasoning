@@ -120,7 +120,7 @@ def test_robust_prompt_smoke_has_code_and_unit_test_examples(
         / f"robust-smoke-{subject}"
     )
     reset_output_root(output_root)
-    context = registry.build_swe_code_context(
+    _context = registry.build_swe_code_context(
         plan=plan,
         include_templates=True,
         prompt_output_folder=str(output_root),
@@ -210,7 +210,7 @@ def test_robust_prompt_smoke_skips_unit_test_template_when_example_missing(
         / f"robust-smoke-no-tests-{subject}"
     )
     reset_output_root(output_root)
-    context = registry.build_swe_code_context(
+    _context = registry.build_swe_code_context(
         plan=plan,
         include_templates=True,
         prompt_output_folder=str(output_root),

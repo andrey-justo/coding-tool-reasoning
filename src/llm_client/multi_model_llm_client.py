@@ -3,6 +3,7 @@ import os
 import yaml
 from dotenv import load_dotenv
 
+from src.llm_client.azure_responses_client import AzureResponsesClient
 from src.llm_client.localai_client import LocalAIClient
 
 
@@ -28,13 +29,12 @@ class MultiModelLLMClient:
             endpoint = model_info.get("endpoint")
             api_version = model_info.get("api_version")
 
-            if provider == "AzureOpenAI":
-                # AzureOpenAI via agent_framework is no longer supported here.
-                # If you need Azure support, extend this client using the
-                # official Azure/OpenAI Python SDKs instead of agent_framework.
-                raise ValueError(
-                    "AzureOpenAI provider is not supported without agent_framework; "
-                    "please switch to LocalAI or implement Azure support."
+            if provider in {"AzureOpenAI", "AzureResponses"}:
+                self.clients[model_name] = AzureResponsesClient(
+                    endpoint=endpoint,
+                    default_model=model_name,
+                    api_key=self.api_key,
+                    api_version=api_version,
                 )
             elif provider == "LocalAI":
                 # Instantiate the LocalAI HTTP client wrapper
@@ -48,7 +48,9 @@ class MultiModelLLMClient:
             return
 
         load_dotenv(env_path)
-        self.api_key = os.getenv("API_KEY")
+        self.api_key = (
+            os.getenv("AUTH_KEY") or os.getenv("auth_key") or os.getenv("API_KEY")
+        )
         self.default_model = os.getenv("DEFAULT_MODEL")
 
     def get_client(self, model=None):

@@ -1,0 +1,44 @@
+taxonomy:
+  ground_data_dir: knowledge/data
+  linked_data_dir: knowledge/linked_data
+  relationship_depth: 1
+  lazy_load_nodes: false
+
+planning:
+  max_steps: 8
+  default_nfr_focus:
+    - Maintainability
+    - Readability
+  max_intent_inference_loops: 2
+  infer_target_language_when_missing: true
+
+judging:
+  strictness: 0.5
+  max_risks: 5
+
+workflow:
+  stages:
+    - requirements
+    - planning
+    - implementation
+    - testing
+    - documentation
+    - deployment
+    - monitoring
+    - diagnosis
+  cycle_enabled: true
+
+concern_assets:
+  swe_concern: reliability
+  swe_subject:
+  data_root_dir: knowledge/data
+  templates_root_dir: knowledge/template
+
+execution:
+  max_summary_chars: 6000
+  max_security_context_chars: 2000
+  max_single_shot_code_chars: 12000
+  chunk_lines: 160
+
+localizer:
+  enable_semantic_nlp: false

@@ -54,7 +54,7 @@ class IntentPlanner:
             nfr_focus=nfr_focus,
         )
 
-        steps = self._generate_steps_with_llm(
+        steps, llm_prompt, llm_raw_response = self._generate_steps_with_llm(
             problem_description=problem_description,
             target_language=effective_target_language,
             nfr_focus=effective_nfr_focus,
@@ -67,6 +67,8 @@ class IntentPlanner:
             resolved_nfr_ids=resolved_ids,
             high_level_steps=steps,
             inferred_target_language=effective_target_language,
+            llm_prompt=llm_prompt,
+            llm_raw_response=llm_raw_response,
         )
 
     # ------------------------- helpers ---------------------------
@@ -208,7 +210,7 @@ class IntentPlanner:
         nfr_focus: List[str],
         resolved_nfr_ids: List[str],
         user_prompt_data: Optional[str],
-    ) -> List[str]:
+    ) -> Tuple[List[str], str, Optional[str]]:
         """Use the LLM with taxonomy RAG to propose high-level steps.
 
         If the LLM output cannot be parsed as JSON, we fall back to a
@@ -273,6 +275,7 @@ class IntentPlanner:
 
         prompt = prompt_header + prompt_footer
 
+        raw: Optional[str] = None
         try:
             raw = self.llm_client.chat(prompt)
             data = json.loads(raw)
@@ -280,7 +283,7 @@ class IntentPlanner:
             if isinstance(steps, list) and all(isinstance(s, str) for s in steps):
                 # Basic sanity filter to avoid empty or trivial output.
                 cleaned = [s.strip() for s in steps if s and s.strip()]
-                return cleaned[:max_steps]
+                return cleaned[:max_steps], prompt, raw
         except Exception:
             # Fall through to deterministic default plan.
             pass
@@ -294,4 +297,4 @@ class IntentPlanner:
             "Apply the changes in small commits, verifying behavior after each change.",
             "Update or add tests to cover both the original and new behavior.",
         ]
-        return default_steps
+        return default_steps, prompt, raw

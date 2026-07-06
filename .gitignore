@@ -16,3 +16,6 @@ docs/slr/*
 coverage.xml
 htmlcov/
 .coverage
+
+# Output
+out/

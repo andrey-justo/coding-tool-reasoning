@@ -1,4 +1,3 @@
-
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
@@ -56,7 +55,7 @@ class LocalAIClient:
     def chat(self, prompt, model=None, **kwargs):
         """
         Send a chat completion request to LocalAI.
-        
+
         Args:
             prompt: The user message to send
             model: Model name to use (defaults to self.default_model)
@@ -65,10 +64,10 @@ class LocalAIClient:
                 - temperature: Sampling temperature for determinism (0.0-2.0)
                              Lower values make output more deterministic
                 - seed: Random seed for deterministic generation (int)
-                
+
         Returns:
             str: The model's response message content
-            
+
         Raises:
             TextLLMException: On network errors or request failures
         """
@@ -83,6 +82,7 @@ class LocalAIClient:
         # Optional deterministic controls for reproducibility
         if "temperature" in kwargs:
             payload["temperature"] = kwargs["temperature"]
+
         if "seed" in kwargs:
             payload["seed"] = kwargs["seed"]
 
@@ -90,12 +90,14 @@ class LocalAIClient:
             # Use session with connection pooling for better stability
             # timeout as tuple: (connect_timeout, read_timeout)
             resp = self.session.post(
+
                 url,
                 headers=self._headers(),
                 json=payload,
                 timeout=(10, self.timeout),
                 stream=False,  # Load full response before processing
             )
+
             resp.raise_for_status()
             data = resp.json()
 

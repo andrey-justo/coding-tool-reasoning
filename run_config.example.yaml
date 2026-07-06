@@ -1,0 +1,21 @@
+# Run with:
+# python -m src.main run-config --config run_config.example.yaml
+
+command: issue-experiment
+args:
+  issue_url: https://github.com/openssl/openssl/issues/31332
+  repo_path: C:/path/to/local/repo
+  auto_detect_pr: true
+  max_issue_comments: 20
+  nfr_focus:
+    - Reliability
+    - Maintainability
+    - Security
+  max_target_files: 5
+  model: localai
+  temperature: 0.2
+  seed: 42
+  out_json: reports/issue_experiment_{execution_id}.json
+  out_md: reports/issue_experiment_{execution_id}.md
+  out_csv: reports/issue_experiment_{execution_id}.csv
+  out_log: reports/issue_experiment_{execution_id}.log

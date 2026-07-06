@@ -53,10 +53,16 @@ class ExplanationService:
             taxonomy_summary=taxonomy_summary,
         )
 
+        raw_response: str | None = None
         try:
-            raw = self.llm_client.chat(prompt)
-            data = json.loads(raw)
-            return self._from_llm_json(plan_json=plan.model_dump(), data=data)
+            raw_response = self.llm_client.chat(prompt)
+            data = json.loads(raw_response)
+            return self._from_llm_json(
+                plan_json=plan.model_dump(),
+                data=data,
+                llm_prompt=prompt,
+                llm_raw_response=raw_response,
+            )
         except Exception:
             # Fallback: produce a conservative explanation that at least
             # records the plan and points the user at manual review.
@@ -75,6 +81,8 @@ class ExplanationService:
                 recommended_tests=[
                     "Run existing unit and integration tests relevant to the modified modules.",
                 ],
+                llm_prompt=prompt,
+                llm_raw_response=raw_response,
             )
 
     # ------------------------- helpers ---------------------------
@@ -162,7 +170,13 @@ class ExplanationService:
 
         return header + "".join(sections) + instructions
 
-    def _from_llm_json(self, plan_json: dict, data: dict) -> SweCodeChangeExplanation:
+    def _from_llm_json(
+        self,
+        plan_json: dict,
+        data: dict,
+        llm_prompt: str | None = None,
+        llm_raw_response: str | None = None,
+    ) -> SweCodeChangeExplanation:
         overall_verdict = str(data.get("overall_verdict", "manual-review-required"))
         rationale = str(data.get("rationale", ""))
 
@@ -195,4 +209,6 @@ class ExplanationService:
             nfr_impacts=nfr_impacts,
             risks=risks,
             recommended_tests=recommended_tests,
+            llm_prompt=llm_prompt,
+            llm_raw_response=llm_raw_response,
         )
