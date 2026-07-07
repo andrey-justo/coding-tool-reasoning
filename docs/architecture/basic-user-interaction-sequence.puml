@@ -1,4 +1,4 @@
-@startuml
+@startuml basic-user-interaction-sequence
 title Qualification: High-Level Experiment Execution
 
 actor User

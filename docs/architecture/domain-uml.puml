@@ -1,4 +1,4 @@
-@startuml
+@startuml domain-uml
 title Qualification: High-Level Domain View
 
 skinparam classAttributeIconSize 0

@@ -1,4 +1,4 @@
-@startuml
+@startuml component-interactions
 title Qualification: High-Level System Components
 left to right direction
 
