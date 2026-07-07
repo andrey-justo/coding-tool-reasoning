@@ -1,4 +1,4 @@
-﻿"""SWE MCP tool/context wiring helpers.
+"""SWE MCP tool/context wiring helpers.
 
 This module provides:
 - shared server context factory (knowledge base + concern assets)

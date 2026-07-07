@@ -1,4 +1,4 @@
-﻿import csv
+import csv
 import json
 
 from src.service.swe_knowledge_base_service import SweKnowledgeBase

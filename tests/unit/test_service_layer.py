@@ -1,4 +1,4 @@
-﻿import json
+import json
 
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig

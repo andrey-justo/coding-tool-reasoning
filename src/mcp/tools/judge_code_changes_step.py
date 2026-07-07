@@ -1,4 +1,4 @@
-﻿from typing import Any, Optional
+from typing import Any, Optional
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.swe_config import SweMcpConfig

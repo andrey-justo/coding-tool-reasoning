@@ -1,4 +1,4 @@
-﻿"""Reproducibility experiment scaffold â€” implements the RQ2 methodology.
+"""Reproducibility experiment scaffold â€” implements the RQ2 methodology.
 
 Measures output variance when the same software engineering intent is
 submitted N times to the supervisor pipeline versus an unsupervised
