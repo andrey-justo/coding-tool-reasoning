@@ -1,8 +1,8 @@
-"""Reproducibility experiment scaffold — implements the RQ2 methodology.
+﻿"""Reproducibility experiment scaffold â€” implements the RQ2 methodology.
 
 Measures output variance when the same software engineering intent is
 submitted N times to the supervisor pipeline versus an unsupervised
-(no taxonomy enrichment) baseline.
+(no knowledge base enrichment) baseline.
 
 RQ2: Does the supervisor agent reduce output variance when the same
 software engineering intent is submitted repeatedly to an LLM,
@@ -146,10 +146,10 @@ class ReproducibilityExperiment:
     """Runs the RQ2 reproducibility experiment for a single prompt.
 
     For each trial:
-    1. Supervised path: plan_swe_code_change → build_swe_code_context →
-       (external LLM generates code) → judge_swe_code_change.
-    2. Baseline path: raw LLM call with the same prompt but without taxonomy
-       enrichment (no IntentPlanner, no ExplanationService taxonomy context).
+    1. Supervised path: plan_swe_code_change â†’ build_swe_code_context â†’
+       (external LLM generates code) â†’ judge_swe_code_change.
+    2. Baseline path: raw LLM call with the same prompt but without knowledge base
+       enrichment (no IntentPlanner, no ExplanationService knowledge base context).
 
     The two paths are run for n_trials iterations each using the same
     configured temperature and seed for both conditions. Keep temperature
@@ -195,7 +195,7 @@ class ReproducibilityExperiment:
         return report
 
     def _run_supervised_trial(self, index: int, prompt: str) -> TrialResult:
-        """Supervised path: IntentPlanner → ExplanationService.
+        """Supervised path: IntentPlanner â†’ ExplanationService.
 
         TODO: Replace placeholders with real MCP tool invocations:
         1. plan  = IntentPlanner(...).plan(prompt)
@@ -213,7 +213,7 @@ class ReproducibilityExperiment:
         )
 
     def _run_baseline_trial(self, index: int, prompt: str) -> TrialResult:
-        """Baseline path: raw LLM call, no taxonomy enrichment.
+        """Baseline path: raw LLM call, no knowledge base enrichment.
 
         TODO: Replace placeholder with a direct llm_client.chat call using
             temperature=self.temperature and seed=self.seed, then evaluate via
@@ -330,3 +330,4 @@ def run_reproducibility_from_args(args: argparse.Namespace) -> dict:
     )
 
     return summary
+

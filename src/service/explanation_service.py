@@ -1,4 +1,4 @@
-import json
+﻿import json
 from typing import List, Optional
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
@@ -6,14 +6,14 @@ from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import NfrImpact, SweCodeChangeExplanation
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 class ExplanationService:
-    """Stage 2: taxonomy-guided judging and explanation of code changes.
+    """Stage 2: knowledge-base-guided judging and explanation of code changes.
 
     This service corresponds to the Plan4Code "Judge & Test" plus
-    "Explanation Generator" blocks, using the SWE taxonomy (not ontologies)
+    "Explanation Generator" blocks, using the SWE knowledge base (not ontologies)
     and an LLM to produce a structured explanation aligned with the
     Stage 1 planning artifact.
     """
@@ -36,21 +36,21 @@ class ExplanationService:
     ) -> SweCodeChangeExplanation:
         plan = swe_context.plan
 
-        # Collect taxonomy context for the entities/nfrs referenced in the plan.
+        # Collect knowledge base context for the entities/nfrs referenced in the plan.
         related_ids: List[str] = list(plan.related_entities or [])
         if not related_ids and plan.nfr_focus:
             related_ids = self.kb.find_nfr_ids(plan.nfr_focus)
 
-        taxonomy_summary = self.kb.summarize_for_prompt(
+        knowledge_base_summary = self.kb.summarize_for_prompt(
             related_ids,
-            depth=self.config.taxonomy.relationship_depth,
+            depth=self.config.knowledge_base.relationship_depth,
         )
 
         prompt = self._build_prompt(
             swe_context=swe_context,
             original_code=original_code,
             modified_code=modified_code,
-            taxonomy_summary=taxonomy_summary,
+            knowledge_base_summary=knowledge_base_summary,
         )
 
         raw_response: str | None = None
@@ -91,7 +91,7 @@ class ExplanationService:
         swe_context: SweContext,
         original_code: str,
         modified_code: str,
-        taxonomy_summary: str,
+        knowledge_base_summary: str,
     ) -> str:
         plan = swe_context.plan
         nfr_focus_label = (
@@ -111,7 +111,7 @@ class ExplanationService:
 
         header = (
             "You are a senior software engineer acting as a judge for code changes.\n\n"
-            "The change you are judging was planned using a SWE taxonomy-guided planner.\n"
+            "The change you are judging was planned using a SWE knowledge-base-guided planner.\n"
             "Your task is to assess whether the actual code modification follows the plan,\n"
             "aligns with the developer's intent, and how it impacts key non-functional\n"
             "requirements (NFRs).\n\n"
@@ -124,8 +124,8 @@ class ExplanationService:
             "\n=== High-Level Plan Steps ===\n"
             + "\n".join(f"- {step}" for step in plan.high_level_steps)
             + "\n",
-            "\n=== Taxonomy Context (SWE taxonomy, not ontologies) ===\n"
-            + f"{taxonomy_summary}\n",
+            "\n=== knowledge base Context (SWE knowledge base, not ontologies) ===\n"
+            + f"{knowledge_base_summary}\n",
             "\n=== SWE/NFR Summary (RAG-style context) ===\n"
             + f"{swe_context.swe_summary}\n",
         ]
@@ -143,7 +143,7 @@ class ExplanationService:
         sections.append(f"\n=== Modified Code ===\n{modified_code}\n")
 
         instructions = (
-            "\nAnalyse the differences step by step, referencing the SWE taxonomy "
+            "\nAnalyse the differences step by step, referencing the SWE knowledge base "
             "concepts when relevant (NFRs, principles, practices, smells). Then "
             "produce a concise JSON object with this exact shape and nothing "
             "before or after it:\n\n"
@@ -154,7 +154,7 @@ class ExplanationService:
             "    {\n"
             '      "nfr": "Maintainability",\n'
             '      "verdict": "improved|neutral|regressed",\n'
-            '      "reasoning": "Short reasoning referencing taxonomy concepts..."\n'
+            '      "reasoning": "Short reasoning referencing knowledge base concepts..."\n'
             "    }\n"
             "  ],\n"
             '  "risks": [\n'
@@ -212,3 +212,4 @@ class ExplanationService:
             llm_prompt=llm_prompt,
             llm_raw_response=llm_raw_response,
         )
+

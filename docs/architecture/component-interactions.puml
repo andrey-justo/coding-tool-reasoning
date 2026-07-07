@@ -1,0 +1,30 @@
+@startuml
+title Qualification: High-Level System Components
+left to right direction
+
+skinparam componentStyle rectangle
+
+actor "Developer / MCP Client" as User
+
+package "Experiment Platform" {
+  component "Experiment Runner" as RUNNER
+  component "Supervisor Agent (MCP)" as SUP
+  component "Evaluation + Reporting" as EVAL
+}
+
+package "Knowledge Sources" {
+  database "Structured Knowledge Base + Links" as KB
+}
+
+component "External LLM" as LLM
+
+User --> RUNNER : run qualification experiment
+RUNNER --> SUP : supervised task request
+SUP --> KB : retrieve guidance
+SUP --> LLM : request candidate solution
+LLM --> SUP : candidate output
+SUP --> RUNNER : supervised output
+RUNNER --> EVAL : evaluate + generate artifacts
+EVAL --> User : high-level results
+
+@enduml

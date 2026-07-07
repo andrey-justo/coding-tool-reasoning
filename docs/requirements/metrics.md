@@ -15,7 +15,7 @@ currently implements it end-to-end**.
 
 | ID | Metric | Role | Typical instrument / source | Current repo status |
 |---|---|---|---|---|
-| M-1 | SOLID violation delta | Primary DV | SonarQube / Roslyn analyzers / equivalent | Not implemented (no static-analysis runner wired into evaluation harness) |
+| M-1 | Structural improvement delta | Primary DV | Language-specific local static analysis strategy bundle | Not implemented (no multi-strategy runner wired into evaluation harness) |
 | M-2 | Testability gate outcome | Prerequisite | Repo build + unit test commands | Not implemented (no build/test gate runner wired) |
 | M-3 | Cyclomatic complexity | Must (syntax/maintainability signal) | Static analysis / CI quality tools | Not implemented |
 | M-4 | Test coverage | Must (testability signal) | Coverage tool + CI | Not implemented |
@@ -23,6 +23,8 @@ currently implements it end-to-end**.
 | M-6 | Code conventions | Must (style/compliance signal) | Linter/formatter/analyzers | Not implemented |
 | M-7 | Code security findings | Must (security signal) | SAST / security analyzers | Not implemented |
 | M-8 | Semantic similarity (optional) | Optional | Code-aware similarity model | Partially implemented (BERTScore tooling exists; integration into judge/harness not fully wired) |
+
+Additional metrics planned for future implementation are documented in `docs/requirements/metrics-future.md`.
 
 ---
 
@@ -38,13 +40,13 @@ currently implements it end-to-end**.
 
 ## 2. Metric Catalog
 
-### M-1 — SOLID violation delta (Primary DV)
+### M-1 — Structural improvement delta (Primary DV)
 
-- **Definition**: change in SOLID-related smell/rule-violation count between
-  *before* and *after* for a given execution.
-- **Purpose**: primary dependent variable for RQ1/RQ2.
-- **Instrument**: static analysis (e.g., SonarQube rules, Roslyn analyzers, or
-  an equivalent C# toolchain).
+- **Definition**: normalized change in aggregated structural-violation count between
+  *before* and *after* for a given execution, using a pre-registered set of
+  language-specific analyzers and rule mappings.
+- **Purpose**: primary dependent variable for structural-quality effectiveness questions.
+- **Instrument**: local static-analysis strategy bundle configured per language.
 - **Recorded fields (minimum)**:
   - `violations_before`
   - `violations_after`
@@ -57,14 +59,37 @@ currently implements it end-to-end**.
     - `delta` is therefore bounded to `[-1.0, 1.0]` under this definition.
   - `absolute_delta` (`violations_after - violations_before`) must also be recorded to preserve raw-count interpretability, especially for zero-baseline cases.
   - `ruleset_id` / `ruleset_version`
+  - `strategy_id` (selected analyzer strategy bundle)
   - `scope` (what was analyzed)
-- **Notes**: the exact rule keys/smell identifiers used to operationalize SRP/OCP/DIP
-  should be documented in the ruleset metadata.
+- **Notes**: the exact rule mappings used to operationalize structural quality
+  must be documented in metadata. SOLID-oriented rules are a subset of this
+  structural set when language/tool support exists.
+
+#### Suggested local strategy bundles (language-oriented)
+
+- C/C++: `cppcheck + clang-tidy + flawfinder + semgrep + codeql`
+- C#: `roslyn analyzers + semgrep + codeql`
+- Java: `pmd + spotbugs + checkstyle + semgrep + codeql`
+- Python: `pylint + flake8 + semgrep + codeql`
+- JavaScript/TypeScript: `eslint + semgrep + codeql`
+
+Each bundle should be pinned by tool version and ruleset profile for reproducibility.
+
+#### SonarQube positioning
+
+SonarQube can be used as an external enrichment backend in future cycles, but
+it is not required by the initial local-first evaluation design.
 
 - **References**:
   - R. C. Martin, *Agile Software Development: Principles, Patterns, and Practices* (SOLID principles background). https://www.pearson.com/en-us/subject-catalog/p/agile-software-development-principles-patterns-and-practices/P200000003268
-  - SonarQube metrics and measures (static analysis metrics concepts). https://docs.sonarsource.com/sonarqube/latest/user-guide/metric-definitions/
   - Roslyn analyzers overview (C# diagnostics and analyzer model). https://learn.microsoft.com/en-us/dotnet/fundamentals/code-analysis/overview
+  - Cppcheck manual (local static analysis for C/C++). https://cppcheck.sourceforge.io/manual.html
+  - Clang-Tidy documentation. https://clang.llvm.org/extra/clang-tidy/
+  - PMD documentation. https://pmd.github.io/
+  - SpotBugs documentation. https://spotbugs.readthedocs.io/
+  - Checkstyle documentation. https://checkstyle.org/
+  - Flawfinder documentation. https://dwheeler.com/flawfinder/
+  - CodeQL documentation. https://codeql.github.com/docs/
 
 ### M-2 — Testability gate outcome (Prerequisite signal)
 
@@ -87,7 +112,7 @@ currently implements it end-to-end**.
   linearly independent paths through a program.
 - **Purpose**: supporting signal for maintainability/modifiability; helps
   detect overly complex code changes.
-- **Instrument**: static analysis tools that compute cyclomatic complexity.
+- **Instrument**: local static analysis tools that compute cyclomatic complexity.
 - **Recorded fields (minimum)**:
   - `value` (and unit/aggregation, e.g., per method / per file)
   - `scope` (what was analyzed)
@@ -96,7 +121,6 @@ currently implements it end-to-end**.
   - `timestamp`
 - **References**:
   - T. J. McCabe (1976). *A Complexity Measure*. https://doi.org/10.1109/TSE.1976.233837
-  - SonarQube metric definitions (Complexity / Cognitive Complexity). https://docs.sonarsource.com/sonarqube/latest/user-guide/metric-definitions/
 
 ### M-4 — Test coverage
 
@@ -129,7 +153,6 @@ currently implements it end-to-end**.
   - `timestamp`
 - **References**:
   - C. K. Roy, J. R. Cordy (2007). *A Survey on Software Clone Detection Research*. https://doi.org/10.1007/s10664-007-9034-7
-  - SonarQube metric definitions (Duplications). https://docs.sonarsource.com/sonarqube/latest/user-guide/metric-definitions/
 
 ### M-6 — Code conventions
 

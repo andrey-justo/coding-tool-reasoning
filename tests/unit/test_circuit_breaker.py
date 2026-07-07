@@ -1,4 +1,4 @@
-import json
+﻿import json
 from types import SimpleNamespace
 
 import pytest
@@ -17,7 +17,7 @@ from src.models.swe_explanation import SweCodeChangeExplanation
 from src.models.swe_node import SweNode
 from src.models.swe_server_context import SweServerContext
 from src.service.intent_planner import IntentPlanner
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 from src.utils.file_reader import read_file
 
 
@@ -42,7 +42,7 @@ def test_swe_knowledge_base_validates_directory_existence():
 
 def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
     ground_dir = tmp_path / "knowledge" / "data"
-    linked_dir = tmp_path / "taxonomies" / "linked_data"
+    linked_dir = tmp_path / "knowledge bases" / "linked_data"
     item_dir = ground_dir / "reliability" / "retry_logic"
     item_dir.mkdir(parents=True)
     linked_dir.mkdir(parents=True)
@@ -81,8 +81,8 @@ def test_swe_knowledge_base_loads_nodes_edges_and_summarizes(tmp_path):
 
 
 def test_swe_knowledge_base_load_is_idempotent(tmp_path):
-    ground_dir = tmp_path / "taxonomies" / "ground_data"
-    linked_dir = tmp_path / "taxonomies" / "linked_data"
+    ground_dir = tmp_path / "knowledge bases" / "ground_data"
+    linked_dir = tmp_path / "knowledge bases" / "linked_data"
     ground_dir.mkdir(parents=True)
     linked_dir.mkdir(parents=True)
 
@@ -113,13 +113,13 @@ def test_swe_knowledge_base_load_is_idempotent(tmp_path):
 
 
 def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
-    ground_dir = tmp_path / "taxonomies" / "ground_data"
-    linked_dir = tmp_path / "taxonomies" / "linked_data"
+    ground_dir = tmp_path / "knowledge bases" / "ground_data"
+    linked_dir = tmp_path / "knowledge bases" / "linked_data"
     ground_dir.mkdir(parents=True)
     linked_dir.mkdir(parents=True)
 
     (ground_dir / "nodes.csv").write_text(
-        "# taxonomy nodes\n"
+        "# knowledge base nodes\n"
         "\n"
         "Id,Type,Name,NFRCategory,Description\n"
         "\n"
@@ -128,7 +128,7 @@ def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
         encoding="utf-8",
     )
     (linked_dir / "edges.csv").write_text(
-        "# taxonomy edges\n"
+        "# knowledge base edges\n"
         "SourceId,Relation,TargetId,Description\n"
         "\n"
         "# section break\n"
@@ -150,13 +150,13 @@ def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
 
 def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     default_config = SweMcpConfig.load(str(tmp_path))
-    assert default_config.taxonomy.relationship_depth == 1
+    assert default_config.knowledge_base.relationship_depth == 1
 
     config_path = tmp_path / "swe_mcp_config.yaml"
     config_path.write_text(
         json.dumps(
             {
-                "taxonomy": {"relationship_depth": 2},
+                "knowledge_base": {"relationship_depth": 2},
                 "planning": {"max_steps": 3},
                 "judging": {"max_risks": 2},
             }
@@ -165,14 +165,14 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     )
 
     loaded_config = SweMcpConfig.load(str(tmp_path))
-    assert loaded_config.taxonomy.relationship_depth == 2
+    assert loaded_config.knowledge_base.relationship_depth == 2
     assert loaded_config.planning.max_steps == 3
     assert loaded_config.judging.max_risks == 2
 
     config_path.write_text("not: [valid", encoding="utf-8")
 
     fallback_config = SweMcpConfig.load(str(tmp_path))
-    assert fallback_config.taxonomy.relationship_depth == 1
+    assert fallback_config.knowledge_base.relationship_depth == 1
 
 
 def test_swe_models_reexports_and_server_context_fields():
@@ -346,7 +346,7 @@ def test_intent_planner_infers_target_language_when_missing():
     assert result.high_level_steps == ["Refactor module boundaries"]
 
 
-def test_intent_planner_expands_nfr_intents_via_taxonomy_loop():
+def test_intent_planner_expands_nfr_intents_via_knowledge_base_loop():
     kb = SweKnowledgeBase(
         ground_data_dir="/tmp/ground",
         linked_data_dir="/tmp/linked",
@@ -533,3 +533,4 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1
     assert '"DESIGN_PATTERN_NAME": "group_a"' in data_items[0]["content"]
+

@@ -1,7 +1,7 @@
-import csv
+﻿import csv
 import json
 
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 def _write_edge_csv(path, rows):
@@ -315,3 +315,4 @@ def test_swe_knowledge_base_rebuilt_edges_remain_idempotent_across_loads(tmp_pat
     )
 
     assert second_edge_snapshot == first_edge_snapshot
+

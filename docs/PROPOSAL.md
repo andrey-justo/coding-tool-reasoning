@@ -1,4 +1,4 @@
-# Supervisor Agent for LLM-Assisted Legacy Software Modernization
+﻿# Supervisor Agent for LLM-Assisted Legacy Software Modernization
 
 ## Problem Statement
 
@@ -14,7 +14,7 @@ software engineering quality objectives (ISO 25010).
 
 ## Main Goal
 
-Develop and evaluate a **supervisor agent** based on configurable taxonomies
+Develop and evaluate a **supervisor agent** based on configurable knowledge bases
 that acts as an intermediary between the developer and LLM tools. The agent
 must be capable of analyzing, enriching, and validating prompts so that code
 generated through natural language incorporates software engineering quality
@@ -25,33 +25,33 @@ reliability*, and reproducible execution traces for auditability.
 
 ## Research Questions
 
-**RQ1 – Taxonomy Encoding for Planning**: How should the SWE taxonomy encode SRP/OCP/DIP and legacy-modernization patterns to support planning for AI-assisted C# legacy refactoring?
+**RQ1 â€“ knowledge base Encoding for Planning**: How should the SWE knowledge base encode SRP/OCP/DIP and legacy-modernization patterns to support planning for AI-assisted C# legacy refactoring?
 
-**RQ2 – SOLID Violation Reduction**: For AI-assisted code-generation tools, does taxonomy-guided supervision reduce SOLID violation density compared with a prompt-only baseline?
+**RQ2 â€“ Structural Improvement Effectiveness**: For AI-assisted code-generation tools, does knowledge-base-guided supervision improve structural quality compared with a prompt-only baseline?
 
-**RQ3 – Prompt-Variation Robustness**: For AI-assisted code-generation tools, does taxonomy-guided supervision improve consistency across semantically equivalent prompt paraphrases for the same repository/issue-anchored software engineering task?
+**RQ3 â€“ Prompt-Variation Robustness**: For AI-assisted code-generation tools, does knowledge-base-guided supervision improve consistency across semantically equivalent prompt paraphrases for the same repository/issue-anchored software engineering task?
 
-**RQ4 – Legacy-Corpus Effectiveness**: For AI-assisted code-generation tools applied to legacy software tasks, does taxonomy-guided supervision lower SOLID violation density compared with a prompt-only baseline?
+**RQ4 â€“ Legacy-Corpus Structural Effectiveness**: For AI-assisted code-generation tools applied to legacy software tasks, does knowledge-base-guided supervision improve structural quality compared with a prompt-only baseline?
 
 ## Contributions
 
-1. **Supervisor Agent Architecture** – A two-stage MCP-based supervisor agent
+1. **Supervisor Agent Architecture** â€“ A two-stage MCP-based supervisor agent
    (`SWE-NFR-MCP`) that mediates between natural language problem descriptions
    and LLM code generation, enforcing configurable ISO 25010 quality objectives
    through prompt enrichment (Stage 1) and structured code change explanation
    and validation (Stage 2).
 
-2. **Plug-in SWE Taxonomy Framework** – A lightweight, drop-in CSV taxonomy
+2. **Plug-in SWE knowledge base Framework** â€“ A lightweight, drop-in CSV knowledge base
    system covering clean code, legacy system modernization, and security NFRs,
    with explicit mappings to ISO 25010 sub-characteristics, designed for
    extension without code changes.
 
-3. **New Evaluation Dimension** – A prompt-variation robustness evaluation for
+3. **New Evaluation Dimension** â€“ A prompt-variation robustness evaluation for
   LLM-assisted SE that measures whether verdicts remain consistent when the
   same software engineering task is expressed through semantically equivalent
   but differently phrased prompts.
 
-4. **Empirical Evaluation Framework** – An issue-centric experiment schema
+4. **Empirical Evaluation Framework** â€“ An issue-centric experiment schema
   centered on a software engineering task anchored to a real GitHub issue or
   pull request, enabling controlled studies across legacy and actively
   maintained codebases while varying prompt phrasing over the same task.
@@ -72,10 +72,10 @@ specification, using "Fit Criterion" fields.)
 
 - **FR-1**: support a two-stage supervision workflow (plan + judge/explain).
 - **FR-2**: support configurable quality focus and strictness.
-- **FR-3**: use a configurable taxonomy as the grounding source.
+- **FR-3**: use a configurable knowledge base as the grounding source.
 - **FR-4**: support issue-centric evaluation inputs tied to real artifacts.
 - **FR-5**: support supervised vs baseline comparisons.
-- **FR-6**: collect an objective SOLID-related primary metric via static
+- **FR-6**: collect an objective structural primary metric via static
   analysis.
 - **FR-7**: implement a testability gate (build + unit tests) and record it.
 - **FR-8**: support prompt-variation evaluation and compute consistency.
@@ -87,7 +87,7 @@ specification, using "Fit Criterion" fields.)
 - **FR-12**: provide proactive assistance when risks/prerequisites are
   detected.
 - **FR-13**: provide repository- and configuration-aware recommendations.
-- **FR-14**: integrate with static analysis (SonarQube/Roslyn) for objective
+- **FR-14**: integrate with configurable local static-analysis strategies (language-specific bundles) for objective
   quality signals.
 - **FR-15**: collect key quality metrics (complexity/coverage/duplication/
   conventions/security) and enrich from external systems when available.
@@ -100,7 +100,7 @@ specification, using "Fit Criterion" fields.)
   required execution traces/logs; public-by-default; redaction/access-control
   when needed; cloud LLM privacy policies apply).
 - **NFR-4**: prompt-ingestion safety (treat retrieved text as untrusted).
-- **NFR-5**: extensibility to new taxonomies and quality dimensions.
+- **NFR-5**: extensibility to new knowledge bases and quality dimensions.
 - **NFR-6**: usability and clarity of plans/explanations.
 - **NFR-7**: portability across Windows/Unix-like environments.
 - **NFR-8**: traceability and provenance across executions.
@@ -112,33 +112,37 @@ specification, using "Fit Criterion" fields.)
 | LLM code generation | Copilot (Chen et al., 2021), CodeT5 (Wang et al., 2021), StarCoder (Li et al., 2023) | None supervise explicitly for SE quality attributes |
 | SE-focused LLM benchmarks | SWE-bench (Jimenez et al., 2024), HumanEval (Chen et al., 2021), CodeBLEU (Ren et al., 2020) | Measure correctness; do not assess ISO 25010 NFR alignment |
 | Agentic SE | SWE-agent (Yang et al., 2024), OpenHands, Devin | No configurable NFR-oriented supervision layer |
-| Plan4Code | ICSE 2026 | Uses static ontologies; this work introduces configurable taxonomies and adds reproducibility / robustness metrics |
-| Prompt engineering | CoT (Wei et al., 2022), RAG (Lewis et al., 2020), ReAct (Yao et al., 2023) | Applied generically; not grounded in SE taxonomy or quality models |
+| Plan4Code | ICSE 2026 | Uses static ontologies; this work introduces configurable knowledge bases and adds reproducibility / robustness metrics |
+| Prompt engineering | CoT (Wei et al., 2022), RAG (Lewis et al., 2020), ReAct (Yao et al., 2023) | Applied generically; not grounded in SE knowledge base or quality models |
 | Software quality models | ISO 25010, Boehm et al. (1976), McCall et al. (1977) | Established models not yet operationalized as LLM supervision constraints |
 
 # Workflow
 
-We structure the workflow in two MCP-driven stages that use the SWE taxonomy
-under `taxonomies/ground_data` and `taxonomies/linked_data` (no ontology
+We structure the workflow in two MCP-driven stages that use the SWE knowledge base
+under `knowledge bases/ground_data` and `knowledge bases/linked_data` (no ontology
 graph is used in this path).
 
-## Stage 1 – Planning via MCP
+For visual architecture diagrams (end-to-end data flow, data-component
+integration, and execution sequence), see
+[`docs/architecture/agent-execution-data-flow.md`](architecture/agent-execution-data-flow.md).
+
+## Stage 1 â€“ Planning via MCP
 
 - MCP tool: `plan_swe_code_change` (registered in `SWE-NFR-MCP` server).
 - Inputs: natural-language `problem_description`, optional `target_language`,
 	optional `nfr_focus` (e.g., `["maintainability", "readability"]`).
-- Behavior: loads the SWE taxonomy through `SweKnowledgeBase`, resolves the
+- Behavior: loads the SWE knowledge base through `SweKnowledgeBase`, resolves the
 	NFRs in focus, and returns a `CodeGenPlan` with:
 	- the original problem description
 	- explicit NFR focus
 	- high-level refactoring / design steps
-	- related taxonomy entity ids.
+	- related knowledge base entity ids.
 
-## Stage 2 – Context & Explainability via MCP
+## Stage 2 â€“ Context & Explainability via MCP
 
 - MCP tool (context): `build_swe_code_context`.
 	- Inputs: the `CodeGenPlan` from Stage 1 and a flag `include_templates`.
-	- Behavior: re-uses the taxonomy via `SweKnowledgeBase` to build a compact
+	- Behavior: re-uses the knowledge base via `SweKnowledgeBase` to build a compact
 		SWE/NFR summary suitable for prompt injection and (optionally) attaches
 		reliability templates from `templates/reliability`. The result is a
 		`SweContext` object that agents can prepend or include in downstream
@@ -146,9 +150,9 @@ graph is used in this path).
 - MCP tool (judge): `judge_swe_code_change`.
 	- Inputs: the `SweContext` (from `build_swe_code_context`), plus
 		`original_code` and `modified_code`.
-	- Behavior: compares the two code versions using the SWE taxonomy and the
+	- Behavior: compares the two code versions using the SWE knowledge base and the
 		Stage 1 plan, and returns a structured `SweCodeChangeExplanation` with an
-		overall verdict, NFR‑level impacts, risks, and recommended tests. This
+		overall verdict, NFRâ€‘level impacts, risks, and recommended tests. This
 		corresponds to the "Judge & Test" and "Explanation Generator" parts of the
 		Plan4Code poster.
 
@@ -158,27 +162,27 @@ Configuration is centralized in `swe_mcp_config.yaml` and loaded into the
 `SweMcpConfig` model when the `SWE-NFR-MCP` server starts. It exposes four
 groups of properties:
 
-- **Taxonomy** – where to load SWE taxonomies from and how to navigate them.
-	- `taxonomy.ground_data_dir`, `taxonomy.linked_data_dir` – directories for
-		CSV-based taxonomies (override to plug in new SWE taxonomies).
-	- `taxonomy.relationship_depth` – how deep to traverse relationships when
+- **knowledge base** â€“ where to load SWE knowledge bases from and how to navigate them.
+	- `knowledge base.ground_data_dir`, `knowledge base.linked_data_dir` â€“ directories for
+		CSV-based knowledge bases (override to plug in new SWE knowledge bases).
+	- `knowledge base.relationship_depth` â€“ how deep to traverse relationships when
 		building summaries for prompts.
-- **Planning (Stage 1)** – intent extraction and plan shape.
-	- `planning.default_nfr_focus` – fallback NFRs when the request does not
+- **Planning (Stage 1)** â€“ intent extraction and plan shape.
+	- `planning.default_nfr_focus` â€“ fallback NFRs when the request does not
 		specify any (e.g., Maintainability, Readability).
-	- `planning.max_steps` – maximum number of high-level steps returned in a
+	- `planning.max_steps` â€“ maximum number of high-level steps returned in a
 		`CodeGenPlan`.
-- **Judging & Explanation (Stage 2)** – strictness and explanation detail.
-	- `judging.strictness` – numeric slider in \[0,1] that controls whether the
+- **Judging & Explanation (Stage 2)** â€“ strictness and explanation detail.
+	- `judging.strictness` â€“ numeric slider in \[0,1] that controls whether the
 		judge behaves leniently, strictly, or in a balanced way; surfaced in the
 		LLM prompts.
-	- `judging.max_risks` – limit on how many risk bullet points appear in a
+	- `judging.max_risks` â€“ limit on how many risk bullet points appear in a
 		`SweCodeChangeExplanation`.
-- **Workflow pipeline** – the software-engineering lifecycle used by agents.
-	- `workflow.stages` – ordered list of stages (requirements, planning,
+- **Workflow pipeline** â€“ the software-engineering lifecycle used by agents.
+	- `workflow.stages` â€“ ordered list of stages (requirements, planning,
 		implementation, testing, documentation, deployment, monitoring,
 		diagnosis).
-	- `workflow.cycle_enabled` – whether to treat the workflow as a repeating
+	- `workflow.cycle_enabled` â€“ whether to treat the workflow as a repeating
 		cycle, encouraging monitoring/diagnosis to feed back into new
 		requirements.
 
@@ -187,16 +191,16 @@ groups of properties:
 Reliability design templates live under `templates/reliability/` and drive
 Stage 2a code generation:
 
-- `base_template.md` – generic fill-in-the-blank prompt used for any design
+- `base_template.md` â€“ generic fill-in-the-blank prompt used for any design
   pattern (variables filled from the per-pattern `base_design.json`).
-- `test_base_template.md` – equivalent template for generating unit tests.
-- `<pattern>/base_design.json` – JSON variables (name, problem, steps) for
+- `test_base_template.md` â€“ equivalent template for generating unit tests.
+- `<pattern>/base_design.json` â€“ JSON variables (name, problem, steps) for
   each known reliability pattern: `circuit_breaker`, `load_balancing`, `nhpp`,
   `rate_limiting`, `sharding_partitioning`, `throttling`.
-- `<pattern>/test_design.json` – edge conditions used by the test template.
-- `templates/utils/extract_reliability_input.md` – LLM prompt that parses a
+- `<pattern>/test_design.json` â€“ edge conditions used by the test template.
+- `templates/utils/extract_reliability_input.md` â€“ LLM prompt that parses a
   natural-language request into a structured JSON extraction.
-- `templates/utils/identify_reliability_design.md` – LLM prompt that maps a
+- `templates/utils/identify_reliability_design.md` â€“ LLM prompt that maps a
   name to one of the canonical design-pattern keys.
 
 When no pattern-specific JSON is found, `ReliabilityDesignTool` falls back to
@@ -204,25 +208,25 @@ the generic `base_template.md` and logs a warning.
 
 # Execution
 
-The end‑to‑end Plan4Code workflow with MCP and taxonomies is:
+The endâ€‘toâ€‘end Plan4Code workflow with MCP and knowledge bases is:
 
-1. The MCP client sends a natural‑language request to
-	`plan_swe_code_change` (Stage 1 – intent extractor + intent action).
+1. The MCP client sends a naturalâ€‘language request to
+	`plan_swe_code_change` (Stage 1 â€“ intent extractor + intent action).
 2. The client calls `build_swe_code_context` to obtain a `SweContext` and
 	injects its `swe_summary` and templates into downstream LLM prompts used to
 	generate or modify code.
 3. After the code has been changed, the client calls
 	`judge_swe_code_change` with the `SweContext`, original code, and modified
-	code to obtain an explanation aligned with the SWE taxonomy.
+	code to obtain an explanation aligned with the SWE knowledge base.
 
 # Judge
 
-`JudgeCodeChangesStep` wraps the same explanation logic for non‑MCP
+`JudgeCodeChangesStep` wraps the same explanation logic for nonâ€‘MCP
 workflows. Internally it uses `ExplanationService`, which:
 
-- uses `SweKnowledgeBase` (taxonomies under `taxonomies/…`) to retrieve NFRs,
+- uses `SweKnowledgeBase` (knowledge bases under `knowledge bases/â€¦`) to retrieve NFRs,
 	principles, practices, and smells connected to the plan;
-- builds a chain‑of‑thought style prompt that includes the Stage 1 plan,
+- builds a chainâ€‘ofâ€‘thought style prompt that includes the Stage 1 plan,
 	SWE/NFR summary, and the code diff; and
 - parses the LLM output into a `SweCodeChangeExplanation` object.
 
@@ -231,11 +235,11 @@ workflows. Internally it uses `ExplanationService`, which:
 Tests live under `tests/` and exercise the end-to-end reliability design
 pipeline against real reference code:
 
-- `test_circuit_breaker.py` – sends a random C# snippet to
+- `test_circuit_breaker.py` â€“ sends a random C# snippet to
   `ReliabilityDesignTool`, generates circuit-breaker code, and evaluates it
   against `tests/reference_code/circuit_breaker.cs` using `BERTScorer`
   (precision, recall, F1).
-- `test_reliability_patterns.py` – parametric test that iterates over every
+- `test_reliability_patterns.py` â€“ parametric test that iterates over every
   folder under `templates/reliability/`, pairs it with a matching example in
   `tests/examples/` and a reference in `tests/reference_code/`, runs the full
   tool chain, and scores the output.
@@ -255,15 +259,15 @@ assert on the parsed `CodeGenPlan` and `SweCodeChangeExplanation` fields.
 
 ## Selection
 
-We select a mix of modern and legacy repositories to exercise the taxonomy
+We select a mix of modern and legacy repositories to exercise the knowledge base
 support for NFR-aware planning and explanation:
 
-- **Legacy systems** – projects with long history, low test coverage, and
-	frequent maintenance issues. The legacy SWE taxonomy
+- **Legacy systems** â€“ projects with long history, low test coverage, and
+	frequent maintenance issues. The legacy SWE knowledge base
 	(`legacy_code_nodes.csv`, `legacy_code_edges.csv`) captures concepts such as
 	legacy hotspots, technical-debt clusters, and mitigation patterns
 	(Strangler Fig, Anti-Corruption Layer).
-- **Actively maintained systems** – projects with regular releases and
+- **Actively maintained systems** â€“ projects with regular releases and
 	structured issue tracking, used to evaluate feature development scenarios.
 
 # Evaluation Experiments
@@ -271,9 +275,9 @@ support for NFR-aware planning and explanation:
 For each experiment, the primary dataset unit is a **software engineering
 task anchored to a repository/issue context**:
 
-- `task_prompt` – high-level natural-language description of the task.
-- `github_repo` – URL or `owner/repo` identifier of the target repository.
-- `github_issue_id` – numeric issue or pull-request identifier providing
+- `task_prompt` â€“ high-level natural-language description of the task.
+- `github_repo` â€“ URL or `owner/repo` identifier of the target repository.
+- `github_issue_id` â€“ numeric issue or pull-request identifier providing
 	additional context (discussion, logs, screenshots).
 
 For RQ3, each anchored task includes multiple semantically equivalent prompt
@@ -290,8 +294,11 @@ relevant files from the repository.
 Metric definitions are centralized in [`docs/requirements/metrics.md`](requirements/metrics.md).
 This proposal keeps metric discussion high-level; the metrics document defines
 primary vs. secondary metrics, collection rules, and provenance requirements.
-For v1, the primary quantitative quality metric is C# SOLID alignment
-(SRP/OCP/DIP) as the scoped operationalization of ISO 25010
+For v1, the primary quantitative quality metric is **structural improvement
+delta** (before/after structural-violation change) computed through
+language-specific local static-analysis strategy bundles with pinned
+ruleset/version metadata. SOLID-oriented signals (SRP/OCP/DIP) remain one
+important subset within this broader structural operationalization of ISO 25010
 maintainability/modifiability.
 
 # Tool & Skill Integrations
@@ -308,7 +315,7 @@ Swap `LocalAIClient` for an `AnthropicClient` adapter that targets the
 `provider: Anthropic` in `available_models.yaml` and point the URL to
 `https://api.anthropic.com/v1/messages`.  Once the LLM is Claude, the Stage 1
 and Stage 2 prompts can include a `tools` block with MCP-defined JSON-schema
-shapes, which lets Claude call `search_taxonomy`, `run_test`, or
+shapes, which lets Claude call `search_knowledge_base`, `run_test`, or
 `static_analysis` mid-generation and ground its reasoning in external facts
 before producing the final plan or explanation.
 
@@ -319,11 +326,11 @@ alongside `SWE-NFR-MCP` in the same agent runtime.  The orchestrating agent
 (or Claude) can first call `get_issue(owner, repo, issue_id)` and
 `get_pull_request_diff(pr_number)` to obtain authoritative problem context and
 then pipe the results directly into:
-- `plan_swe_code_change.problem_description` – so Stage 1 operates on the
+- `plan_swe_code_change.problem_description` â€“ so Stage 1 operates on the
   real issue body, not a paraphrased request.
-- `build_swe_code_context.security_extra_context` – GitHub Security Advisories
+- `build_swe_code_context.security_extra_context` â€“ GitHub Security Advisories
   linked to the repository can be injected as extra security context.
-- `judge_swe_code_change.original_code` / `modified_code` – diff hunks from
+- `judge_swe_code_change.original_code` / `modified_code` â€“ diff hunks from
   the PR feed the judge without requiring manual copy-paste.
 
 The `evaluation/` dataset schema already carries `github_repo` and
@@ -358,7 +365,7 @@ Register `SWE-NFR-MCP` in the VS Code MCP configuration
 
 Once registered, GitHub Copilot Chat (VS Code 1.99+) can invoke
 `plan_swe_code_change` and `judge_swe_code_change` as chat participants or
-via `@workspace` tool calls, surfacing taxonomy-grounded plans and
+via `@workspace` tool calls, surfacing knowledge base-grounded plans and
 explanations inline in the editor without any additional client code.
 
 ## BERTScore integration into Stage 2
@@ -379,36 +386,36 @@ into Stage 2:
 
 ## Internal Validity
 
-- **LLM non-determinism** – all experiments must fix `temperature=0` in `LocalAIClient` to isolate the effect of taxonomy
+- **LLM non-determinism** â€“ all experiments must fix `temperature=0` in `LocalAIClient` to isolate the effect of knowledge base
   supervision from stochastic output variation. Without this, RQ3 results
   cannot be attributed to the supervisor.
-- **Prompt confounding** – prompt phrasing in Stages 1 and 2 may inadvertently
+- **Prompt confounding** â€“ prompt phrasing in Stages 1 and 2 may inadvertently
   encode quality preferences. Addressed by RQ3 (prompt-variation robustness)
   and by blind prompt authorship (prompts written by authors not involved in
-  taxonomy design).
-- **Reference code subjectivity** – `tests/reference_code/` examples were not
+  knowledge base design).
+- **Reference code subjectivity** â€“ `tests/reference_code/` examples were not
   produced by a controlled expert panel. Mitigation: recruit at least 3 senior
   engineers to write independent reference implementations and report
-  inter-rater agreement (Cohen's κ ≥ 0.6 target).
+  inter-rater agreement (Cohen's Îº â‰¥ 0.6 target).
 
 ## External Validity
 
-- **Language coverage** – current reliability templates and taxonomy examples
+- **Language coverage** â€“ current reliability templates and knowledge base examples
   use C#. Generalization to Python, Java, or TypeScript requires additional
   reference implementations and language-aware scoring models (CodeBERT or
   UniXcoder).
-- **Repository diversity** – the empirical study targets a small set of legacy
+- **Repository diversity** â€“ the empirical study targets a small set of legacy
   and active projects. Wider coverage across domains (embedded, web, data
   pipelines) is required for broad claims. Minimum corpus: 5 repositories,
   30 issues each.
 
 ## Construct Validity
 
-- **BERTScore model** – `bert-base-uncased` is a general English NLP model
+- **BERTScore model** â€“ `bert-base-uncased` is a general English NLP model
   and is not optimized for source code. Experiments must use
   `microsoft/codebert-base` (or CodeBLEU + compilation / test-pass rate) for
   valid code similarity measurement.
-- **`overall_verdict` operationalization** – the four verdict labels
+- **`overall_verdict` operationalization** â€“ the four verdict labels
   (`acceptable`, `risky`, `rejected`, `manual-review-required`) are defined
   by the prompt; their mapping to real-world developer judgment must be
   validated via the developer trust survey (RQ4) before they are used as
@@ -416,11 +423,11 @@ into Stage 2:
 
 ## Conclusion Validity
 
-- **Sample size** – a minimum of 30 paired repository/issue-anchored tasks is
+- **Sample size** â€“ a minimum of 30 paired repository/issue-anchored tasks is
   required for RQ1/RQ2, and 30-50 task-level prompt-variation observations are
   required for RQ3, to support the planned paired tests at
   ($\alpha = 0.05$, effect size Cohen's $d \geq 0.5$ where applicable).
-- **Multiple comparisons** – testing across multiple NFR categories requires
+- **Multiple comparisons** â€“ testing across multiple NFR categories requires
   Bonferroni or Benjamini-Hochberg correction to control the family-wise
   error rate.
 
@@ -428,10 +435,10 @@ into Stage 2:
 
 | Phase | Milestone | Duration |
 |---|---|---|
-| 1 | Literature review; ISO 25010 taxonomy mapping; RQ refinement and operationalization | 3 months |
-| 2 | Prototype hardening: CodeBERT scorer, reproducible LLM calls (`temperature=0`, `seed`), `Literal` verdict, baseline (no-taxonomy) implementation | 2 months |
-| 3 | Empirical data collection: task corpus (5 repos × 30 issues), prompt-variation set construction | 3 months |
-| 4 | Statistical analysis (RQ1–RQ4), developer trust survey design and execution (N ≥ 20 participants) | 3 months |
+| 1 | Literature review; ISO 25010 knowledge base mapping; RQ refinement and operationalization | 3 months |
+| 2 | Prototype hardening: CodeBERT scorer, reproducible LLM calls (`temperature=0`, `seed`), `Literal` verdict, baseline (no-knowledge base) implementation | 2 months |
+| 3 | Empirical data collection: task corpus (5 repos Ã— 30 issues), prompt-variation set construction | 3 months |
+| 4 | Statistical analysis (RQ1â€“RQ4), developer trust survey design and execution (N â‰¥ 20 participants) | 3 months |
 | 5 | Paper writing, internal review, and conference submission | 3 months |
 
 Total estimated duration: **14 months** from the start of Phase 1.
@@ -441,23 +448,23 @@ Total estimated duration: **14 months** from the start of Phase 1.
 Based on the current implementation, several extensions are natural next
 steps for Plan4Code:
 
-- **Broader taxonomies** – add further SWE taxonomies beyond reliability,
+- **Broader knowledge bases** â€“ add further SWE knowledge bases beyond reliability,
   legacy code, and security (e.g., performance, usability, observability,
   microservices patterns) to support a wider range of NFR-driven changes.
-- **IDE and PR integration** – expose the MCP workflow through IDE plugins
+- **IDE and PR integration** â€“ expose the MCP workflow through IDE plugins
   and GitHub bots so plans and explanations appear inline in pull requests or
   code reviews.
-- **CI/CD hooks** – integrate `judge_swe_code_change` as an optional gate in
+- **CI/CD hooks** â€“ integrate `judge_swe_code_change` as an optional gate in
   continuous integration pipelines, surfacing explanations when automated
   judging flags risky changes.
-- **Human-in-the-loop controls** – design richer interaction patterns where
+- **Human-in-the-loop controls** â€“ design richer interaction patterns where
   developers can edit or approve Stage 1 plans before execution and provide
   feedback on Stage 2 explanations for future tuning.
-- **Evaluation harness** – build a reusable benchmark suite that replays
+- **Evaluation harness** â€“ build a reusable benchmark suite that replays
   repository/issue-anchored software engineering tasks across repositories, collecting metrics on plan
   quality, explanation usefulness, and developer trust.
-- **Taxonomy evolution pipeline** – establish a process to refine and extend
-  the SWE taxonomies based on empirical data (e.g., frequently occurring
+- **knowledge base evolution pipeline** â€“ establish a process to refine and extend
+  the SWE knowledge bases based on empirical data (e.g., frequently occurring
   patterns in explanations, new smells discovered in the field).
 
 
@@ -475,9 +482,9 @@ steps for Plan4Code:
 | Remaining Gap | Blocks | Priority |
 |---|---|---|
 | Wire `_run_supervised_trial` and `_run_baseline_trial` in `reproducibility_experiment.py` | RQ1, RQ2, RQ3 data collection | **High** |
-| Replace `bert-base-uncased` with `microsoft/codebert-base` in `ReliabilityEvaluationTool` | Construct validity (Threats §) | **High** |
+| Replace `bert-base-uncased` with `microsoft/codebert-base` in `ReliabilityEvaluationTool` | Construct validity (Threats Â§) | **High** |
 | Add `temperature=0` parameter to `LocalAIClient.chat()` | RQ1, RQ2, RQ3 determinism | **High** |
-| Add `ISO25010Characteristic` column to all taxonomy CSV files | Contribution 2; RQ1 operationalization | **High** |
+| Add `ISO25010Characteristic` column to all knowledge base CSV files | Contribution 2; RQ1 operationalization | **High** |
 | Write prompt-variation robustness experiment over repository/issue-anchored tasks | RQ3 data collection | **Medium** |
 | Add unit tests for `IntentPlanner` and `ExplanationService` with mock `MultiModelLLMClient` | Test coverage; CI gate | **Medium** |
 | Remove or implement `src/migration/analyzer.py` stub | Artifact integrity | **Low** |

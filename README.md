@@ -1,4 +1,4 @@
-# Python Code Reasoning Tools
+﻿# Python Code Reasoning Tools
 
 [![CI](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/ci.yml)
 [![CD](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/cd.yml/badge.svg?branch=master)](https://github.com/andrey-justo/coding-tool-reasoning/actions/workflows/cd.yml)
@@ -129,7 +129,7 @@ docker-compose up -d --build
 docker-compose down
 ```
 
-The app container runs `python src/main.py` by default. You can still run the code locally in a virtualenv — the docker setup is optional and intended for local integration testing with LocalAI.
+The app container runs `python src/main.py` by default. You can still run the code locally in a virtualenv â€” the docker setup is optional and intended for local integration testing with LocalAI.
 
 If you prefer to run LocalAI manually (no docker-compose), you can still follow the previous LocalAI `docker run` example above and point the app to the endpoint using `LOCALAI_ENDPOINT=http://localhost:8080` or by updating `available_models.yaml`.
 
@@ -141,11 +141,11 @@ If you prefer to run LocalAI manually (no docker-compose), you can still follow 
 
 ## MCP server for SWE / NFR context
 
-This repo also provides an MCP server that exposes software-engineering taxonomies
+This repo also provides an MCP server that exposes software-engineering knowledge bases
 for clean code and NFR-aware code generation.
 
 - Server entry point: `src/swe_mcp_server.py`
-- Taxonomy sources: `taxonomies/ground_data` and `taxonomies/linked_data`
+- knowledge base sources: `knowledge bases/ground_data` and `knowledge bases/linked_data`
 
 ### Running the MCP server
 
@@ -155,19 +155,19 @@ From the project root, after installing dependencies via the setup script or Poe
 python -m src.main mcp-server
 ```
 
-This starts a FastMCP server on stdio that can be registered with any MCP‑aware
+This starts a FastMCP server on stdio that can be registered with any MCPâ€‘aware
 client (e.g., via `mcp dev` / `mcp install`).
 
 ### Available tools
 
 - `plan_swe_code_change(problem_description, target_language=None, nfr_focus=None)`
-	- Stage 1 – planning. Returns a structured `CodeGenPlan` and **must be
-		called first** to create a high‑level plan for the code change, guided
-		by the SWE taxonomy.
+	- Stage 1 â€“ planning. Returns a structured `CodeGenPlan` and **must be
+		called first** to create a highâ€‘level plan for the code change, guided
+		by the SWE knowledge base.
 - `build_swe_code_context(plan, include_templates=True, security_extra_context=None, prompt_output_folder=None, write_executed_prompts=False)`
-	- Stage 2a – context building. Takes a `CodeGenPlan` and returns a
+	- Stage 2a â€“ context building. Takes a `CodeGenPlan` and returns a
 		`SweContext` containing:
-		- A text summary (`swe_summary`) built from the SWE taxonomies
+		- A text summary (`swe_summary`) built from the SWE knowledge bases
 		- Optional concern assets loaded from:
 			- `templates/data/<swe_concern>/*.md`
 			- `knowledge/data/<swe_concern>/<concern_group>/data.json`
@@ -175,30 +175,35 @@ client (e.g., via `mcp dev` / `mcp install`).
 		- Optional `executed_prompts.md` with timestamp-ordered rendered prompts when `write_executed_prompts=True`
 			(useful for auditing/debugging generated prompt bundles)
 - `judge_swe_code_change(swe_context, original_code, modified_code)`
-	- Stage 2b – explainable code changes. Uses the SWE taxonomy plus the
+	- Stage 2b â€“ explainable code changes. Uses the SWE knowledge base plus the
 		Stage 1 plan/context to return a structured `SweCodeChangeExplanation`
-		(overall verdict, rationale, per‑NFR impacts, risks, and recommended
+		(overall verdict, rationale, perâ€‘NFR impacts, risks, and recommended
 		tests) comparing original vs. modified code.
 
 The intended agentic flow is:
 
-1. Call `plan_swe_code_change` to show the user a taxonomy‑guided plan.
+1. Call `plan_swe_code_change` to show the user a knowledge-base-guided plan.
 2. Once approved, call `build_swe_code_context` and inject the returned
 	`swe_summary` and templates into your LLM prompts for code generation.
 3. After applying the changes in your own agent or tool, call
 	`judge_swe_code_change` with the original and modified code to obtain an
 	explainable assessment of the change.
+
+Architecture diagrams for this execution flow (data flow, component integration,
+and sequence view) are documented in:
+
+- [docs/architecture/agent-execution-data-flow.md](docs/architecture/agent-execution-data-flow.md)
 ## Linting
 
 The project uses [ruff](https://docs.astral.sh/ruff/) (replaces `flake8` + `black`) and a custom import consistency script.
 Run from the repo root after activating your virtual environment.
 
-**ruff** – lint (style, errors, import order):
+**ruff** â€“ lint (style, errors, import order):
 ```shell
 ruff check src tests
 ```
 
-**ruff** – format check (equivalent to `black --check`):
+**ruff** â€“ format check (equivalent to `black --check`):
 ```shell
 ruff format --check src tests
 ```

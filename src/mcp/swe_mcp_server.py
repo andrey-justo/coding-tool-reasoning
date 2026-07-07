@@ -1,7 +1,7 @@
-"""SWE MCP tool/context wiring helpers.
+﻿"""SWE MCP tool/context wiring helpers.
 
 This module provides:
-- shared server context factory (taxonomy + concern assets)
+- shared server context factory (knowledge base + concern assets)
 - helper to register SWE MCP tools onto a FastMCP instance
 
 The FastMCP server instance is created in src.main.
@@ -17,7 +17,7 @@ from typing import Any, List, Optional
 from src.mcp.tools.swe_mcp_tools import register_swe_mcp_tools
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_server_context import SweServerContext
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 class SweMcpServerContextProvider:
@@ -34,20 +34,20 @@ class SweMcpServerContextProvider:
         return self._repo_root
 
     def create_swe_server_context(self, force_reload: bool = False) -> SweServerContext:
-        """Load taxonomies and concern assets once and cache server context."""
+        """Load knowledge bases and concern assets once and cache server context."""
 
         if self._server_context is not None and not force_reload:
             return self._server_context
 
         config = SweMcpConfig.load(repo_root=self._repo_root)
 
-        ground_dir = config.taxonomy.ground_data_dir or os.path.join(
+        ground_dir = config.knowledge_base.ground_data_dir or os.path.join(
             self._repo_root, "knowledge", "data"
         )
         if not os.path.isabs(ground_dir):
             ground_dir = os.path.join(self._repo_root, ground_dir)
 
-        linked_dir = config.taxonomy.linked_data_dir or os.path.join(
+        linked_dir = config.knowledge_base.linked_data_dir or os.path.join(
             self._repo_root, "knowledge", "linked_data"
         )
         if not os.path.isabs(linked_dir):
@@ -56,7 +56,7 @@ class SweMcpServerContextProvider:
         kb = SweKnowledgeBase(
             ground_data_dir=ground_dir,
             linked_data_dir=linked_dir,
-            lazy_load_nodes=config.taxonomy.lazy_load_nodes,
+            lazy_load_nodes=config.knowledge_base.lazy_load_nodes,
         )
         kb.load()
         templates = self._load_concern_assets(config=config)
@@ -255,3 +255,4 @@ def register_swe_tools_on_mcp(mcp: Any) -> None:
     """Backwards-compatible function wrapper for MCP registration."""
 
     _DEFAULT_CONTEXT_PROVIDER.register_swe_tools_on_mcp(mcp)
+

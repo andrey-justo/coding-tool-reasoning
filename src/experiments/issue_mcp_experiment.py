@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import argparse
 import asyncio
@@ -124,7 +124,7 @@ def _write_llm_debug_artifacts(
             "call_name": "build_swe_code_context",
             "llm_input": (
                 "No direct LLM call in this step.\n\n"
-                "Context is assembled from SWE taxonomy + templates based on the plan."
+                "Context is assembled from SWE knowledge base + templates based on the plan."
             ),
             "llm_output": None,
             "parsed_output": mcp_payload.get("context"),
@@ -1154,3 +1154,4 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

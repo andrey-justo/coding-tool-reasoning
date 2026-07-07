@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import os
 from typing import List, Optional
@@ -7,8 +7,8 @@ import yaml
 from pydantic import BaseModel, Field
 
 
-class TaxonomyConfig(BaseModel):
-    """Configuration for SWE taxonomies used by the MCP server.
+class KnowledgeBaseConfig(BaseModel):
+    """Configuration for SWE knowledge bases used by the MCP server.
 
     Paths are optional; when omitted, the server falls back to the default
     `knowledge/data` for node discovery and `knowledge/linked_data` for edge
@@ -18,14 +18,14 @@ class TaxonomyConfig(BaseModel):
     ground_data_dir: Optional[str] = Field(
         default=None,
         description=(
-            "Optional absolute or repo-relative root for taxonomy nodes. "
+            "Optional absolute or repo-relative root for knowledge base nodes. "
             "Defaults to knowledge/data."
         ),
     )
     linked_data_dir: Optional[str] = Field(
         default=None,
         description=(
-            "Optional absolute or repo-relative root for taxonomy edge CSVs. "
+            "Optional absolute or repo-relative root for knowledge base edge CSVs. "
             "Defaults to knowledge/linked_data and is scanned recursively."
         ),
     )
@@ -33,14 +33,14 @@ class TaxonomyConfig(BaseModel):
         default=1,
         ge=1,
         description=(
-            "How deep to traverse relationships between taxonomy nodes when "
+            "How deep to traverse relationships between knowledge base nodes when "
             "building summaries (1 = direct neighbors only)."
         ),
     )
     lazy_load_nodes: bool = Field(
         default=False,
         description=(
-            "When true, discover taxonomy nodes from knowledge/data eagerly but "
+            "When true, discover knowledge base nodes from knowledge/data eagerly but "
             "defer loading rich data.json payload details until a node is read."
         ),
     )
@@ -52,7 +52,7 @@ class PlanningConfig(BaseModel):
     max_steps: int = Field(
         default=8,
         ge=1,
-        description="Maximum number of high‑level planning steps to keep.",
+        description="Maximum number of highâ€‘level planning steps to keep.",
     )
     default_nfr_focus: List[str] = Field(
         default_factory=lambda: ["Maintainability", "Readability"],
@@ -62,7 +62,7 @@ class PlanningConfig(BaseModel):
         default=2,
         ge=0,
         description=(
-            "Maximum taxonomy-expansion passes used to infer additional intent "
+            "Maximum knowledge base-expansion passes used to infer additional intent "
             "NFR candidates from already resolved NFR nodes."
         ),
     )
@@ -95,7 +95,7 @@ class JudgingConfig(BaseModel):
 
 
 class WorkflowConfig(BaseModel):
-    """Configuration for the high‑level software engineering workflow.
+    """Configuration for the highâ€‘level software engineering workflow.
 
     The stages describe the intended lifecycle from requirements to
     monitoring/diagnosis. Agents can use this ordering to organize plans
@@ -197,9 +197,9 @@ class LocalizerConfig(BaseModel):
 
 
 class SweMcpConfig(BaseModel):
-    """Top‑level configuration object for the SWE MCP server and tools."""
+    """Topâ€‘level configuration object for the SWE MCP server and tools."""
 
-    taxonomy: TaxonomyConfig = Field(default_factory=TaxonomyConfig)
+    knowledge_base: KnowledgeBaseConfig = Field(default_factory=KnowledgeBaseConfig)
     planning: PlanningConfig = Field(default_factory=PlanningConfig)
     judging: JudgingConfig = Field(default_factory=JudgingConfig)
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
@@ -225,3 +225,4 @@ class SweMcpConfig(BaseModel):
         except Exception:
             # Fall back to defaults on any parsing error to keep the server robust.
             return cls()
+
