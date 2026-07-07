@@ -1,4 +1,4 @@
-# Volere-Style Requirements Specification (v1)
+﻿# Volere-Style Requirements Specification (v1)
 
 This document refactors the project requirements into a **Volere-aligned**
 structure.
@@ -10,14 +10,14 @@ controls.
 
 ## 1. Purpose and Background
 
-The purpose of the system is to supervise LLM-assisted software changes for legacy modernization by grounding planning and judging in configurable software-engineering taxonomies, and to support reproducible empirical evaluation.
+The purpose of the system is to supervise LLM-assisted software changes for legacy modernization by grounding planning and judging in configurable software-engineering knowledge bases, and to support reproducible empirical evaluation.
 
 ---
 
 ## 2. Stakeholders and Users
 
 - **Primary users**: software developers and engineers working on legacy codebases.
-- **Secondary users**: researchers running controlled experiments and collecting evidence for RQ1–RQ4.
+- **Secondary users**: researchers running controlled experiments and collecting evidence for RQ1â€“RQ4.
 - **Reviewers/maintainers**: people validating artifacts, methodology, and replication packages.
 
 ---
@@ -43,7 +43,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 
 ## 5. Assumptions and Dependencies
 
-- The system may call third-party LLM services. Data retention/training behavior is governed by the provider’s policy; the tool cannot guarantee third-party storage behavior.
+- The system may call third-party LLM services. Data retention/training behavior is governed by the providerâ€™s policy; the tool cannot guarantee third-party storage behavior.
 - Repository build/test execution and static analysis depend on repository tooling and environment availability.
 
 ---
@@ -54,19 +54,19 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **NFR**: Non-Functional Requirement.
 - **MCP**: Model Context Protocol.
 - **SOLID**: SRP, OCP, DIP used here as a maintainability/modifiability lens.
-- **SRP**: Single Responsibility Principle — a module/class should have one reason to change.
-- **OCP**: Open/Closed Principle — software entities should be open for extension but closed for modification.
-- **DIP**: Dependency Inversion Principle — depend on abstractions, not on concretions.
-- **SonarQube**: static analysis platform that reports code quality and security metrics.
+- **SRP**: Single Responsibility Principle â€” a module/class should have one reason to change.
+- **OCP**: Open/Closed Principle â€” software entities should be open for extension but closed for modification.
+- **DIP**: Dependency Inversion Principle â€” depend on abstractions, not on concretions.
+- **Static-analysis strategy bundle**: language-specific set of local analyzers and pinned rule mappings used to compute structural quality metrics.
 - **Roslyn analyzers**: C# compiler-based analyzers that report diagnostics (rules/violations) and code quality signals.
-- **Baseline**: a named comparison condition where taxonomy supervision is disabled.
+- **Baseline**: a named comparison condition where knowledge base supervision is disabled.
 - **Fit Criterion**: an observable/measurable condition that indicates the requirement has been satisfied (Volere terminology).
 
 ---
 
 ## 7. Functional Requirements (Volere shells)
 
-### FR-1 — Supervisor workflow
+### FR-1 â€” Supervisor workflow
 
 - **Statement**: The system shall support a two-stage supervision workflow that (a) produces a quality-aware plan from a natural-language request and (b) explains/judges a proposed code change against selected quality objectives.
 - **Fit Criterion**: Given an intent + code change, the system outputs a plan, an overall verdict, quality impacts, and recommended tests.
@@ -75,7 +75,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: FR-3.
 
-### FR-2 — Configurable quality focus
+### FR-2 â€” Configurable quality focus
 
 - **Statement**: The system shall allow users to set a desired quality focus and a strictness level that influences planning and judging.
 - **Fit Criterion**: Under controlled runs, changing focus/strictness yields measurably different plans and/or verdict distributions.
@@ -84,16 +84,16 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: FR-1.
 
-### FR-3 — Taxonomy-driven guidance
+### FR-3 â€” knowledge base-driven guidance
 
-- **Statement**: The system shall use a configurable software-engineering taxonomy as the grounding source for plans, summaries, and judgments.
-- **Fit Criterion**: Replacing the taxonomy dataset changes the concepts/labels used in outputs without rewriting source code.
+- **Statement**: The system shall use a configurable software-engineering knowledge base as the grounding source for plans, summaries, and judgments.
+- **Fit Criterion**: Replacing the knowledge base dataset changes the concepts/labels used in outputs without rewriting source code.
 - **Rationale**: Avoid fixed ontologies and support extensibility.
 - **Source**: `docs/PROPOSAL.md` (Contributions), `docs/risks/avoiding-ontologies.md`.
 - **Priority**: Must.
 - **Dependencies**: None.
 
-### FR-4 — Repository/issue-anchored task inputs
+### FR-4 â€” Repository/issue-anchored task inputs
 
 - **Statement**: The evaluation workflow shall support software engineering tasks anchored to a concrete repository artifact (issue or pull request) to provide authoritative context.
 - **Fit Criterion**: Each evaluation record includes a stable link/identifier to the underlying artifact, the task description, and any prompt variants used for that same anchored task.
@@ -102,16 +102,16 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: NFR-3, NFR-4.
 
-### FR-5 — Baseline comparisons
+### FR-5 â€” Baseline comparisons
 
-- **Statement**: The evaluation workflow shall support at least one named baseline condition where taxonomy supervision is disabled.
+- **Statement**: The evaluation workflow shall support at least one named baseline condition where knowledge base supervision is disabled.
 - **Fit Criterion**: The same intent can be executed under supervised vs baseline conditions and compared.
 - **Rationale**: Required for falsifiable RQs and controlled comparisons.
 - **Source**: `docs/experiments/experiment-design.md`, `docs/risks/rq-scope-falsifiability.md`.
 - **Priority**: Must.
 - **Dependencies**: FR-1.
 
-### FR-6 — Primary metric collection
+### FR-6 â€” Primary metric collection
 
 - **Statement**: The evaluation workflow shall collect the primary quality metric defined in the metrics specification.
 - **Fit Criterion**: For each trial, store the required primary-metric inputs/outputs (before/after and derived value) under a pinned instrument/ruleset, as defined in [`docs/requirements/metrics.md`](metrics.md).
@@ -120,7 +120,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: Versioned metrics specification exists in [`docs/requirements/metrics.md`](metrics.md).
 
-### FR-7 — Testability gate
+### FR-7 â€” Testability gate
 
 - **Statement**: The evaluation workflow shall capture build and unit-test
   execution results and use them as a prerequisite for interpreting other
@@ -133,7 +133,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: Repository tooling availability.
 
-### FR-8 — Prompt-variation experiment support
+### FR-8 â€” Prompt-variation experiment support
 
 - **Statement**: The evaluation workflow shall support a prompt-variation
   dataset (multiple paraphrases per intent) and compute a verdict consistency
@@ -145,7 +145,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: FR-1.
 
-### FR-9 — Execution trace capture
+### FR-9 â€” Execution trace capture
 
 - **Statement**: The system shall capture and persist trace information for
   each execution so developers can reproduce, debug, and group multiple runs
@@ -159,7 +159,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: NFR-3, NFR-8.
 
-### FR-10 — Skill/tool export for agent runtimes
+### FR-10 â€” Skill/tool export for agent runtimes
 
 - **Statement**: The system shall expose its capabilities as reusable
   tools/skills that can be invoked from other agent runtimes.
@@ -172,7 +172,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: NFR-7.
 
-### FR-11 — Contextual help and guidance
+### FR-11 â€” Contextual help and guidance
 
 - **Statement**: The system shall provide contextual guidance to developers
   based on the current task intent and quality focus.
@@ -183,7 +183,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: FR-1.
 
-### FR-12 — Proactive assistance
+### FR-12 â€” Proactive assistance
 
 - **Statement**: The system shall proactively surface relevant quality
   considerations and workflow actions when signals indicate risk or missing
@@ -196,10 +196,10 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Could.
 - **Dependencies**: FR-13.
 
-### FR-13 — Repository- and configuration-aware recommendations
+### FR-13 â€” Repository- and configuration-aware recommendations
 
 - **Statement**: The system shall generate recommendations informed by the
-  developer’s repository context and local configuration.
+  developerâ€™s repository context and local configuration.
 - **Fit Criterion**: Recommendations adapt to detected repository/tooling
   context and state which local signals/configuration drove the
   recommendation.
@@ -208,16 +208,16 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: NFR-3, NFR-4.
 
-### FR-14 — Static analysis integration (SonarQube / Roslyn)
+### FR-14 â€” Static analysis integration (local strategy bundles)
 
-- **Statement**: The evaluation workflow shall integrate with static-analysis systems (including SonarQube and/or Roslyn analyzers) to compute and report objective quality signals for code changes.
+- **Statement**: The evaluation workflow shall integrate with configurable language-specific local static-analysis strategy bundles to compute and report objective quality signals for code changes.
 - **Fit Criterion**: For each execution/trial, the workflow can produce and persist the static-analysis outputs required by the metrics specification under a pinned ruleset/configuration (see [`docs/requirements/metrics.md`](metrics.md)).
 - **Rationale**: Provide tool-verifiable evidence and enable richer dependent variables than LLM self-reporting.
 - **Source**: `docs/experiments/experiment-design.md`, `docs/risks/rq-scope-falsifiability.md`.
 - **Priority**: Must.
 - **Dependencies**: NFR-2.
 
-### FR-15 — Quality metric collection and external enrichment
+### FR-15 â€” Quality metric collection and external enrichment
 
 - **Statement**: The evaluation workflow shall collect and persist a set of success/failure quality metrics per execution, and may enrich them by fetching additional data from external systems when available.
 - **Fit Criterion**: Each execution/trial records the supplementary/enrichment metrics defined in [`docs/requirements/metrics.md`](metrics.md), including explicit missing markers and provenance for externally retrieved values.
@@ -230,7 +230,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 
 ## 8. Non-Functional Requirements (Volere shells)
 
-### NFR-1 — Reproducibility and auditability
+### NFR-1 â€” Reproducibility and auditability
 
 - **Statement**: Experiment runs shall be repeatable and auditable.
 - **Fit Criterion**: Each trial records model identifier, key generation
@@ -241,7 +241,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: NFR-8.
 
-### NFR-2 — Measurement validity
+### NFR-2 â€” Measurement validity
 
 - **Statement**: Measurement instruments shall be fit for purpose for source
   code and remain stable across runs.
@@ -252,7 +252,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: FR-6.
 
-### NFR-3 — Data privacy and licensing compliance
+### NFR-3 â€” Data privacy and licensing compliance
 
 - **Statement**: The study shall avoid leaking proprietary or personal data
   and shall respect corpus licensing.
@@ -271,10 +271,10 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Source**: `docs/risks/experiment-data-privacy.md`, `docs/risks/risk-register.md` (R4).
 - **Priority**: Must.
 - **Dependencies**: FR-4, FR-9.
-- **Conflicts**: Potential tension with FR-9/NFR-8 (logging) — must minimize
+- **Conflicts**: Potential tension with FR-9/NFR-8 (logging) â€” must minimize
   stored data and apply access controls/redaction.
 
-### NFR-4 — Prompt-ingestion safety
+### NFR-4 â€” Prompt-ingestion safety
 
 - **Statement**: Retrieved issue/PR text shall be treated as untrusted input
   and must not be allowed to override system instructions.
@@ -285,18 +285,18 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Must.
 - **Dependencies**: FR-4.
 
-### NFR-5 — Extensibility
+### NFR-5 â€” Extensibility
 
-- **Statement**: The system shall be extensible to new taxonomies and quality
+- **Statement**: The system shall be extensible to new knowledge bases and quality
   dimensions without re-architecting the pipeline.
-- **Fit Criterion**: New taxonomy datasets can be added and selected via
-  configuration; outputs reflect the new taxonomy concepts.
+- **Fit Criterion**: New knowledge base datasets can be added and selected via
+  configuration; outputs reflect the new knowledge base concepts.
 - **Rationale**: Support future research extensions and broader NFR coverage.
 - **Source**: `docs/PROPOSAL.md` (Future Work).
 - **Priority**: Should.
 - **Dependencies**: FR-3.
 
-### NFR-6 — Usability and clarity
+### NFR-6 â€” Usability and clarity
 
 - **Statement**: Outputs shall be structured and clear enough for developers
   to understand trade-offs and next actions.
@@ -307,7 +307,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: FR-11.
 
-### NFR-7 — Portability
+### NFR-7 â€” Portability
 
 - **Statement**: The artifact and evaluation scripts shall be runnable in
   common developer environments.
@@ -318,7 +318,7 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
 - **Priority**: Should.
 - **Dependencies**: Local environment/tooling availability.
 
-### NFR-8 — Traceability and provenance
+### NFR-8 â€” Traceability and provenance
 
 - **Statement**: Executions shall be traceable end to end so outcomes can be
   audited and reproduced.
@@ -340,3 +340,4 @@ The purpose of the system is to supervise LLM-assisted software changes for lega
   supervisor/research plan and adjust based on study scope.
 - Requirement sources can be made more granular by linking to exact proposal
   sections once the paper structure is finalized.
+

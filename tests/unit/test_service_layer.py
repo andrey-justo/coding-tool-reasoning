@@ -7,7 +7,7 @@ from src.models.swe_edge import SweEdge
 from src.models.swe_node import SweNode
 from src.service.explanation_service import ExplanationService
 from src.service.intent_planner import IntentPlanner
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 def _build_minimal_kb() -> SweKnowledgeBase:
@@ -86,7 +86,7 @@ def test_explanation_service_parses_impacts_and_limits_risks():
             return ["NFR-1"] if nfr_focus else []
 
         def summarize_for_prompt(self, nfr_ids, depth=1):
-            return "taxonomy"
+            return "knowledge base"
 
     class FakeLLMClient:
         def chat(self, prompt):
@@ -137,7 +137,7 @@ def test_explanation_service_uses_fallback_when_llm_response_is_invalid():
             return []
 
         def summarize_for_prompt(self, nfr_ids, depth=1):
-            return "taxonomy"
+            return "knowledge base"
 
     class FakeLLMClient:
         def chat(self, prompt):
@@ -240,3 +240,4 @@ def test_swe_knowledge_base_summary_depth_controls_expansion():
     assert "related_to: Retry Logic" in summary_depth_1
     assert "Long Method" not in summary_depth_1
     assert "Long Method" in summary_depth_2
+

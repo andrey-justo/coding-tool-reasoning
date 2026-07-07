@@ -1,0 +1,48 @@
+@startuml knowledge-base-loading
+title Knowledge Base Loading
+left to right direction
+
+skinparam componentStyle rectangle
+
+package "Knowledge Inputs" {
+  component "ground_data (data.json)" as DC
+  component "linked_data (*.csv)" as RM
+  component "template (*.md)" as GT
+  component "concern data.json" as CP
+}
+
+package "Loading Pipeline" {
+  component "GroundDataLoader" as READER
+  component "NodeNormalizer" as NORM
+  component "EdgeBuilder" as LINK
+  component "Context Indexer" as INDEX
+}
+
+database "SweKnowledgeBase" as KB
+
+DC --> READER : enumerate concept entries
+RM --> READER : enumerate explicit relations
+GT --> READER : enumerate template assets
+CP --> READER : enumerate concern assets
+
+READER --> NORM : parse and normalize records
+NORM --> LINK : connect entities and categories
+LINK --> INDEX : build retrieval maps
+INDEX --> KB : store indexed graph + specs
+
+package "Per-Source Processing (iterated for each input)" {
+  component "Input Reader" as READER2
+  component "Normalizer" as NORM2
+  component "Link Builder" as LINK2
+}
+
+DC --> READER2 : provide concepts
+RM --> READER2 : provide relations
+GT --> READER2 : provide guidance text
+CP --> READER2 : provide concern context
+
+READER2 --> NORM2 : parse and standardize
+NORM2 --> LINK2 : connect related concepts
+LINK2 --> INDEX : prepare retrieval views
+
+@enduml

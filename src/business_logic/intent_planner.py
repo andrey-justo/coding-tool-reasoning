@@ -4,7 +4,7 @@ from typing import List, Optional, Tuple
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.intent_planning_result import IntentPlanningResult
 from src.models.swe_config import SweMcpConfig
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]
 
@@ -14,7 +14,7 @@ class IntentPlanner:
 
     This component corresponds to the "Intent Extractor" and
     "Intent Action" blocks in the Plan4Code poster, but uses the
-    existing SWE taxonomy rather than a separate ontology graph.
+    existing SWE knowledge base rather than a separate ontology graph.
     """
 
     def __init__(
@@ -35,11 +35,11 @@ class IntentPlanner:
         nfr_focus: Optional[List[str]] = None,
         user_prompt_data: Optional[str] = None,
     ) -> IntentPlanningResult:
-        """Create a taxonomy-guided high-level plan for a code change.
+        """Create a knowledge-base-guided high-level plan for a code change.
 
         - First, infer / normalize the NFR focus (Intent Extractor)
         - Then, call the LLM with Chain-of-Thought style instructions and
-          a RAG-style summary of the SWE taxonomy (Intent Action)
+          a RAG-style summary of the SWE knowledge base (Intent Action)
         """
 
         effective_target_language = target_language
@@ -76,7 +76,7 @@ class IntentPlanner:
         problem_description: str,
         nfr_focus: Optional[List[str]] = None,
     ) -> Tuple[List[str], List[str]]:
-        """Infer / normalize the NFR focus and map it to taxonomy IDs.
+        """Infer / normalize the NFR focus and map it to knowledge base IDs.
 
         - If explicit NFRs are provided, use them.
         - Otherwise, try to detect NFRs mentioned in the description.
@@ -93,20 +93,20 @@ class IntentPlanner:
                 )
 
         resolved_ids = self.kb.find_nfr_ids(focus)
-        focus, resolved_ids = self._expand_nfr_candidates_via_taxonomy(
+        focus, resolved_ids = self._expand_nfr_candidates_via_knowledge_base(
             focus=focus,
             resolved_ids=resolved_ids,
         )
         return focus, resolved_ids
 
-    def _expand_nfr_candidates_via_taxonomy(
+    def _expand_nfr_candidates_via_knowledge_base(
         self,
         focus: List[str],
         resolved_ids: List[str],
     ) -> Tuple[List[str], List[str]]:
-        """Expand inferred intents by traversing NFR-to-NFR taxonomy links.
+        """Expand inferred intents by traversing NFR-to-NFR knowledge base links.
 
-        Some NFR candidates imply additional NFRs via linked taxonomy edges.
+        Some NFR candidates imply additional NFRs via linked knowledge base edges.
         This loop runs up to ``planning.max_intent_inference_loops`` and stops
         early when no new NFR candidates are discovered.
         """
@@ -210,15 +210,15 @@ class IntentPlanner:
         resolved_nfr_ids: List[str],
         user_prompt_data: Optional[str],
     ) -> Tuple[List[str], Optional[str]]:
-        """Use the LLM with taxonomy RAG to propose high-level steps.
+        """Use the LLM with knowledge base RAG to propose high-level steps.
 
         If the LLM output cannot be parsed as JSON, we fall back to a
         deterministic default step list so the MCP tool remains robust.
         """
 
-        taxonomy_summary = self.kb.summarize_for_prompt(
+        knowledge_base_summary = self.kb.summarize_for_prompt(
             resolved_nfr_ids,
-            depth=self.config.taxonomy.relationship_depth,
+            depth=self.config.knowledge_base.relationship_depth,
         )
         max_steps = self.config.planning.max_steps
         language_label = target_language or "the project"
@@ -249,10 +249,10 @@ class IntentPlanner:
             f"{additional_user_context}"
             f"Non-functional requirements to prioritize: {', '.join(nfr_focus) or 'None specified'}.\n\n"
             f"{stages_guidance}"
-            "Here is structured software-engineering taxonomy data with NFRs,\n"
+            "Here is structured software-engineering knowledge base data with NFRs,\n"
             "principles, practices, and code smells that are relevant to this\n"
             "request. Use it as background knowledge when reasoning:\n\n"
-            f"{taxonomy_summary}\n\n"
+            f"{knowledge_base_summary}\n\n"
             "Think in a chain-of-thought about what changes are needed, then\n"
             "produce a concise JSON object describing the high-level plan.\n"
             "The JSON must have exactly this shape and no extra keys or text:\n\n"
@@ -287,13 +287,14 @@ class IntentPlanner:
             # Fall through to deterministic default plan.
             pass
 
-        # Fallback: deterministic taxonomy-aware steps.
+        # Fallback: deterministic knowledge base-aware steps.
         default_steps = [
             "Understand the current behavior and constraints from the existing code.",
-            "Identify which NFRs are most impacted using the SWE taxonomy.",
+            "Identify which NFRs are most impacted using the SWE knowledge base.",
             "Locate relevant principles, practices, and smells connected to those NFRs.",
             "Design small, incremental changes that improve the targeted NFRs without breaking behavior.",
             "Apply the changes in small commits, verifying behavior after each change.",
             "Update or add tests to cover both the original and new behavior.",
         ]
         return default_steps, raw
+

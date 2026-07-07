@@ -27,7 +27,7 @@ Implementar um analisador multidimensional de qualidade de código para validar 
 ## Contexto
 
 Conforme Design de Pesquisa (docs/DESIGN_DE_PESQUISA.md), RQ2-RQ4 requerem validação de código gerado comparando:
-- Condição supervisionada (com taxonomia SWE em 3 estágios MCP)
+- Condição supervisionada (com base de conhecimento SWE em 3 estágios MCP)
 - Baseline (zero-shot LLM direto, temperatura=0.6)
 
 Cada issue testado com 3 replicações (temperatura=0.6, seed fixa), resumindo métricas como mediana.

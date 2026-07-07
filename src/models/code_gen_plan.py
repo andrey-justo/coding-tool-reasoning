@@ -22,7 +22,7 @@ class CodeGenPlan(BaseModel):
     )
     related_entities: List[str] = Field(
         default_factory=list,
-        description="IDs of SWE taxonomy entities (principles, practices, smells) relevant to this plan.",
+        description="IDs of SWE knowledge base entities (principles, practices, smells) relevant to this plan.",
     )
     llm_prompt: Optional[str] = Field(
         default=None,
@@ -32,3 +32,4 @@ class CodeGenPlan(BaseModel):
         default=None,
         description="Raw text returned by the planner LLM call before structured parsing.",
     )
+

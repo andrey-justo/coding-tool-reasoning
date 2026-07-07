@@ -1,0 +1,30 @@
+@startuml domain-uml
+title Qualification: High-Level Domain View
+
+skinparam classAttributeIconSize 0
+
+class ExperimentScenario {
+  +issue_or_task
+  +repository_context
+}
+
+class KnowledgeBase {
+  +principles
+  +relationships
+}
+
+class SupervisedOutput {
+  +candidate_change
+  +high_level_explanation
+}
+
+class EvaluationReport {
+  +quality_metrics
+  +summary_findings
+}
+
+ExperimentScenario --> SupervisedOutput : produces
+KnowledgeBase --> SupervisedOutput : informs
+SupervisedOutput --> EvaluationReport : is evaluated in
+
+@enduml

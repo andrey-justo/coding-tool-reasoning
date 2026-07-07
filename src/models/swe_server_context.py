@@ -2,14 +2,14 @@ from dataclasses import dataclass
 from typing import List
 
 from src.models.swe_config import SweMcpConfig
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 @dataclass
 class SweServerContext:
     """Factory-produced context shared by MCP tools.
 
-    Holds the loaded SWE taxonomy (knowledge base) and preloaded templates so
+    Holds the loaded SWE knowledge base (knowledge base) and preloaded templates so
     we don't reload CSVs and files on every tool call.
     """
 
@@ -17,3 +17,4 @@ class SweServerContext:
     config: SweMcpConfig
     kb: SweKnowledgeBase
     templates: List[dict]
+

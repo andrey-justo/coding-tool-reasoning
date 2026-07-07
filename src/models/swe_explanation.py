@@ -52,7 +52,7 @@ class SweCodeChangeExplanation(BaseModel):
     )
     nfr_impacts: List[NfrImpact] = Field(
         default_factory=list,
-        description="Per-NFR impact assessment derived from the taxonomy and code diff.",
+        description="Per-NFR impact assessment derived from the knowledge base and code diff.",
     )
     risks: List[str] = Field(
         default_factory=list,
@@ -70,3 +70,4 @@ class SweCodeChangeExplanation(BaseModel):
         default=None,
         description="Raw text returned by the explanation LLM call before structured parsing.",
     )
+

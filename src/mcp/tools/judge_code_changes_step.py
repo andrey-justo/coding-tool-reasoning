@@ -5,11 +5,11 @@ from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation
 from src.service.explanation_service import ExplanationService
-from src.service.swe_taxonomy_service import SweKnowledgeBase
+from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 
 class JudgeCodeChangesStep:
-    """Judge & explain code changes using the SWE taxonomy and an LLM.
+    """Judge & explain code changes using the SWE knowledge base and an LLM.
 
     This class is a lightweight wrapper around :class:`ExplanationService`
     so it can be plugged into higher-level workflows or agents. It does
@@ -34,7 +34,7 @@ class JudgeCodeChangesStep:
             kb = SweKnowledgeBase(
                 ground_data_dir=ground_data_dir,
                 linked_data_dir=linked_data_dir,
-                lazy_load_nodes=self.config.taxonomy.lazy_load_nodes,
+                lazy_load_nodes=self.config.knowledge_base.lazy_load_nodes,
             )
         self.kb = kb
         self.kb.load()
@@ -65,3 +65,4 @@ class JudgeCodeChangesStep:
             original_code=original_code,
             modified_code=modified_code,
         )
+

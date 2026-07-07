@@ -17,7 +17,7 @@ from tests.smoke.conftest import (
 )
 
 # ---------------------------------------------------------------------------
-# Fixture data directory – all test inputs live here; nothing is hardcoded.
+# Fixture data directory â€“ all test inputs live here; nothing is hardcoded.
 # ---------------------------------------------------------------------------
 TEST_DATA_DIR = Path(__file__).parent / "data"
 
@@ -59,7 +59,7 @@ def robust_smoke_log_file(tmp_path, request):
 
     logger_names = [
         "src.mcp.tools.swe_mcp_tools",
-        "src.service.swe_taxonomy_service",
+        "src.service.swe_knowledge_base_service",
         "src.service.prompt_template_execution_service",
     ]
 
@@ -230,3 +230,4 @@ def test_robust_prompt_smoke_skips_unit_test_template_when_example_missing(
 
     robust_logs = robust_smoke_log_file.read_text(encoding="utf-8")
     assert "Skipping prompt template 'test_base_template'" in robust_logs
+

@@ -1,4 +1,4 @@
-[[HEADER]]=== Problem Description ===
+﻿[[HEADER]]=== Problem Description ===
 [[PROBLEM_DESCRIPTION]]
 
 === NFR Focus ===
@@ -7,8 +7,8 @@
 === High-Level Plan Steps ===
 [[HIGH_LEVEL_STEPS]]
 
-=== Taxonomy Context (SWE taxonomy, not ontologies) ===
-[[TAXONOMY_SUMMARY]]
+=== knowledge base Context (SWE knowledge base, not ontologies) ===
+[[STRUCTURED_KNOWLEDGE_SUMMARY]]
 
 === SWE/NFR Summary (RAG-style context) ===
 [[SWE_SUMMARY]]
@@ -19,7 +19,7 @@
 === Modified Code ===
 [[MODIFIED_CODE]]
 
-Analyse the differences step by step, referencing the SWE taxonomy concepts when relevant (NFRs, principles, practices, smells). Then produce a concise JSON object with this exact shape and nothing before or after it:
+Analyse the differences step by step, referencing the SWE knowledge base concepts when relevant (NFRs, principles, practices, smells). Then produce a concise JSON object with this exact shape and nothing before or after it:
 
 {
   "overall_verdict": "acceptable|risky|rejected|manual-review-required",
@@ -28,7 +28,7 @@ Analyse the differences step by step, referencing the SWE taxonomy concepts when
     {
       "nfr": "Maintainability",
       "verdict": "improved|neutral|regressed",
-      "reasoning": "Short reasoning referencing taxonomy concepts..."
+      "reasoning": "Short reasoning referencing knowledge base concepts..."
     }
   ],
   "risks": [
@@ -40,3 +40,4 @@ Analyse the differences step by step, referencing the SWE taxonomy concepts when
 }
 
 Do NOT wrap the JSON in markdown and do NOT include commentary outside the JSON block.
+

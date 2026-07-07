@@ -1,0 +1,27 @@
+@startuml basic-user-interaction-sequence
+title Qualification: High-Level Experiment Execution
+
+actor User
+participant "Experiment Runner" as Runner
+participant "Supervisor Agent (MCP)" as Supervisor
+database "Knowledge Base" as KB
+participant "LLM" as LLM
+participant "Evaluation + Reporting" as Eval
+
+User -> Runner: Provide issue/repository scenario
+Runner -> Supervisor: Request supervised execution
+
+Supervisor -> KB: Retrieve relevant guidance
+KB --> Supervisor: Context summary
+
+Supervisor -> LLM: Request planned solution
+LLM --> Supervisor: Candidate change + rationale
+
+Supervisor --> Runner: Supervised output
+
+Runner -> Eval: Compute experiment metrics
+Eval --> Runner: Results + artifacts
+
+Runner --> User: Present high-level findings
+
+@enduml

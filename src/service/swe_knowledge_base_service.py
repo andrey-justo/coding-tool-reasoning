@@ -23,12 +23,12 @@ _KNOWLEDGE_DOMAIN_NODE_KINDS = {
 
 
 class SweKnowledgeBase:
-    """Loads SWE taxonomy nodes and edges from configurable directories.
+    """Loads SWE knowledge base nodes and edges from configurable directories.
 
     Directory paths must be provided explicitly via constructor arguments,
     environment variables, or configuration. This is intentionally generic:
     it will recursively load all CSVs under those roots that match the
-    expected column names, so you can colocate taxonomy data under
+    expected column names, so you can colocate knowledge base data under
     knowledge/linked_data without separate node and edge roots.
     """
 
@@ -87,7 +87,7 @@ class SweKnowledgeBase:
         """Load all known node and edge CSVs into memory.
 
         Raises:
-            ValueError: If taxonomy directories are not configured.
+            ValueError: If knowledge base directories are not configured.
             FileNotFoundError: If configured directories do not exist.
         """
         if not self.ground_data_dir:
@@ -307,7 +307,7 @@ class SweKnowledgeBase:
         if node_id.startswith("category_"):
             node_type = "Category"
             name = self._humanize(node_id.replace("category_", ""))
-            description = f"Taxonomy category discovered for {name.lower()} guidance."
+            description = f"knowledge base category discovered for {name.lower()} guidance."
         elif node_id.startswith("folder_"):
             node_type = "Folder"
             folder_name = node_id.replace("folder_", "")
@@ -573,8 +573,8 @@ class SweKnowledgeBase:
         Args:
             nfr_ids: Starting node IDs (typically resolved NFR ids).
             depth: How many relationship hops to traverse (default 1 = direct
-                   neighbours only). Honour ``TaxonomyConfig.relationship_depth``
-                   by passing ``config.taxonomy.relationship_depth`` here.
+                   neighbours only). Honour ``KnowledgeBaseConfig.relationship_depth``
+                   by passing ``config.knowledge_base.relationship_depth`` here.
         """
 
         lines: List[str] = []
@@ -592,7 +592,7 @@ class SweKnowledgeBase:
             if current_depth < depth:
                 for e in self.edges:
                     if e.source_id == node_id:
-                        rel_line = f"{indent}  [{e.relation}] →"
+                        rel_line = f"{indent}  [{e.relation}] â†’"
                         lines.append(rel_line)
                         _expand(e.target_id, current_depth + 1, indent + "    ")
             else:
@@ -611,3 +611,4 @@ class SweKnowledgeBase:
 
     def get_all_nfrs(self) -> List[SweNode]:
         return [n for n in self.nodes.values() if n.type.upper() == "NFR"]
+
