@@ -160,7 +160,13 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
                 "knowledge_base": {"relationship_depth": 2},
                 "planning": {"max_steps": 3},
                 "judging": {"max_risks": 2},
-                "semantic_index": {"graph_memory_hops": 3},
+                "semantic_index": {
+                    "graph_memory_hops": 3,
+                    "graph_storage_backend": "neo4j",
+                    "neo4j_uri": "bolt://localhost:7687",
+                    "neo4j_username": "neo4j",
+                    "neo4j_password_env_var": "NEO4J_PASSWORD",
+                },
             }
         ),
         encoding="utf-8",
@@ -171,6 +177,9 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     assert loaded_config.planning.max_steps == 3
     assert loaded_config.judging.max_risks == 2
     assert loaded_config.semantic_index.graph_memory_hops == 3
+    assert loaded_config.semantic_index.graph_storage_backend == "neo4j"
+    assert loaded_config.semantic_index.neo4j_uri == "bolt://localhost:7687"
+    assert loaded_config.semantic_index.neo4j_username == "neo4j"
 
     # Backward compatibility: legacy keys under localizer should still load.
     config_path.write_text(

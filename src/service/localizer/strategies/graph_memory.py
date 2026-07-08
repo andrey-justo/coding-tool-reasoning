@@ -4,12 +4,14 @@ import ast
 import hashlib
 import json
 import math
+import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
 from src.service.localizer.models import LocalizationHit
+from src.service.localizer.neo4j_graph_storage import Neo4jGraphStorage
 from src.service.localizer.utils import (
     count_token_frequency,
     extract_symbols,
@@ -56,15 +58,37 @@ class GraphMemoryRelationshipStrategy:
         semantic_index_dir: str = ".semantic_index",
         persist_semantic_index: bool = True,
         vector_backend: str = "local_tfidf",
+        graph_storage_backend: str = "in_memory",
+        neo4j_uri: str | None = None,
+        neo4j_username: str | None = None,
+        neo4j_password: str | None = None,
+        neo4j_password_env_var: str = "NEO4J_PASSWORD",
+        neo4j_database: str = "neo4j",
     ) -> None:
         self.max_file_size_bytes = max_file_size_bytes
         self.hops = max(1, hops)
         self.semantic_index_dir = semantic_index_dir
         self.persist_semantic_index = persist_semantic_index
         self.vector_backend = vector_backend
+        self.graph_storage_backend = graph_storage_backend
         self._cache_key: tuple[str, tuple[str, ...]] | None = None
         self._cache_index: _GraphIndex | None = None
         self._documents_cache: dict[str, _IndexedDocument] = {}
+        resolved_password = neo4j_password or os.getenv(neo4j_password_env_var, "")
+        if (
+            graph_storage_backend == "neo4j"
+            and neo4j_uri
+            and neo4j_username
+            and resolved_password
+        ):
+            self._neo4j_storage = Neo4jGraphStorage(
+                uri=neo4j_uri,
+                username=neo4j_username,
+                password=resolved_password,
+                database=neo4j_database,
+            )
+        else:
+            self._neo4j_storage = None
 
     def _index_file_path(self, repo_path: Path) -> Path:
         index_root = repo_path / self.semantic_index_dir
@@ -319,6 +343,20 @@ class GraphMemoryRelationshipStrategy:
         self._documents_cache = persisted_docs
         if changed:
             self._save_persisted_index(repo_path, persisted_docs)
+
+        if self._neo4j_storage is not None and self._neo4j_storage.available:
+            try:
+                self._neo4j_storage.replace_graph(
+                    repo_path=repo_path,
+                    definitions_by_file=definitions_by_file,
+                    references_by_file=references_by_file,
+                    imports_by_file=imports_by_file,
+                    neighbors=neighbors,
+                )
+            except Exception:
+                # Fall back to in-memory relationships if Neo4j is unavailable.
+                pass
+
         return index
 
     def score(
@@ -400,30 +438,53 @@ class GraphMemoryRelationshipStrategy:
         if not seed_files:
             return results
 
-        frontier = set(seed_files)
-        visited = set(seed_files)
-        for hop in range(1, self.hops + 1):
-            next_frontier: set[str] = set()
-            propagation_score = 7.0 / float(hop + 1)
-            for node in frontier:
-                for neighbor in index.neighbors.get(node, set()):
-                    if neighbor in visited:
-                        continue
-                    visited.add(neighbor)
-                    next_frontier.add(neighbor)
+        neo4j_distances: dict[str, int] = {}
+        if self._neo4j_storage is not None and self._neo4j_storage.available:
+            try:
+                neo4j_distances = self._neo4j_storage.expand_neighbors(
+                    repo_path=repo_path,
+                    seed_files=seed_files,
+                    max_hops=self.hops,
+                )
+            except Exception:
+                neo4j_distances = {}
 
-                    hit = results.get(neighbor)
-                    if hit is None:
-                        hit = LocalizationHit(path=neighbor, score=0.0, reasons=[])
-                        results[neighbor] = hit
+        if neo4j_distances:
+            for neighbor, hop in neo4j_distances.items():
+                propagation_score = 7.0 / float(hop + 1)
+                hit = results.get(neighbor)
+                if hit is None:
+                    hit = LocalizationHit(path=neighbor, score=0.0, reasons=[])
+                    results[neighbor] = hit
+                hit.score += propagation_score
+                hit.reasons.append(
+                    f"graph hop {hop} from Neo4j related-file traversal"
+                )
+        else:
+            frontier = set(seed_files)
+            visited = set(seed_files)
+            for hop in range(1, self.hops + 1):
+                next_frontier: set[str] = set()
+                propagation_score = 7.0 / float(hop + 1)
+                for node in frontier:
+                    for neighbor in index.neighbors.get(node, set()):
+                        if neighbor in visited:
+                            continue
+                        visited.add(neighbor)
+                        next_frontier.add(neighbor)
 
-                    hit.score += propagation_score
-                    hit.reasons.append(
-                        f"graph hop {hop} from related file via symbol relationship"
-                    )
+                        hit = results.get(neighbor)
+                        if hit is None:
+                            hit = LocalizationHit(path=neighbor, score=0.0, reasons=[])
+                            results[neighbor] = hit
 
-            if not next_frontier:
-                break
-            frontier = next_frontier
+                        hit.score += propagation_score
+                        hit.reasons.append(
+                            f"graph hop {hop} from related file via symbol relationship"
+                        )
+
+                if not next_frontier:
+                    break
+                frontier = next_frontier
 
         return results
