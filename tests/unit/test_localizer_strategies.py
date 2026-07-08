@@ -4,6 +4,9 @@ from pathlib import Path
 
 from src.service.localizer import RepositoryIssueLocalizer
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
+from src.service.localizer.strategies.graph_memory import (
+    GraphMemoryRelationshipStrategy,
+)
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
 from src.service.localizer.strategies.semantic_nlp import SemanticNlpMatchingStrategy
 from src.service.localizer.strategies.symbol_impact import SymbolImpactStrategy
@@ -74,6 +77,37 @@ def test_symbol_impact_strategy_finds_dependent_python_file(tmp_path: Path) -> N
     assert "src/service.py" in hits
 
 
+def test_graph_memory_strategy_propagates_to_related_file(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "src" / "retry_core.py",
+        "class RetryPolicy:\n    pass\n",
+    )
+    _write(
+        tmp_path / "src" / "retry_service.py",
+        (
+            "from src.retry_core import RetryPolicy\n\n"
+            "def run_retry():\n"
+            "    policy = RetryPolicy()\n"
+            "    return policy\n"
+        ),
+    )
+
+    strategy = GraphMemoryRelationshipStrategy(hops=2)
+    hits = strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=["src/retry_core.py", "src/retry_service.py"],
+    )
+
+    assert "src/retry_core.py" in hits
+    assert "src/retry_service.py" in hits
+    assert hits["src/retry_service.py"].score > 0
+    assert any(
+        "graph hop" in reason or "references issue symbols" in reason
+        for reason in hits["src/retry_service.py"].reasons
+    )
+
+
 def test_repository_issue_localizer_combines_strategies(tmp_path: Path) -> None:
     _write(
         tmp_path / "src" / "auth_manager.py",
@@ -122,3 +156,11 @@ def test_repository_issue_localizer_can_disable_semantic_nlp() -> None:
     assert any(
         strategy.name == "semantic_nlp" for strategy in localizer_with_nlp.strategies
     )
+
+
+def test_repository_issue_localizer_can_disable_graph_memory() -> None:
+    localizer = RepositoryIssueLocalizer(enable_graph_memory=False)
+    assert all(strategy.name != "graph_memory" for strategy in localizer.strategies)
+
+    localizer_with_graph = RepositoryIssueLocalizer(enable_graph_memory=True)
+    assert any(strategy.name == "graph_memory" for strategy in localizer_with_graph.strategies)

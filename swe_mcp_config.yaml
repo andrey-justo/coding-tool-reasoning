@@ -42,4 +42,6 @@ execution:
 
 localizer:
   enable_semantic_nlp: false
+  enable_graph_memory: true
+  graph_memory_hops: 2
 
