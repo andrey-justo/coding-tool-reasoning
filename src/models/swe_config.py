@@ -4,7 +4,7 @@ import os
 from typing import List, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class KnowledgeBaseConfig(BaseModel):
@@ -194,6 +194,11 @@ class LocalizerConfig(BaseModel):
             "when minimizing model-related overhead is preferred."
         ),
     )
+
+
+class SemanticIndexConfig(BaseModel):
+    """Configuration for graph-based semantic indexing and retrieval."""
+
     enable_graph_memory: bool = Field(
         default=True,
         description=(
@@ -243,6 +248,41 @@ class SweMcpConfig(BaseModel):
     concern_assets: ConcernAssetsConfig = Field(default_factory=ConcernAssetsConfig)
     execution: ToolExecutionConfig = Field(default_factory=ToolExecutionConfig)
     localizer: LocalizerConfig = Field(default_factory=LocalizerConfig)
+    semantic_index: SemanticIndexConfig = Field(default_factory=SemanticIndexConfig)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_semantic_index_keys(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        localizer = data.get("localizer")
+        semantic_index = data.get("semantic_index")
+
+        if not isinstance(localizer, dict):
+            return data
+
+        if not isinstance(semantic_index, dict):
+            semantic_index = {}
+
+        legacy_keys = {
+            "enable_graph_memory",
+            "graph_memory_hops",
+            "semantic_index_dir",
+            "persist_semantic_index",
+            "vector_backend",
+        }
+        moved_any = False
+        for key in legacy_keys:
+            if key in localizer and key not in semantic_index:
+                semantic_index[key] = localizer[key]
+                moved_any = True
+
+        if moved_any:
+            data = dict(data)
+            data["semantic_index"] = semantic_index
+
+        return data
 
     @classmethod
     def load(cls, repo_root: str) -> "SweMcpConfig":
