@@ -26,6 +26,7 @@ class _GraphIndex:
     definitions_by_file: dict[str, set[str]]
     references_by_file: dict[str, set[str]]
     neighbors: dict[str, set[str]]
+    ast_links_by_file: dict[str, list[tuple[str, str, str]]]
 
 
 @dataclass
@@ -36,6 +37,106 @@ class _IndexedDocument:
     definitions: set[str]
     references: set[str]
     imports: set[str]
+    ast_links: list[tuple[str, str, str]]
+
+
+class _PythonRelationshipVisitor(ast.NodeVisitor):
+    """Collect Python definitions/references and explicit AST relationship links."""
+
+    def __init__(self) -> None:
+        self.definitions: set[str] = set()
+        self.references: set[str] = set()
+        self.imports: set[str] = set()
+        self.ast_links: list[tuple[str, str, str]] = []
+        self._class_stack: list[str] = []
+        self._call_scope_stack: list[str] = []
+
+    @staticmethod
+    def _resolve_call_target(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id.lower()
+        if isinstance(node, ast.Attribute):
+            return node.attr.lower()
+        return None
+
+    @staticmethod
+    def _resolve_base_name(node: ast.AST) -> str | None:
+        if isinstance(node, ast.Name):
+            return node.id.lower()
+        if isinstance(node, ast.Attribute):
+            return node.attr.lower()
+        return None
+
+    def _qualified_method_name(self, method_name: str) -> str:
+        if not self._class_stack:
+            return method_name.lower()
+        return f"{self._class_stack[-1]}.{method_name.lower()}"
+
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
+        class_name = node.name.lower()
+        self.definitions.add(class_name)
+
+        for base in node.bases:
+            base_name = self._resolve_base_name(base)
+            if base_name:
+                self.references.add(base_name)
+                self.ast_links.append((class_name, "inherits", base_name))
+
+        self._class_stack.append(class_name)
+        self.generic_visit(node)
+        self._class_stack.pop()
+
+    def _visit_function_like(
+        self,
+        node: ast.FunctionDef | ast.AsyncFunctionDef,
+    ) -> None:
+        func_name = node.name.lower()
+        self.definitions.add(func_name)
+
+        qualified = self._qualified_method_name(node.name)
+        self.definitions.add(qualified)
+
+        if self._class_stack:
+            self.ast_links.append((self._class_stack[-1], "contains_method", qualified))
+
+        self._call_scope_stack.append(qualified)
+        self.generic_visit(node)
+        self._call_scope_stack.pop()
+
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
+        self._visit_function_like(node)
+
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
+        self._visit_function_like(node)
+
+    def visit_Name(self, node: ast.Name) -> None:  # noqa: N802
+        self.references.add(node.id.lower())
+        self.generic_visit(node)
+
+    def visit_Attribute(self, node: ast.Attribute) -> None:  # noqa: N802
+        self.references.add(node.attr.lower())
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
+        for alias in node.names:
+            self.imports.add(alias.name.split(".")[-1].lower())
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
+        if node.module:
+            self.imports.add(node.module.split(".")[-1].lower())
+        for alias in node.names:
+            self.imports.add(alias.name.split(".")[-1].lower())
+        self.generic_visit(node)
+
+    def visit_Call(self, node: ast.Call) -> None:  # noqa: N802
+        target = self._resolve_call_target(node.func)
+        caller = self._call_scope_stack[-1] if self._call_scope_stack else None
+        if target:
+            self.references.add(target)
+            if caller:
+                self.ast_links.append((caller, "calls", target))
+        self.generic_visit(node)
 
 
 class GraphMemoryRelationshipStrategy:
@@ -125,6 +226,11 @@ class GraphMemoryRelationshipStrategy:
                     definitions={str(v) for v in list(value.get("definitions") or [])},
                     references={str(v) for v in list(value.get("references") or [])},
                     imports={str(v) for v in list(value.get("imports") or [])},
+                    ast_links=[
+                        (str(link[0]), str(link[1]), str(link[2]))
+                        for link in list(value.get("ast_links") or [])
+                        if isinstance(link, (list, tuple)) and len(link) == 3
+                    ],
                 )
             return loaded
         except Exception:
@@ -152,6 +258,7 @@ class GraphMemoryRelationshipStrategy:
                     "definitions": sorted(doc.definitions),
                     "references": sorted(doc.references),
                     "imports": sorted(doc.imports),
+                    "ast_links": [list(link) for link in doc.ast_links],
                 }
                 for rel_path, doc in documents.items()
             },
@@ -190,9 +297,13 @@ class GraphMemoryRelationshipStrategy:
 
         tf = count_token_frequency(source)
         if Path(rel_path).suffix.lower() == ".py":
-            definitions, references, imports = self._collect_python_symbols(source)
+            definitions, references, imports, ast_links = self._collect_python_symbols(
+                source
+            )
         else:
-            definitions, references, imports = self._collect_generic_symbols(source)
+            definitions, references, imports, ast_links = self._collect_generic_symbols(
+                source
+            )
 
         return _IndexedDocument(
             mtime_ns=stat.st_mtime_ns,
@@ -201,6 +312,7 @@ class GraphMemoryRelationshipStrategy:
             definitions=definitions,
             references=references,
             imports=imports,
+            ast_links=ast_links,
         )
 
     @staticmethod
@@ -223,36 +335,27 @@ class GraphMemoryRelationshipStrategy:
         return dot / (left_norm * right_norm)
 
     @staticmethod
-    def _collect_python_symbols(source: str) -> tuple[set[str], set[str], set[str]]:
-        definitions: set[str] = set()
-        references: set[str] = set()
-        imports: set[str] = set()
-
+    def _collect_python_symbols(
+        source: str,
+    ) -> tuple[set[str], set[str], set[str], list[tuple[str, str, str]]]:
         try:
             tree = ast.parse(source)
         except SyntaxError:
-            return definitions, references, imports
+            return set(), set(), set(), []
 
-        for node in ast.walk(tree):
-            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                definitions.add(node.name.lower())
-            elif isinstance(node, ast.Name):
-                references.add(node.id.lower())
-            elif isinstance(node, ast.Attribute):
-                references.add(node.attr.lower())
-            elif isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.add(alias.name.split(".")[-1].lower())
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.add(node.module.split(".")[-1].lower())
-                for alias in node.names:
-                    imports.add(alias.name.split(".")[-1].lower())
-
-        return definitions, references, imports
+        visitor = _PythonRelationshipVisitor()
+        visitor.visit(tree)
+        return (
+            visitor.definitions,
+            visitor.references,
+            visitor.imports,
+            visitor.ast_links,
+        )
 
     @staticmethod
-    def _collect_generic_symbols(source: str) -> tuple[set[str], set[str], set[str]]:
+    def _collect_generic_symbols(
+        source: str,
+    ) -> tuple[set[str], set[str], set[str], list[tuple[str, str, str]]]:
         definitions = {
             token.lower()
             for token in re.findall(
@@ -271,7 +374,7 @@ class GraphMemoryRelationshipStrategy:
                 source,
             )
         }
-        return definitions, references, imports
+        return definitions, references, imports, []
 
     def _build_index(self, repo_path: Path, candidate_paths: list[str]) -> _GraphIndex:
         normalized_candidates = tuple(sorted(set(candidate_paths)))
@@ -290,6 +393,7 @@ class GraphMemoryRelationshipStrategy:
         definitions_by_file: dict[str, set[str]] = {}
         references_by_file: dict[str, set[str]] = {}
         imports_by_file: dict[str, set[str]] = {}
+        ast_links_by_file: dict[str, list[tuple[str, str, str]]] = {}
 
         for rel_path in normalized_candidates:
             doc = self._read_document(repo_path, rel_path, persisted_docs)
@@ -309,6 +413,7 @@ class GraphMemoryRelationshipStrategy:
             definitions_by_file[rel_path] = doc.definitions
             references_by_file[rel_path] = doc.references
             imports_by_file[rel_path] = doc.imports
+            ast_links_by_file[rel_path] = doc.ast_links
 
         symbol_owners: dict[str, set[str]] = {}
         for rel_path, definitions in definitions_by_file.items():
@@ -337,6 +442,7 @@ class GraphMemoryRelationshipStrategy:
             definitions_by_file=definitions_by_file,
             references_by_file=references_by_file,
             neighbors=neighbors,
+            ast_links_by_file=ast_links_by_file,
         )
         self._cache_key = cache_key
         self._cache_index = index
@@ -352,6 +458,7 @@ class GraphMemoryRelationshipStrategy:
                     references_by_file=references_by_file,
                     imports_by_file=imports_by_file,
                     neighbors=neighbors,
+                    ast_links_by_file=ast_links_by_file,
                 )
             except Exception:
                 # Fall back to in-memory relationships if Neo4j is unavailable.
@@ -415,6 +522,11 @@ class GraphMemoryRelationshipStrategy:
             ref_overlap = index.references_by_file.get(rel_path, set()).intersection(
                 issue_symbols
             )
+            ast_link_overlap = [
+                link
+                for link in index.ast_links_by_file.get(rel_path, [])
+                if link[0] in issue_symbols or link[2] in issue_symbols
+            ]
 
             if def_overlap:
                 score += min(12.0, 2.0 * len(def_overlap))
@@ -425,7 +537,17 @@ class GraphMemoryRelationshipStrategy:
 
             if ref_overlap:
                 score += min(8.0, 1.5 * len(ref_overlap))
-                reasons.append("references issue symbols: " + ", ".join(sorted(ref_overlap)[:8]))
+                reasons.append(
+                    "references issue symbols: " + ", ".join(sorted(ref_overlap)[:8])
+                )
+                seed_files.add(rel_path)
+
+            if ast_link_overlap:
+                score += min(8.0, float(len(ast_link_overlap)))
+                preview = ", ".join(
+                    f"{src}-{rel}->{dst}" for src, rel, dst in ast_link_overlap[:3]
+                )
+                reasons.append(f"ast links touching issue symbols: {preview}")
                 seed_files.add(rel_path)
 
             if score > 0.0:

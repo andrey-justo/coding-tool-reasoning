@@ -44,6 +44,7 @@ class Neo4jGraphStorage:
         references_by_file: dict[str, set[str]],
         imports_by_file: dict[str, set[str]],
         neighbors: dict[str, set[str]],
+        ast_links_by_file: dict[str, list[tuple[str, str, str]]],
     ) -> None:
         if not self.available:
             return
@@ -109,6 +110,24 @@ class Neo4jGraphStorage:
                         repo=repo,
                         source=source,
                         target=target,
+                    )
+
+            for path, ast_links in ast_links_by_file.items():
+                for source_symbol, relation, target_symbol in ast_links:
+                    session.run(
+                        """
+                        MERGE (f:File {repo: $repo, path: $path})
+                        MERGE (a:Symbol {repo: $repo, name: $source_symbol})
+                        MERGE (b:Symbol {repo: $repo, name: $target_symbol})
+                        MERGE (a)-[r:AST_LINK {repo: $repo, file: $path, relation: $relation}]->(b)
+                        MERGE (f)-[:CONTAINS_AST_SYMBOL]->(a)
+                        MERGE (f)-[:CONTAINS_AST_SYMBOL]->(b)
+                        """,
+                        repo=repo,
+                        path=path,
+                        source_symbol=source_symbol,
+                        target_symbol=target_symbol,
+                        relation=relation,
                     )
 
     def expand_neighbors(

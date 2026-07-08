@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from src.service.localizer import RepositoryIssueLocalizer
@@ -80,7 +81,13 @@ def test_symbol_impact_strategy_finds_dependent_python_file(tmp_path: Path) -> N
 def test_graph_memory_strategy_propagates_to_related_file(tmp_path: Path) -> None:
     _write(
         tmp_path / "src" / "retry_core.py",
-        "class RetryPolicy:\n    pass\n",
+        (
+            "class RetryPolicy:\n"
+            "    def run(self):\n"
+            "        return helper()\n\n"
+            "def helper():\n"
+            "    return 1\n"
+        ),
     )
     _write(
         tmp_path / "src" / "retry_service.py",
@@ -171,7 +178,13 @@ def test_repository_issue_localizer_can_disable_graph_memory() -> None:
 def test_graph_memory_strategy_persists_semantic_index(tmp_path: Path) -> None:
     _write(
         tmp_path / "src" / "retry_core.py",
-        "class RetryPolicy:\n    pass\n",
+        (
+            "class RetryPolicy:\n"
+            "    def run(self):\n"
+            "        return helper()\n\n"
+            "def helper():\n"
+            "    return 1\n"
+        ),
     )
     _write(
         tmp_path / "src" / "retry_service.py",
@@ -197,6 +210,18 @@ def test_graph_memory_strategy_persists_semantic_index(tmp_path: Path) -> None:
 
     index_file = tmp_path / ".semantic_index" / "localizer_graph_memory_index.json"
     assert index_file.exists()
+
+    payload = json.loads(index_file.read_text(encoding="utf-8"))
+    docs = payload.get("documents", {})
+    core_doc = docs.get("src/retry_core.py", {})
+    service_doc = docs.get("src/retry_service.py", {})
+
+    core_links = [tuple(item) for item in core_doc.get("ast_links", [])]
+    service_links = [tuple(item) for item in service_doc.get("ast_links", [])]
+
+    assert ("retrypolicy", "contains_method", "retrypolicy.run") in core_links
+    assert ("retrypolicy.run", "calls", "helper") in core_links
+    assert ("run_retry", "calls", "retrypolicy") in service_links
 
     second_strategy = GraphMemoryRelationshipStrategy(
         hops=2,
