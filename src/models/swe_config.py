@@ -210,6 +210,27 @@ class LocalizerConfig(BaseModel):
             "to include relationship-neighbor files."
         ),
     )
+    semantic_index_dir: str = Field(
+        default=".semantic_index",
+        description=(
+            "Repository-relative directory used to persist semantic index files "
+            "for graph-memory localizer loading."
+        ),
+    )
+    persist_semantic_index: bool = Field(
+        default=True,
+        description=(
+            "Persist semantic index snapshots to disk so subsequent runs can load "
+            "the graph index into memory faster."
+        ),
+    )
+    vector_backend: str = Field(
+        default="local_tfidf",
+        description=(
+            "Vector backend identifier used by the graph-memory strategy. "
+            "Current implementation uses local TF-IDF vectors."
+        ),
+    )
 
 
 class SweMcpConfig(BaseModel):
