@@ -6,6 +6,7 @@ from typing import Iterable
 from src.service.localizer.ast.extractors import (
     PythonSymbolExtractor,
     RegexSymbolExtractor,
+    TreeSitterSymbolExtractor,
 )
 from src.service.localizer.models import LocalizationHit
 from src.service.localizer.utils import extract_symbols, safe_read_text
@@ -25,12 +26,18 @@ class AstMatchingStrategy:
     def __init__(self, max_file_size_bytes: int = 500_000) -> None:
         self.max_file_size_bytes = max_file_size_bytes
         self._python_extractor = PythonSymbolExtractor()
+        self._tree_sitter_extractor = TreeSitterSymbolExtractor()
         self._generic_extractor = RegexSymbolExtractor()
 
     def _extract_definitions(self, rel_path: str, source: str) -> set[str]:
         path = Path(rel_path)
         if path.suffix.lower() in _PYTHON_EXTENSIONS:
             return self._python_extractor.extract(path, source).definitions
+
+        ts_defs = self._tree_sitter_extractor.extract(path, source).definitions
+        if ts_defs:
+            return ts_defs
+
         return self._generic_extractor.extract(path, source).definitions
 
     def score(

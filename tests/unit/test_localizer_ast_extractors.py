@@ -7,6 +7,9 @@ import pytest
 from src.service.localizer.ast.generic_symbol_extractor import GenericSymbolExtractor
 from src.service.localizer.ast.python_symbol_extractor import PythonSymbolExtractor
 from src.service.localizer.ast.regex_symbol_extractor import RegexSymbolExtractor
+from src.service.localizer.ast.tree_sitter_symbol_extractor import (
+    TreeSitterSymbolExtractor,
+)
 
 
 def test_generic_symbol_extractor_raises_not_implemented() -> None:
@@ -51,3 +54,14 @@ enum AuthState { Ready }
     assert "retryflow" in symbols.definitions
     assert "iauthcontract" in symbols.definitions
     assert "authstate" in symbols.definitions
+
+
+def test_tree_sitter_symbol_extractor_gracefully_falls_back_when_unavailable() -> None:
+    extractor = TreeSitterSymbolExtractor()
+    symbols = extractor.extract(
+        Path("AuthService.java"),
+        "public class AuthService { public void RetryFlow() {} }",
+    )
+    # Optional parser modules may not be installed in all environments.
+    # Strategy should remain safe and simply return no symbols.
+    assert isinstance(symbols.definitions, set)

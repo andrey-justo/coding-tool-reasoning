@@ -599,6 +599,12 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         semantic_index_dir=semantic_index_config.semantic_index_dir,
         persist_semantic_index=semantic_index_config.persist_semantic_index,
         vector_backend=semantic_index_config.vector_backend,
+        graph_storage_backend=semantic_index_config.graph_storage_backend,
+        neo4j_uri=semantic_index_config.neo4j_uri,
+        neo4j_username=semantic_index_config.neo4j_username,
+        neo4j_password=semantic_index_config.neo4j_password,
+        neo4j_password_env_var=semantic_index_config.neo4j_password_env_var,
+        neo4j_database=semantic_index_config.neo4j_database,
     )
     localization = localizer.localize(
         repo_path=repo_path,

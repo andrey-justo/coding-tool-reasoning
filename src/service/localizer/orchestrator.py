@@ -31,6 +31,12 @@ class RepositoryIssueLocalizer:
         semantic_index_dir: str = ".semantic_index",
         persist_semantic_index: bool = True,
         vector_backend: str = "local_tfidf",
+        graph_storage_backend: str = "in_memory",
+        neo4j_uri: str | None = None,
+        neo4j_username: str | None = None,
+        neo4j_password: str | None = None,
+        neo4j_password_env_var: str = "NEO4J_PASSWORD",
+        neo4j_database: str = "neo4j",
     ) -> None:
         if strategies is not None:
             self.strategies = strategies
@@ -44,6 +50,12 @@ class RepositoryIssueLocalizer:
                 semantic_index_dir=semantic_index_dir,
                 persist_semantic_index=persist_semantic_index,
                 vector_backend=vector_backend,
+                graph_storage_backend=graph_storage_backend,
+                neo4j_uri=neo4j_uri,
+                neo4j_username=neo4j_username,
+                neo4j_password=neo4j_password,
+                neo4j_password_env_var=neo4j_password_env_var,
+                neo4j_database=neo4j_database,
             )
             if enable_graph_memory
             else None,

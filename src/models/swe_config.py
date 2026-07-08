@@ -236,6 +236,36 @@ class SemanticIndexConfig(BaseModel):
             "Current implementation uses local TF-IDF vectors."
         ),
     )
+    graph_storage_backend: str = Field(
+        default="in_memory",
+        description=(
+            "Graph storage backend for file relationships. Supported values: "
+            "in_memory, neo4j."
+        ),
+    )
+    neo4j_uri: Optional[str] = Field(
+        default=None,
+        description="Neo4j Bolt URI (e.g., bolt://localhost:7687).",
+    )
+    neo4j_username: Optional[str] = Field(
+        default=None,
+        description="Neo4j username used when graph_storage_backend is neo4j.",
+    )
+    neo4j_password: Optional[str] = Field(
+        default=None,
+        description=(
+            "Neo4j password. Prefer setting neo4j_password_env_var instead of "
+            "committing plain-text secrets."
+        ),
+    )
+    neo4j_password_env_var: str = Field(
+        default="NEO4J_PASSWORD",
+        description="Environment variable name used to resolve Neo4j password.",
+    )
+    neo4j_database: str = Field(
+        default="neo4j",
+        description="Neo4j database name used for localizer graph storage.",
+    )
 
 
 class SweMcpConfig(BaseModel):
@@ -271,6 +301,12 @@ class SweMcpConfig(BaseModel):
             "semantic_index_dir",
             "persist_semantic_index",
             "vector_backend",
+            "graph_storage_backend",
+            "neo4j_uri",
+            "neo4j_username",
+            "neo4j_password",
+            "neo4j_password_env_var",
+            "neo4j_database",
         }
         moved_any = False
         for key in legacy_keys:
