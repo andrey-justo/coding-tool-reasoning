@@ -10,6 +10,9 @@ from src.service.localizer.models import (
 )
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
 from src.service.localizer.strategies.filename import FilenameMatchingStrategy
+from src.service.localizer.strategies.graph_memory import (
+    GraphMemoryRelationshipStrategy,
+)
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
 from src.service.localizer.strategies.semantic_nlp import SemanticNlpMatchingStrategy
 from src.service.localizer.strategies.symbol_impact import SymbolImpactStrategy
@@ -23,6 +26,18 @@ class RepositoryIssueLocalizer:
         strategies: list[LocalizationStrategy] | None = None,
         *,
         enable_semantic_nlp: bool = False,
+        enable_graph_memory: bool = True,
+        graph_memory_hops: int = 2,
+        semantic_index_dir: str = ".semantic_index",
+        persist_semantic_index: bool = True,
+        vector_backend: str = "local_tfidf",
+        graph_storage_backend: str = "in_memory",
+        enable_neo4j_beta: bool = False,
+        neo4j_uri: str | None = None,
+        neo4j_username: str | None = None,
+        neo4j_password: str | None = None,
+        neo4j_password_env_var: str = "NEO4J_PASSWORD",
+        neo4j_database: str = "neo4j",
     ) -> None:
         if strategies is not None:
             self.strategies = strategies
@@ -31,9 +46,25 @@ class RepositoryIssueLocalizer:
         assembled: list[LocalizationStrategy] = [
             FilenameMatchingStrategy(),
             RegexContentMatchingStrategy(),
+            GraphMemoryRelationshipStrategy(
+                hops=graph_memory_hops,
+                semantic_index_dir=semantic_index_dir,
+                persist_semantic_index=persist_semantic_index,
+                vector_backend=vector_backend,
+                graph_storage_backend=graph_storage_backend,
+                enable_neo4j_beta=enable_neo4j_beta,
+                neo4j_uri=neo4j_uri,
+                neo4j_username=neo4j_username,
+                neo4j_password=neo4j_password,
+                neo4j_password_env_var=neo4j_password_env_var,
+                neo4j_database=neo4j_database,
+            )
+            if enable_graph_memory
+            else None,
             AstMatchingStrategy(),
             SymbolImpactStrategy(),
         ]
+        assembled = [strategy for strategy in assembled if strategy is not None]
         if enable_semantic_nlp:
             assembled.insert(2, SemanticNlpMatchingStrategy())
 

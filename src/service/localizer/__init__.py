@@ -8,6 +8,7 @@ from src.service.localizer.orchestrator import RepositoryIssueLocalizer
 from src.service.localizer.strategies import (
     AstMatchingStrategy,
     FilenameMatchingStrategy,
+    GraphMemoryRelationshipStrategy,
     RegexContentMatchingStrategy,
     SemanticNlpMatchingStrategy,
     SymbolImpactStrategy,
@@ -19,6 +20,7 @@ __all__ = [
     "LocalizerResult",
     "AstMatchingStrategy",
     "FilenameMatchingStrategy",
+    "GraphMemoryRelationshipStrategy",
     "RegexContentMatchingStrategy",
     "SemanticNlpMatchingStrategy",
     "SymbolImpactStrategy",

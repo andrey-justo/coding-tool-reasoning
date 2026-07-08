@@ -20,6 +20,7 @@ from mcp.client.stdio import stdio_client
 
 from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
+from src.models.swe_config import SweMcpConfig
 from src.report.experiment_report_writer import (
     metrics_rows,
     write_csv_report,
@@ -589,8 +590,22 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 f"Could not fetch PR files for localization ({type(exc).__name__}: {exc}); falling back to repository scan."
             )
 
+    config = SweMcpConfig.load(str(repo_path))
+    semantic_index_config = config.semantic_index
     localizer = RepositoryIssueLocalizer(
         enable_semantic_nlp=args.enable_nlp_localizer,
+        enable_graph_memory=semantic_index_config.enable_graph_memory,
+        graph_memory_hops=semantic_index_config.graph_memory_hops,
+        semantic_index_dir=semantic_index_config.semantic_index_dir,
+        persist_semantic_index=semantic_index_config.persist_semantic_index,
+        vector_backend=semantic_index_config.vector_backend,
+        graph_storage_backend=semantic_index_config.graph_storage_backend,
+        enable_neo4j_beta=semantic_index_config.enable_neo4j_beta,
+        neo4j_uri=semantic_index_config.neo4j_uri,
+        neo4j_username=semantic_index_config.neo4j_username,
+        neo4j_password=semantic_index_config.neo4j_password,
+        neo4j_password_env_var=semantic_index_config.neo4j_password_env_var,
+        neo4j_database=semantic_index_config.neo4j_database,
     )
     localization = localizer.localize(
         repo_path=repo_path,

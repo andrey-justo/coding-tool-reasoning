@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 from src.service.localizer import RepositoryIssueLocalizer
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
+from src.service.localizer.strategies.graph_memory import (
+    GraphMemoryRelationshipStrategy,
+)
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
 from src.service.localizer.strategies.semantic_nlp import SemanticNlpMatchingStrategy
 from src.service.localizer.strategies.symbol_impact import SymbolImpactStrategy
@@ -74,6 +78,43 @@ def test_symbol_impact_strategy_finds_dependent_python_file(tmp_path: Path) -> N
     assert "src/service.py" in hits
 
 
+def test_graph_memory_strategy_propagates_to_related_file(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "src" / "retry_core.py",
+        (
+            "class RetryPolicy:\n"
+            "    def run(self):\n"
+            "        return helper()\n\n"
+            "def helper():\n"
+            "    return 1\n"
+        ),
+    )
+    _write(
+        tmp_path / "src" / "retry_service.py",
+        (
+            "from src.retry_core import RetryPolicy\n\n"
+            "def run_retry():\n"
+            "    policy = RetryPolicy()\n"
+            "    return policy\n"
+        ),
+    )
+
+    strategy = GraphMemoryRelationshipStrategy(hops=2)
+    hits = strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=["src/retry_core.py", "src/retry_service.py"],
+    )
+
+    assert "src/retry_core.py" in hits
+    assert "src/retry_service.py" in hits
+    assert hits["src/retry_service.py"].score > 0
+    assert any(
+        "graph hop" in reason or "references issue symbols" in reason
+        for reason in hits["src/retry_service.py"].reasons
+    )
+
+
 def test_repository_issue_localizer_combines_strategies(tmp_path: Path) -> None:
     _write(
         tmp_path / "src" / "auth_manager.py",
@@ -122,3 +163,76 @@ def test_repository_issue_localizer_can_disable_semantic_nlp() -> None:
     assert any(
         strategy.name == "semantic_nlp" for strategy in localizer_with_nlp.strategies
     )
+
+
+def test_repository_issue_localizer_can_disable_graph_memory() -> None:
+    localizer = RepositoryIssueLocalizer(enable_graph_memory=False)
+    assert all(strategy.name != "graph_memory" for strategy in localizer.strategies)
+
+    localizer_with_graph = RepositoryIssueLocalizer(enable_graph_memory=True)
+    assert any(
+        strategy.name == "graph_memory" for strategy in localizer_with_graph.strategies
+    )
+
+
+def test_graph_memory_strategy_persists_semantic_index(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "src" / "retry_core.py",
+        (
+            "class RetryPolicy:\n"
+            "    def run(self):\n"
+            "        return helper()\n\n"
+            "def helper():\n"
+            "    return 1\n"
+        ),
+    )
+    _write(
+        tmp_path / "src" / "retry_service.py",
+        (
+            "from src.retry_core import RetryPolicy\n\n"
+            "def run_retry():\n"
+            "    policy = RetryPolicy()\n"
+            "    return policy\n"
+        ),
+    )
+
+    strategy = GraphMemoryRelationshipStrategy(
+        hops=2,
+        semantic_index_dir=".semantic_index",
+        persist_semantic_index=True,
+    )
+    candidate_paths = ["src/retry_core.py", "src/retry_service.py"]
+    strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=candidate_paths,
+    )
+
+    index_file = tmp_path / ".semantic_index" / "localizer_graph_memory_index.json"
+    assert index_file.exists()
+
+    payload = json.loads(index_file.read_text(encoding="utf-8"))
+    docs = payload.get("documents", {})
+    core_doc = docs.get("src/retry_core.py", {})
+    service_doc = docs.get("src/retry_service.py", {})
+
+    core_links = [tuple(item) for item in core_doc.get("ast_links", [])]
+    service_links = [tuple(item) for item in service_doc.get("ast_links", [])]
+
+    assert ("retrypolicy", "contains_method", "retrypolicy.run") in core_links
+    assert ("retrypolicy.run", "calls", "helper") in core_links
+    assert ("run_retry", "calls", "retrypolicy") in service_links
+
+    second_strategy = GraphMemoryRelationshipStrategy(
+        hops=2,
+        semantic_index_dir=".semantic_index",
+        persist_semantic_index=True,
+    )
+    second_hits = second_strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=candidate_paths,
+    )
+
+    assert "src/retry_core.py" in second_hits
+    assert "src/retry_service.py" in second_hits
