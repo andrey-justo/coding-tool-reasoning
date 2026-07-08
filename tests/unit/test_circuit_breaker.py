@@ -151,6 +151,7 @@ def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
 def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     default_config = SweMcpConfig.load(str(tmp_path))
     assert default_config.knowledge_base.relationship_depth == 1
+    assert default_config.semantic_index.graph_memory_hops == 2
 
     config_path = tmp_path / "swe_mcp_config.yaml"
     config_path.write_text(
@@ -159,6 +160,7 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
                 "knowledge_base": {"relationship_depth": 2},
                 "planning": {"max_steps": 3},
                 "judging": {"max_risks": 2},
+                "semantic_index": {"graph_memory_hops": 3},
             }
         ),
         encoding="utf-8",
@@ -168,6 +170,24 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     assert loaded_config.knowledge_base.relationship_depth == 2
     assert loaded_config.planning.max_steps == 3
     assert loaded_config.judging.max_risks == 2
+    assert loaded_config.semantic_index.graph_memory_hops == 3
+
+    # Backward compatibility: legacy keys under localizer should still load.
+    config_path.write_text(
+        json.dumps(
+            {
+                "localizer": {
+                    "enable_graph_memory": False,
+                    "graph_memory_hops": 1,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    legacy_config = SweMcpConfig.load(str(tmp_path))
+    assert legacy_config.semantic_index.enable_graph_memory is False
+    assert legacy_config.semantic_index.graph_memory_hops == 1
 
     config_path.write_text("not: [valid", encoding="utf-8")
 
