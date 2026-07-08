@@ -28,6 +28,9 @@ class RepositoryIssueLocalizer:
         enable_semantic_nlp: bool = False,
         enable_graph_memory: bool = True,
         graph_memory_hops: int = 2,
+        semantic_index_dir: str = ".semantic_index",
+        persist_semantic_index: bool = True,
+        vector_backend: str = "local_tfidf",
     ) -> None:
         if strategies is not None:
             self.strategies = strategies
@@ -36,7 +39,12 @@ class RepositoryIssueLocalizer:
         assembled: list[LocalizationStrategy] = [
             FilenameMatchingStrategy(),
             RegexContentMatchingStrategy(),
-            GraphMemoryRelationshipStrategy(hops=graph_memory_hops)
+            GraphMemoryRelationshipStrategy(
+                hops=graph_memory_hops,
+                semantic_index_dir=semantic_index_dir,
+                persist_semantic_index=persist_semantic_index,
+                vector_backend=vector_backend,
+            )
             if enable_graph_memory
             else None,
             AstMatchingStrategy(),

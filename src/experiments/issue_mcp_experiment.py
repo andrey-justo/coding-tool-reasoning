@@ -595,6 +595,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         enable_semantic_nlp=args.enable_nlp_localizer,
         enable_graph_memory=localizer_config.enable_graph_memory,
         graph_memory_hops=localizer_config.graph_memory_hops,
+        semantic_index_dir=localizer_config.semantic_index_dir,
+        persist_semantic_index=localizer_config.persist_semantic_index,
+        vector_backend=localizer_config.vector_backend,
     )
     localization = localizer.localize(
         repo_path=repo_path,

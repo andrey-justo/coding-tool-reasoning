@@ -44,4 +44,7 @@ localizer:
   enable_semantic_nlp: false
   enable_graph_memory: true
   graph_memory_hops: 2
+  semantic_index_dir: .semantic_index
+  persist_semantic_index: true
+  vector_backend: local_tfidf
 

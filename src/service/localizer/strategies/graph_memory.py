@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import ast
+import hashlib
+import json
 import math
 import re
 from dataclasses import dataclass
@@ -24,6 +26,16 @@ class _GraphIndex:
     neighbors: dict[str, set[str]]
 
 
+@dataclass
+class _IndexedDocument:
+    mtime_ns: int
+    size: int
+    tf: dict[str, int]
+    definitions: set[str]
+    references: set[str]
+    imports: set[str]
+
+
 class GraphMemoryRelationshipStrategy:
     """Graph + vector-memory reranking strategy for repository localization.
 
@@ -37,11 +49,135 @@ class GraphMemoryRelationshipStrategy:
 
     name = "graph_memory"
 
-    def __init__(self, max_file_size_bytes: int = 350_000, hops: int = 2) -> None:
+    def __init__(
+        self,
+        max_file_size_bytes: int = 350_000,
+        hops: int = 2,
+        semantic_index_dir: str = ".semantic_index",
+        persist_semantic_index: bool = True,
+        vector_backend: str = "local_tfidf",
+    ) -> None:
         self.max_file_size_bytes = max_file_size_bytes
         self.hops = max(1, hops)
+        self.semantic_index_dir = semantic_index_dir
+        self.persist_semantic_index = persist_semantic_index
+        self.vector_backend = vector_backend
         self._cache_key: tuple[str, tuple[str, ...]] | None = None
         self._cache_index: _GraphIndex | None = None
+        self._documents_cache: dict[str, _IndexedDocument] = {}
+
+    def _index_file_path(self, repo_path: Path) -> Path:
+        index_root = repo_path / self.semantic_index_dir
+        return index_root / "localizer_graph_memory_index.json"
+
+    def _load_persisted_index(self, repo_path: Path) -> dict[str, _IndexedDocument]:
+        if not self.persist_semantic_index:
+            return {}
+
+        index_file = self._index_file_path(repo_path)
+        if not index_file.exists():
+            return {}
+
+        try:
+            payload = json.loads(index_file.read_text(encoding="utf-8"))
+            if payload.get("version") != 1:
+                return {}
+
+            docs = payload.get("documents")
+            if not isinstance(docs, dict):
+                return {}
+
+            loaded: dict[str, _IndexedDocument] = {}
+            for rel_path, value in docs.items():
+                if not isinstance(value, dict):
+                    continue
+                loaded[rel_path] = _IndexedDocument(
+                    mtime_ns=int(value.get("mtime_ns", 0)),
+                    size=int(value.get("size", 0)),
+                    tf={
+                        str(token): int(freq)
+                        for token, freq in dict(value.get("tf") or {}).items()
+                    },
+                    definitions={str(v) for v in list(value.get("definitions") or [])},
+                    references={str(v) for v in list(value.get("references") or [])},
+                    imports={str(v) for v in list(value.get("imports") or [])},
+                )
+            return loaded
+        except Exception:
+            return {}
+
+    def _save_persisted_index(
+        self,
+        repo_path: Path,
+        documents: dict[str, _IndexedDocument],
+    ) -> None:
+        if not self.persist_semantic_index:
+            return
+
+        index_file = self._index_file_path(repo_path)
+        index_file.parent.mkdir(parents=True, exist_ok=True)
+
+        payload = {
+            "version": 1,
+            "vector_backend": self.vector_backend,
+            "documents": {
+                rel_path: {
+                    "mtime_ns": doc.mtime_ns,
+                    "size": doc.size,
+                    "tf": doc.tf,
+                    "definitions": sorted(doc.definitions),
+                    "references": sorted(doc.references),
+                    "imports": sorted(doc.imports),
+                }
+                for rel_path, doc in documents.items()
+            },
+        }
+        index_file.write_text(
+            json.dumps(payload, ensure_ascii=True, separators=(",", ":")),
+            encoding="utf-8",
+        )
+
+    def _read_document(
+        self,
+        repo_path: Path,
+        rel_path: str,
+        persisted_docs: dict[str, _IndexedDocument],
+    ) -> _IndexedDocument | None:
+        abs_path = repo_path / rel_path
+        try:
+            stat = abs_path.stat()
+        except OSError:
+            return None
+
+        if stat.st_size > self.max_file_size_bytes:
+            return None
+
+        cached = persisted_docs.get(rel_path)
+        if (
+            cached is not None
+            and cached.mtime_ns == stat.st_mtime_ns
+            and cached.size == stat.st_size
+        ):
+            return cached
+
+        source = safe_read_text(abs_path, self.max_file_size_bytes)
+        if not source:
+            return None
+
+        tf = count_token_frequency(source)
+        if Path(rel_path).suffix.lower() == ".py":
+            definitions, references, imports = self._collect_python_symbols(source)
+        else:
+            definitions, references, imports = self._collect_generic_symbols(source)
+
+        return _IndexedDocument(
+            mtime_ns=stat.st_mtime_ns,
+            size=stat.st_size,
+            tf=tf,
+            definitions=definitions,
+            references=references,
+            imports=imports,
+        )
 
     @staticmethod
     def _idf(num_docs: int, doc_freq: int) -> float:
@@ -114,9 +250,16 @@ class GraphMemoryRelationshipStrategy:
         return definitions, references, imports
 
     def _build_index(self, repo_path: Path, candidate_paths: list[str]) -> _GraphIndex:
-        cache_key = (str(repo_path.resolve()), tuple(candidate_paths))
+        normalized_candidates = tuple(sorted(set(candidate_paths)))
+        key_digest = hashlib.sha1(
+            "\n".join(normalized_candidates).encode("utf-8", errors="ignore")
+        ).hexdigest()
+        cache_key = (str(repo_path.resolve()), (key_digest,))
         if self._cache_key == cache_key and self._cache_index is not None:
             return self._cache_index
+
+        persisted_docs = self._load_persisted_index(repo_path)
+        changed = False
 
         docs_tf: dict[str, dict[str, int]] = {}
         doc_freq: dict[str, int] = {}
@@ -124,25 +267,24 @@ class GraphMemoryRelationshipStrategy:
         references_by_file: dict[str, set[str]] = {}
         imports_by_file: dict[str, set[str]] = {}
 
-        for rel_path in candidate_paths:
-            text = safe_read_text(repo_path / rel_path, self.max_file_size_bytes)
-            if not text:
+        for rel_path in normalized_candidates:
+            doc = self._read_document(repo_path, rel_path, persisted_docs)
+            if doc is None:
                 continue
 
-            tf = count_token_frequency(text)
-            if tf:
-                docs_tf[rel_path] = tf
-                for token in tf.keys():
+            previous = persisted_docs.get(rel_path)
+            if previous != doc:
+                persisted_docs[rel_path] = doc
+                changed = True
+
+            if doc.tf:
+                docs_tf[rel_path] = doc.tf
+                for token in doc.tf.keys():
                     doc_freq[token] = doc_freq.get(token, 0) + 1
 
-            if Path(rel_path).suffix.lower() == ".py":
-                definitions, references, imports = self._collect_python_symbols(text)
-            else:
-                definitions, references, imports = self._collect_generic_symbols(text)
-
-            definitions_by_file[rel_path] = definitions
-            references_by_file[rel_path] = references
-            imports_by_file[rel_path] = imports
+            definitions_by_file[rel_path] = doc.definitions
+            references_by_file[rel_path] = doc.references
+            imports_by_file[rel_path] = doc.imports
 
         symbol_owners: dict[str, set[str]] = {}
         for rel_path, definitions in definitions_by_file.items():
@@ -174,6 +316,9 @@ class GraphMemoryRelationshipStrategy:
         )
         self._cache_key = cache_key
         self._cache_index = index
+        self._documents_cache = persisted_docs
+        if changed:
+            self._save_persisted_index(repo_path, persisted_docs)
         return index
 
     def score(

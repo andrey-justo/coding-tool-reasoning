@@ -163,4 +163,51 @@ def test_repository_issue_localizer_can_disable_graph_memory() -> None:
     assert all(strategy.name != "graph_memory" for strategy in localizer.strategies)
 
     localizer_with_graph = RepositoryIssueLocalizer(enable_graph_memory=True)
-    assert any(strategy.name == "graph_memory" for strategy in localizer_with_graph.strategies)
+    assert any(
+        strategy.name == "graph_memory" for strategy in localizer_with_graph.strategies
+    )
+
+
+def test_graph_memory_strategy_persists_semantic_index(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "src" / "retry_core.py",
+        "class RetryPolicy:\n    pass\n",
+    )
+    _write(
+        tmp_path / "src" / "retry_service.py",
+        (
+            "from src.retry_core import RetryPolicy\n\n"
+            "def run_retry():\n"
+            "    policy = RetryPolicy()\n"
+            "    return policy\n"
+        ),
+    )
+
+    strategy = GraphMemoryRelationshipStrategy(
+        hops=2,
+        semantic_index_dir=".semantic_index",
+        persist_semantic_index=True,
+    )
+    candidate_paths = ["src/retry_core.py", "src/retry_service.py"]
+    strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=candidate_paths,
+    )
+
+    index_file = tmp_path / ".semantic_index" / "localizer_graph_memory_index.json"
+    assert index_file.exists()
+
+    second_strategy = GraphMemoryRelationshipStrategy(
+        hops=2,
+        semantic_index_dir=".semantic_index",
+        persist_semantic_index=True,
+    )
+    second_hits = second_strategy.score(
+        repo_path=tmp_path,
+        issue_text="Refactor RetryPolicy behavior",
+        candidate_paths=candidate_paths,
+    )
+
+    assert "src/retry_core.py" in second_hits
+    assert "src/retry_service.py" in second_hits
