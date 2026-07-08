@@ -20,6 +20,7 @@ from mcp.client.stdio import stdio_client
 
 from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
+from src.models.swe_config import SweMcpConfig
 from src.report.experiment_report_writer import (
     metrics_rows,
     write_csv_report,
@@ -589,8 +590,11 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 f"Could not fetch PR files for localization ({type(exc).__name__}: {exc}); falling back to repository scan."
             )
 
+    localizer_config = SweMcpConfig.load(str(repo_path)).localizer
     localizer = RepositoryIssueLocalizer(
         enable_semantic_nlp=args.enable_nlp_localizer,
+        enable_graph_memory=localizer_config.enable_graph_memory,
+        graph_memory_hops=localizer_config.graph_memory_hops,
     )
     localization = localizer.localize(
         repo_path=repo_path,

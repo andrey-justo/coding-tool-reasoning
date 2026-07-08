@@ -194,6 +194,22 @@ class LocalizerConfig(BaseModel):
             "when minimizing model-related overhead is preferred."
         ),
     )
+    enable_graph_memory: bool = Field(
+        default=True,
+        description=(
+            "Enable graph-memory retrieval strategy that combines vector similarity "
+            "and symbol-relationship propagation without LLM calls."
+        ),
+    )
+    graph_memory_hops: int = Field(
+        default=2,
+        ge=1,
+        le=4,
+        description=(
+            "Maximum graph-propagation hops used by graph-memory localizer "
+            "to include relationship-neighbor files."
+        ),
+    )
 
 
 class SweMcpConfig(BaseModel):

@@ -10,6 +10,9 @@ from src.service.localizer.models import (
 )
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
 from src.service.localizer.strategies.filename import FilenameMatchingStrategy
+from src.service.localizer.strategies.graph_memory import (
+    GraphMemoryRelationshipStrategy,
+)
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
 from src.service.localizer.strategies.semantic_nlp import SemanticNlpMatchingStrategy
 from src.service.localizer.strategies.symbol_impact import SymbolImpactStrategy
@@ -23,6 +26,8 @@ class RepositoryIssueLocalizer:
         strategies: list[LocalizationStrategy] | None = None,
         *,
         enable_semantic_nlp: bool = False,
+        enable_graph_memory: bool = True,
+        graph_memory_hops: int = 2,
     ) -> None:
         if strategies is not None:
             self.strategies = strategies
@@ -31,9 +36,13 @@ class RepositoryIssueLocalizer:
         assembled: list[LocalizationStrategy] = [
             FilenameMatchingStrategy(),
             RegexContentMatchingStrategy(),
+            GraphMemoryRelationshipStrategy(hops=graph_memory_hops)
+            if enable_graph_memory
+            else None,
             AstMatchingStrategy(),
             SymbolImpactStrategy(),
         ]
+        assembled = [strategy for strategy in assembled if strategy is not None]
         if enable_semantic_nlp:
             assembled.insert(2, SemanticNlpMatchingStrategy())
 
