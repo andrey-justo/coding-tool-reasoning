@@ -152,6 +152,7 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     default_config = SweMcpConfig.load(str(tmp_path))
     assert default_config.knowledge_base.relationship_depth == 1
     assert default_config.semantic_index.graph_memory_hops == 2
+    assert default_config.semantic_index.enable_neo4j_beta is False
 
     config_path = tmp_path / "swe_mcp_config.yaml"
     config_path.write_text(
@@ -163,6 +164,7 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
                 "semantic_index": {
                     "graph_memory_hops": 3,
                     "graph_storage_backend": "neo4j",
+                    "enable_neo4j_beta": True,
                     "neo4j_uri": "bolt://localhost:7687",
                     "neo4j_username": "neo4j",
                     "neo4j_password_env_var": "NEO4J_PASSWORD",
@@ -178,6 +180,7 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
     assert loaded_config.judging.max_risks == 2
     assert loaded_config.semantic_index.graph_memory_hops == 3
     assert loaded_config.semantic_index.graph_storage_backend == "neo4j"
+    assert loaded_config.semantic_index.enable_neo4j_beta is True
     assert loaded_config.semantic_index.neo4j_uri == "bolt://localhost:7687"
     assert loaded_config.semantic_index.neo4j_username == "neo4j"
 

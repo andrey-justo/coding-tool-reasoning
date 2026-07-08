@@ -243,6 +243,14 @@ class SemanticIndexConfig(BaseModel):
             "in_memory, neo4j."
         ),
     )
+    enable_neo4j_beta: bool = Field(
+        default=False,
+        description=(
+            "Opt-in switch for Neo4j graph storage (beta). When false, the "
+            "localizer always uses in-memory graph storage even if Neo4j fields "
+            "are provided."
+        ),
+    )
     neo4j_uri: Optional[str] = Field(
         default=None,
         description="Neo4j Bolt URI (e.g., bolt://localhost:7687).",
@@ -302,6 +310,7 @@ class SweMcpConfig(BaseModel):
             "persist_semantic_index",
             "vector_backend",
             "graph_storage_backend",
+            "enable_neo4j_beta",
             "neo4j_uri",
             "neo4j_username",
             "neo4j_password",

@@ -600,6 +600,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         persist_semantic_index=semantic_index_config.persist_semantic_index,
         vector_backend=semantic_index_config.vector_backend,
         graph_storage_backend=semantic_index_config.graph_storage_backend,
+        enable_neo4j_beta=semantic_index_config.enable_neo4j_beta,
         neo4j_uri=semantic_index_config.neo4j_uri,
         neo4j_username=semantic_index_config.neo4j_username,
         neo4j_password=semantic_index_config.neo4j_password,

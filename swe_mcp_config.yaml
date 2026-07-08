@@ -50,6 +50,7 @@ semantic_index:
   persist_semantic_index: true
   vector_backend: local_tfidf
   graph_storage_backend: in_memory
+  enable_neo4j_beta: false
   neo4j_uri:
   neo4j_username:
   neo4j_password:

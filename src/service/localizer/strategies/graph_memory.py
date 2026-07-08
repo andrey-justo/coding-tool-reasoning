@@ -160,6 +160,7 @@ class GraphMemoryRelationshipStrategy:
         persist_semantic_index: bool = True,
         vector_backend: str = "local_tfidf",
         graph_storage_backend: str = "in_memory",
+        enable_neo4j_beta: bool = False,
         neo4j_uri: str | None = None,
         neo4j_username: str | None = None,
         neo4j_password: str | None = None,
@@ -172,12 +173,14 @@ class GraphMemoryRelationshipStrategy:
         self.persist_semantic_index = persist_semantic_index
         self.vector_backend = vector_backend
         self.graph_storage_backend = graph_storage_backend
+        self.enable_neo4j_beta = enable_neo4j_beta
         self._cache_key: tuple[str, tuple[str, ...]] | None = None
         self._cache_index: _GraphIndex | None = None
         self._documents_cache: dict[str, _IndexedDocument] = {}
         resolved_password = neo4j_password or os.getenv(neo4j_password_env_var, "")
         if (
-            graph_storage_backend == "neo4j"
+            enable_neo4j_beta
+            and graph_storage_backend == "neo4j"
             and neo4j_uri
             and neo4j_username
             and resolved_password
