@@ -7,6 +7,8 @@ from src.evaluation.metrics.solid import SolidMetricsStrategy
 import src.mcp.swe_mcp_server as swe_mcp_server
 from src.mcp.swe_mcp_server import SweMcpServerContextProvider
 from src.models.swe_config import SweMcpConfig
+from src.service.localizer import models as models_module
+from src.service.localizer.ast import symbol_set as symbol_set_module
 from src.service import language_detection
 
 
@@ -93,9 +95,6 @@ def test_solid_metrics_strategy_delta_count_and_compute() -> None:
 
 
 def test_localizer_reexport_modules_are_importable() -> None:
-    from src.service.localizer.ast import symbol_set as symbol_set_module
-    from src.service.localizer import models as models_module
-
     assert symbol_set_module.__all__ == ["SymbolSet"]
     assert "LocalizationHit" in models_module.__all__
     assert "LocalizerResult" in models_module.__all__
