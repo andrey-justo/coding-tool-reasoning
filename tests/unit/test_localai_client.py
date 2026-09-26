@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock, patch
+﻿from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
@@ -26,7 +26,7 @@ def _mock_response(content: str) -> MagicMock:
 
 def test_headers_include_auth_when_api_key_set(client):
     headers = client._headers()
-    assert headers["Authorization"] == "secret"
+    assert headers["Authorization"] == "Bearer secret"
     assert headers["Content-Type"] == "application/json"
 
 
@@ -89,3 +89,4 @@ def test_create_session_mounts_adapters(client):
     # Both http:// and https:// should have adapters mounted
     assert "http://" in session.adapters
     assert "https://" in session.adapters
+
