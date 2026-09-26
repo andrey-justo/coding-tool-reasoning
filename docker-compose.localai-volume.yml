@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  localai:
+    build:
+      context: ./docker/localai
+      dockerfile: Dockerfile
+    ports:
+      - "9090:8080"
+    environment:
+      - API_KEY=your_secret_api_key
+    volumes:
+      - localai_models:/models
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  localai_models:
+    name: coding_tool_reasoning_localai_models

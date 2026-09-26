@@ -1,5 +1,41 @@
 run_id,comparison_group,experiment_type,rq,condition,executed_by,subject_id,repo_owner,repo_name,issue_id,issue_comment_id,commit_sha,pull_request_number,started_at,completed_at,status,artifact_path,notes
-EXP0001,csharp_corpus_v1,automated-pipeline,RQ1,baseline,authors,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Baseline run placeholder; fill issue/commit/PR when selected
-EXP0002,csharp_corpus_v1,automated-pipeline,RQ1,supervised,authors,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Supervised run placeholder; fill issue/commit/PR when selected
-EXP0003,csharp_corpus_v1,annotation-study,RQ4,n/a,external-engineers,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,κ annotation placeholder (verdict/pattern labels)
-EXP0004,csharp_corpus_v1,survey-study,RQ4,n/a,external-engineers,S003,StackExchange,StackExchange.Redis,,,,,,,planned,,Tool-use survey placeholder (trust/control)
+EXP0001,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S001,dotnet,runtime,131001,,,,,,planned,,v1 bloco 1 baseline
+EXP0002,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S001,dotnet,runtime,131001,,,,,,planned,,v1 bloco 1 supervised
+EXP0003,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S002,dotnet,aspnetcore,67886,,,,,,planned,,v1 bloco 2 baseline
+EXP0004,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S002,dotnet,aspnetcore,67886,,,,,,planned,,v1 bloco 2 supervised
+EXP0005,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S003,StackExchange,StackExchange.Redis,3128,,,,,,planned,,v1 bloco 3 baseline
+EXP0006,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S003,StackExchange,StackExchange.Redis,3128,,,,,,planned,,v1 bloco 3 supervised
+EXP0007,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S004,serilog,serilog,2235,,,,,,planned,,v1 bloco 4 baseline
+EXP0008,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S004,serilog,serilog,2235,,,,,,planned,,v1 bloco 4 supervised
+EXP0009,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S005,akkadotnet,akka.net,8384,,,,,,planned,,v1 bloco 5 baseline
+EXP0010,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S005,akkadotnet,akka.net,8384,,,,,,planned,,v1 bloco 5 supervised
+EXP0011,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S011,MassTransit,MassTransit,6231,,,,,,planned,,v1 bloco 6 baseline
+EXP0012,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S011,MassTransit,MassTransit,6231,,,,,,planned,,v1 bloco 6 supervised
+EXP0013,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S012,autofac,Autofac,1465,,,,,,planned,,v1 bloco 7 baseline
+EXP0014,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S012,autofac,Autofac,1465,,,,,,planned,,v1 bloco 7 supervised
+EXP0015,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S009,dotnet,efcore,38669,,,,,,planned,,v1 bloco 8 baseline
+EXP0016,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S009,dotnet,efcore,38669,,,,,,planned,,v1 bloco 8 supervised
+EXP0017,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S010,App-vNext,Polly,3095,,,,,,planned,,v1 bloco 9 baseline
+EXP0018,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S010,App-vNext,Polly,3095,,,,,,planned,,v1 bloco 9 supervised
+EXP0019,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S006,nunit,nunit,5349,,,,,,planned,,v1 bloco 10 baseline
+EXP0020,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S006,nunit,nunit,5349,,,,,,planned,,v1 bloco 10 supervised
+EXP0021,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S001,dotnet,runtime,130982,,,,,,planned,,v1 controle positivo bloco 1 baseline (issue fechada com PR)
+EXP0022,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S001,dotnet,runtime,130982,,,,,,planned,,v1 controle positivo bloco 1 supervised (issue fechada com PR)
+EXP0023,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S002,dotnet,aspnetcore,67858,,,,,,planned,,v1 controle positivo bloco 2 baseline (issue fechada com PR)
+EXP0024,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S002,dotnet,aspnetcore,67858,,,,,,planned,,v1 controle positivo bloco 2 supervised (issue fechada com PR)
+EXP0025,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S003,StackExchange,StackExchange.Redis,3123,,,,,,planned,,v1 controle positivo bloco 3 baseline (issue fechada com PR)
+EXP0026,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S003,StackExchange,StackExchange.Redis,3123,,,,,,planned,,v1 controle positivo bloco 3 supervised (issue fechada com PR)
+EXP0027,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S004,serilog,serilog,2211,,,,,,planned,,v1 controle positivo bloco 4 baseline (issue fechada com PR)
+EXP0028,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S004,serilog,serilog,2211,,,,,,planned,,v1 controle positivo bloco 4 supervised (issue fechada com PR)
+EXP0029,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S005,akkadotnet,akka.net,8349,,,,,,planned,,v1 controle positivo bloco 5 baseline (issue fechada com PR)
+EXP0030,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S005,akkadotnet,akka.net,8349,,,,,,planned,,v1 controle positivo bloco 5 supervised (issue fechada com PR)
+EXP0031,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S011,MassTransit,MassTransit,306,,,,,,planned,,v1 controle positivo bloco 6 baseline (issue fechada com PR)
+EXP0032,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S011,MassTransit,MassTransit,306,,,,,,planned,,v1 controle positivo bloco 6 supervised (issue fechada com PR)
+EXP0033,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S012,autofac,Autofac,1493,,,,,,planned,,v1 controle positivo bloco 7 baseline (issue fechada com PR)
+EXP0034,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S012,autofac,Autofac,1493,,,,,,planned,,v1 controle positivo bloco 7 supervised (issue fechada com PR)
+EXP0035,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S009,dotnet,efcore,38032,,,,,,planned,,v1 controle positivo bloco 8 baseline (issue fechada com PR)
+EXP0036,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S009,dotnet,efcore,38032,,,,,,planned,,v1 controle positivo bloco 8 supervised (issue fechada com PR)
+EXP0037,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S010,App-vNext,Polly,3086,,,,,,planned,,v1 controle positivo bloco 9 baseline (issue fechada com PR)
+EXP0038,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S010,App-vNext,Polly,3086,,,,,,planned,,v1 controle positivo bloco 9 supervised (issue fechada com PR)
+EXP0039,csharp_corpus_v1,automated-pipeline,RQ2,baseline,authors,S006,nunit,nunit,5323,,,,,,planned,,v1 controle positivo bloco 10 baseline (issue fechada com PR)
+EXP0040,csharp_corpus_v1,automated-pipeline,RQ2,supervised,authors,S006,nunit,nunit,5323,,,,,,planned,,v1 controle positivo bloco 10 supervised (issue fechada com PR)

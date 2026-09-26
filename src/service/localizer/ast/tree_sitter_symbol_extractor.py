@@ -3,8 +3,8 @@ from __future__ import annotations
 import importlib
 from pathlib import Path
 
+from src.models.localizer.models import SymbolSet
 from src.service.localizer.ast.generic_symbol_extractor import GenericSymbolExtractor
-from src.service.localizer.ast.symbol_set import SymbolSet
 
 _LANG_MODULE_BY_SUFFIX = {
     ".js": "tree_sitter_javascript",

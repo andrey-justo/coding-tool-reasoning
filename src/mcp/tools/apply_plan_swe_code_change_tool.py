@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import difflib
+import hashlib
 import json
+from pathlib import Path
 import re
 from typing import Any
 
@@ -14,6 +16,47 @@ class ApplyPlanSweCodeChangeTool:
 
     def __init__(self, registry) -> None:
         self._registry = registry
+
+    @staticmethod
+    def _is_documentation_target(target_path: str) -> bool:
+        normalized = target_path.replace("\\", "/").lower()
+        if "/docs/" in f"/{normalized}" or normalized.startswith("docs/"):
+            return True
+
+        doc_extensions = {
+            ".md",
+            ".rst",
+            ".adoc",
+            ".txt",
+            ".rtf",
+            ".pdf",
+            ".doc",
+            ".docx",
+        }
+        return Path(normalized).suffix in doc_extensions
+
+    @staticmethod
+    def _sha256_text(value: str) -> str:
+        return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def _build_content_reference(
+        cls,
+        *,
+        target_file: str,
+        original_code: str,
+        generated_code: str,
+        target_language: str | None,
+    ) -> dict[str, Any]:
+        return {
+            "target_file": target_file,
+            "target_language": target_language,
+            "content_scope": "full_file",
+            "original_code_sha256": cls._sha256_text(original_code),
+            "generated_code_sha256": cls._sha256_text(generated_code),
+            "original_line_count": len(original_code.splitlines()),
+            "generated_line_count": len(generated_code.splitlines()),
+        }
 
     @staticmethod
     def _extract_code_blocks(raw_text: str) -> list[dict[str, str]]:
@@ -185,6 +228,38 @@ class ApplyPlanSweCodeChangeTool:
         config = self._registry._create_swe_server_context().config.execution
 
         target_path = target_file or "target_file"
+        target_language = swe_context.plan.target_language
+
+        if self._is_documentation_target(target_path):
+            guardrail_error = (
+                "Guardrail blocked apply_plan_swe_code_change for documentation "
+                f"target: {target_path}"
+            )
+            return {
+                "target_file": target_path,
+                "generated_code": original_code,
+                "raw_response": "",
+                "extracted_code_blocks": [],
+                "used_fallback_to_original": True,
+                "error": guardrail_error,
+                "guardrail_blocked": True,
+                "prompt": "[guardrail-blocked: documentation target]",
+                "compact_context": {
+                    "nfr_focus": swe_context.plan.nfr_focus or [],
+                    "target_language": target_language,
+                    "high_level_steps": swe_context.plan.high_level_steps,
+                    "swe_summary": "[guardrail-blocked]",
+                    "security_context": "[guardrail-blocked]",
+                },
+                "chunked": False,
+                "content_reference": self._build_content_reference(
+                    target_file=target_path,
+                    original_code=original_code,
+                    generated_code=original_code,
+                    target_language=target_language,
+                ),
+            }
+
         compact_context = self._compact_swe_context_for_generation(
             swe_context,
             max_summary_chars=config.max_summary_chars,
@@ -221,6 +296,12 @@ class ApplyPlanSweCodeChangeTool:
                     "prompt": prompt,
                     "compact_context": compact_context,
                     "chunked": False,
+                    "content_reference": self._build_content_reference(
+                        target_file=target_path,
+                        original_code=original_code,
+                        generated_code=original_code,
+                        target_language=target_language,
+                    ),
                 }
 
             extracted_blocks = self._extract_code_blocks(raw_response)
@@ -280,6 +361,11 @@ class ApplyPlanSweCodeChangeTool:
             generated_code=generated_code,
         )
 
+        empty_generated_guardrail_triggered = False
+        if not generated_code.strip():
+            generated_code = original_code
+            empty_generated_guardrail_triggered = True
+
         return {
             "target_file": target_path,
             "generated_code": generated_code,
@@ -298,10 +384,22 @@ class ApplyPlanSweCodeChangeTool:
             else 1,
             "chunk_errors": chunk_errors if chunked else [],
             "formatting_normalized": True,
+            "empty_generated_guardrail_triggered": empty_generated_guardrail_triggered,
             "execution_config": {
                 "max_summary_chars": config.max_summary_chars,
                 "max_security_context_chars": config.max_security_context_chars,
                 "max_single_shot_code_chars": config.max_single_shot_code_chars,
                 "chunk_lines": config.chunk_lines,
             },
+            "content_reference": self._build_content_reference(
+                target_file=target_path,
+                original_code=original_code,
+                generated_code=generated_code,
+                target_language=target_language,
+            ),
+            "error": (
+                "Guardrail fallback: generated code was empty after normalization."
+                if empty_generated_guardrail_triggered
+                else None
+            ),
         }

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.service.localizer.discovery import discover_repository_code_files
-from src.service.localizer.models import (
+from src.models.localizer.models import (
     LocalizationHit,
     LocalizationStrategy,
     LocalizerResult,
 )
+from src.service.localizer.discovery import discover_repository_code_files
 from src.service.localizer.strategies.ast_matching import AstMatchingStrategy
 from src.service.localizer.strategies.filename import FilenameMatchingStrategy
 from src.service.localizer.strategies.graph_memory import (

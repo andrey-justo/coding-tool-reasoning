@@ -6,38 +6,24 @@ import json
 import math
 import os
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
 
-from src.service.localizer.models import LocalizationHit
+from src.models.localizer.models import (
+    GraphIndex as _GraphIndex,
+)
+from src.models.localizer.models import (
+    IndexedDocument as _IndexedDocument,
+)
+from src.models.localizer.models import (
+    LocalizationHit,
+)
 from src.service.localizer.neo4j_graph_storage import Neo4jGraphStorage
 from src.service.localizer.utils import (
     count_token_frequency,
     extract_symbols,
     safe_read_text,
 )
-
-
-@dataclass
-class _GraphIndex:
-    docs_tf: dict[str, dict[str, int]]
-    doc_freq: dict[str, int]
-    definitions_by_file: dict[str, set[str]]
-    references_by_file: dict[str, set[str]]
-    neighbors: dict[str, set[str]]
-    ast_links_by_file: dict[str, list[tuple[str, str, str]]]
-
-
-@dataclass
-class _IndexedDocument:
-    mtime_ns: int
-    size: int
-    tf: dict[str, int]
-    definitions: set[str]
-    references: set[str]
-    imports: set[str]
-    ast_links: list[tuple[str, str, str]]
 
 
 class _PythonRelationshipVisitor(ast.NodeVisitor):

@@ -3,8 +3,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from src.models.localizer.models import SymbolSet
 from src.service.localizer.ast.generic_symbol_extractor import GenericSymbolExtractor
-from src.service.localizer.ast.symbol_set import SymbolSet
 
 
 class PythonSymbolExtractor(GenericSymbolExtractor):

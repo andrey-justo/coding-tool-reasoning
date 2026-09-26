@@ -4,7 +4,7 @@ import math
 from pathlib import Path
 from typing import Iterable
 
-from src.service.localizer.models import LocalizationHit
+from src.models.localizer.models import LocalizationHit
 from src.service.localizer.utils import count_token_frequency, safe_read_text
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from src.models.code_gen_plan import CodeGenPlan
+from src.service.language_detection import infer_language_from_file_paths
 from src.service.intent_planner import IntentPlanner
 
 
@@ -14,6 +15,7 @@ class PlanSweCodeChangeTool:
         self,
         problem_description: str,
         target_language: str | None = None,
+        target_file_hints: list[str] | None = None,
         nfr_focus: list[str] | None = None,
         user_prompt_data: str | None = None,
     ) -> CodeGenPlan:
@@ -24,9 +26,13 @@ class PlanSweCodeChangeTool:
 
         planner_cls = self._registry._planner_cls or IntentPlanner
         planner = planner_cls(kb=kb, config=ctx.config)
+        effective_target_language = target_language or infer_language_from_file_paths(
+            target_file_hints
+        )
+
         planning_result = planner.plan(
             problem_description=problem_description,
-            target_language=target_language,
+            target_language=effective_target_language,
             nfr_focus=nfr_focus,
             user_prompt_data=user_prompt_data,
         )

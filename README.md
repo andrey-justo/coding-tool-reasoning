@@ -129,6 +129,16 @@ docker-compose up -d --build
 docker-compose down
 ```
 
+Named volume alternative:
+
+```powershell
+# Start LocalAI with a named Docker volume for /models
+docker compose -f docker-compose.localai-volume.yml up -d --build
+
+# Stop and remove container (keeps named volume data)
+docker compose -f docker-compose.localai-volume.yml down
+```
+
 The app container runs `python src/main.py` by default. You can still run the code locally in a virtualenv â€” the docker setup is optional and intended for local integration testing with LocalAI.
 
 If you prefer to run LocalAI manually (no docker-compose), you can still follow the previous LocalAI `docker run` example above and point the app to the endpoint using `LOCALAI_ENDPOINT=http://localhost:8080` or by updating `available_models.yaml`.

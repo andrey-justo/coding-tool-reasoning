@@ -8,6 +8,7 @@ This module is the only runtime entrypoint and dispatches to:
 from __future__ import annotations
 
 import argparse
+import logging
 from pathlib import Path
 
 import yaml
@@ -21,8 +22,26 @@ from src.experiments.issue_mcp_experiment import main as run_issue_experiment
 from src.mcp.swe_mcp_server import register_swe_tools_on_mcp
 
 
+def _configure_mcp_logging() -> None:
+    """Reduce MCP transport noise that PowerShell surfaces as NativeCommandError.
+
+    The MCP library emits informational request traces on stderr. In PowerShell,
+    any stderr line from a native process is wrapped as a non-terminating
+    NativeCommandError, which pollutes experiment logs despite successful runs.
+    """
+
+    noisy_loggers = [
+        "mcp.server.lowlevel.server",
+        "mcp.server.session",
+        "mcp.shared.session",
+        "src.service.swe_knowledge_base_service",
+    ]
+    for logger_name in noisy_loggers:
+        logging.getLogger(logger_name).setLevel(logging.WARNING)
+
+
 def _run_mcp_server() -> None:
-    mcp = FastMCP("SWE-NFR-MCP", json_response=True)
+    mcp = FastMCP("SWE-NFR-MCP", json_response=True, log_level="WARNING")
     register_swe_tools_on_mcp(mcp)
     mcp.run()
 
@@ -121,6 +140,8 @@ def _run_from_yaml(config_path: str) -> None:
 
 
 def main() -> None:
+    _configure_mcp_logging()
+
     parser = _build_parser()
     args = parser.parse_args()
 
