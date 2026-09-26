@@ -30,7 +30,8 @@ to specific thresholds.
 
 RQ1 is a **design question** about the structure of the knowledge base artifact.
 It is answered through the proposed knowledge base schema, ISO 25010 traceability,
-and its ability to support planning for C# legacy refactoring tasks (should we include other programming languages???).
+and its ability to support planning for C# legacy refactoring tasks. Support
+for other programming languages is out of scope for v1.
 
 RQ2â€“RQ4 are the **empirical evaluation questions**. A null result in RQ2 would
 weaken the practical value of the supervisor, but it would not logically
@@ -96,4 +97,5 @@ and baseline.
 - Wohlin, C., Runeson, P., HÃ¶st, M., Ohlsson, M. C., Regnell, B., & WesslÃ©n, A. (2012). *Experimentation in Software Engineering*. Springer.
 - Cohen, J. (1988). *Statistical Power Analysis for the Behavioral Sciences* (2nd ed.). Lawrence Erlbaum.
 - Hevner, A. R., March, S. T., Park, J., & Ram, S. (2004). Design Science in Information Systems Research. *MIS Quarterly*, 28(1), 75â€“105.
+
 
