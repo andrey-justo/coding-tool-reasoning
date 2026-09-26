@@ -1,8 +1,3 @@
-from __future__ import annotations
+from src.models.localizer.models import SymbolSet
 
-from dataclasses import dataclass
-
-
-@dataclass
-class SymbolSet:
-    definitions: set[str]
+__all__ = ["SymbolSet"]

@@ -1,0 +1,22 @@
+command: issue-experiment
+args:
+  issue_url: https://github.com/akkadotnet/akka.net/issues/8349
+  repo_path: C:/Users/Andrey Victor Justo/workspace/workspace-experiments-repos/akka.net
+  pull_request_number: 8416
+  base_ref: 010e0fd6c88d938794c8dbb6cde42be45c3bdc9c
+  head_ref: 4d6e08847b5437440f84f73a5e512542ba8dbd37
+  max_target_files: 6
+  nfr_focus:
+    - Reliability
+    - Maintainability
+    - Security
+  model: gpt-5.3-codex
+  temperature: 0.2
+  seed: 42
+  execution_id: pilot2-akka-8349-supervised-codex
+  out_json: reports/pilot2_akka_8349_{execution_id}.json
+  out_md: reports/pilot2_akka_8349_{execution_id}.md
+  out_csv: reports/pilot2_akka_8349_{execution_id}.csv
+  out_log: reports/pilot2_akka_8349_{execution_id}.log
+  metrics_llm_debug_dir: out/experiments/pilot2_akka_8349_{execution_id}/llm_debug
+  clean_output: true

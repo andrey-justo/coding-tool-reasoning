@@ -4,7 +4,7 @@ import os
 from typing import List, Optional
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class KnowledgeBaseConfig(BaseModel):
@@ -196,6 +196,86 @@ class LocalizerConfig(BaseModel):
     )
 
 
+class SemanticIndexConfig(BaseModel):
+    """Configuration for graph-based semantic indexing and retrieval."""
+
+    enable_graph_memory: bool = Field(
+        default=True,
+        description=(
+            "Enable graph-memory retrieval strategy that combines vector similarity "
+            "and symbol-relationship propagation without LLM calls."
+        ),
+    )
+    graph_memory_hops: int = Field(
+        default=2,
+        ge=1,
+        le=4,
+        description=(
+            "Maximum graph-propagation hops used by graph-memory localizer "
+            "to include relationship-neighbor files."
+        ),
+    )
+    semantic_index_dir: str = Field(
+        default=".semantic_index",
+        description=(
+            "Repository-relative directory used to persist semantic index files "
+            "for graph-memory localizer loading."
+        ),
+    )
+    persist_semantic_index: bool = Field(
+        default=True,
+        description=(
+            "Persist semantic index snapshots to disk so subsequent runs can load "
+            "the graph index into memory faster."
+        ),
+    )
+    vector_backend: str = Field(
+        default="local_tfidf",
+        description=(
+            "Vector backend identifier used by the graph-memory strategy. "
+            "Current implementation uses local TF-IDF vectors."
+        ),
+    )
+    graph_storage_backend: str = Field(
+        default="in_memory",
+        description=(
+            "Graph storage backend for file relationships. Supported values: "
+            "in_memory, neo4j."
+        ),
+    )
+    enable_neo4j_beta: bool = Field(
+        default=False,
+        description=(
+            "Opt-in switch for Neo4j graph storage (beta). When false, the "
+            "localizer always uses in-memory graph storage even if Neo4j fields "
+            "are provided."
+        ),
+    )
+    neo4j_uri: Optional[str] = Field(
+        default=None,
+        description="Neo4j Bolt URI (e.g., bolt://localhost:7687).",
+    )
+    neo4j_username: Optional[str] = Field(
+        default=None,
+        description="Neo4j username used when graph_storage_backend is neo4j.",
+    )
+    neo4j_password: Optional[str] = Field(
+        default=None,
+        description=(
+            "Neo4j password. Prefer setting neo4j_password_env_var instead of "
+            "committing plain-text secrets."
+        ),
+    )
+    neo4j_password_env_var: str = Field(
+        default="NEO4J_PASSWORD",
+        description="Environment variable name used to resolve Neo4j password.",
+    )
+    neo4j_database: str = Field(
+        default="neo4j",
+        description="Neo4j database name used for localizer graph storage.",
+    )
+
+
 class SweMcpConfig(BaseModel):
     """Topâ€‘level configuration object for the SWE MCP server and tools."""
 
@@ -206,6 +286,48 @@ class SweMcpConfig(BaseModel):
     concern_assets: ConcernAssetsConfig = Field(default_factory=ConcernAssetsConfig)
     execution: ToolExecutionConfig = Field(default_factory=ToolExecutionConfig)
     localizer: LocalizerConfig = Field(default_factory=LocalizerConfig)
+    semantic_index: SemanticIndexConfig = Field(default_factory=SemanticIndexConfig)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _migrate_legacy_semantic_index_keys(cls, data: object) -> object:
+        if not isinstance(data, dict):
+            return data
+
+        localizer = data.get("localizer")
+        semantic_index = data.get("semantic_index")
+
+        if not isinstance(localizer, dict):
+            return data
+
+        if not isinstance(semantic_index, dict):
+            semantic_index = {}
+
+        legacy_keys = {
+            "enable_graph_memory",
+            "graph_memory_hops",
+            "semantic_index_dir",
+            "persist_semantic_index",
+            "vector_backend",
+            "graph_storage_backend",
+            "enable_neo4j_beta",
+            "neo4j_uri",
+            "neo4j_username",
+            "neo4j_password",
+            "neo4j_password_env_var",
+            "neo4j_database",
+        }
+        moved_any = False
+        for key in legacy_keys:
+            if key in localizer and key not in semantic_index:
+                semantic_index[key] = localizer[key]
+                moved_any = True
+
+        if moved_any:
+            data = dict(data)
+            data["semantic_index"] = semantic_index
+
+        return data
 
     @classmethod
     def load(cls, repo_root: str) -> "SweMcpConfig":

@@ -4,6 +4,7 @@ from typing import List, Optional, Tuple
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.intent_planning_result import IntentPlanningResult
 from src.models.swe_config import SweMcpConfig
+from src.service.language_detection import infer_language_from_text
 from src.service.swe_knowledge_base_service import SweKnowledgeBase
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]
@@ -180,27 +181,7 @@ class IntentPlanner:
 
     def _infer_target_language(self, text: str) -> Optional[str]:
         """Infer target language from user request text when not explicit."""
-
-        text_lower = text.lower()
-        language_markers = [
-            ("python", ["python", "py ", "pytest", "pydantic", "django", "fastapi"]),
-            ("javascript", ["javascript", "js ", "node", "npm", "express", "react"]),
-            ("typescript", ["typescript", "ts ", "tsx", "nestjs", "angular"]),
-            ("java", [" java", "spring", "maven", "gradle", "junit"]),
-            ("c#", ["c#", "dotnet", ".net", "asp.net"]),
-            ("go", [" golang", " go ", "goroutine", "go.mod"]),
-            ("rust", ["rust", "cargo", "tokio"]),
-            ("ruby", ["ruby", "rails", "rspec"]),
-            ("php", ["php", "laravel", "composer"]),
-            ("kotlin", ["kotlin", "ktor"]),
-            ("swift", ["swift", "xcode", "ios"]),
-        ]
-
-        for language, markers in language_markers:
-            for marker in markers:
-                if marker in text_lower:
-                    return language
-        return None
+        return infer_language_from_text(text)
 
     def _generate_steps_with_llm(
         self,

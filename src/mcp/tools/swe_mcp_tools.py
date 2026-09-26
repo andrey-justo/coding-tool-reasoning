@@ -8,6 +8,7 @@ from src.mcp.tools.build_swe_code_context_tool import BuildSweCodeContextTool
 from src.mcp.tools.find_best_issue_candidates_tool import FindBestIssueCandidatesTool
 from src.mcp.tools.judge_swe_code_change_tool import JudgeSweCodeChangeTool
 from src.mcp.tools.plan_swe_code_change_tool import PlanSweCodeChangeTool
+from src.mcp.tools.verify_testability_gate_tool import VerifyTestabilityGateTool
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.issue_candidate_ranking import (
     IssueCandidate,
@@ -41,6 +42,7 @@ class SweMcpToolRegistry:
         self._build_context_tool = BuildSweCodeContextTool(self)
         self._apply_plan_tool = ApplyPlanSweCodeChangeTool(self)
         self._judge_tool = JudgeSweCodeChangeTool(self)
+        self._verify_testability_gate_tool = VerifyTestabilityGateTool(self)
         self._find_best_issue_candidates_tool = FindBestIssueCandidatesTool(self)
 
     def apply_plan_swe_code_change(
@@ -63,12 +65,14 @@ class SweMcpToolRegistry:
         self,
         problem_description: str,
         target_language: Optional[str] = None,
+        target_file_hints: Optional[List[str]] = None,
         nfr_focus: Optional[List[str]] = None,
         user_prompt_data: Optional[str] = None,
     ) -> CodeGenPlan:
         return self._plan_tool.execute(
             problem_description=problem_description,
             target_language=target_language,
+            target_file_hints=target_file_hints,
             nfr_focus=nfr_focus,
             user_prompt_data=user_prompt_data,
         )
@@ -119,6 +123,20 @@ class SweMcpToolRegistry:
             nfr_focus=nfr_focus,
         )
 
+    def verify_testability_gate(
+        self,
+        repo_path: str,
+        base_ref: str,
+        generated_code_by_file: dict[str, str],
+        timeout_seconds: int = 300,
+    ) -> dict[str, Any]:
+        return self._verify_testability_gate_tool.execute(
+            repo_path=repo_path,
+            base_ref=base_ref,
+            generated_code_by_file=generated_code_by_file,
+            timeout_seconds=timeout_seconds,
+        )
+
     def register_on_mcp(self, mcp: Any) -> None:
         """Register class-backed methods as MCP tools."""
 
@@ -126,12 +144,14 @@ class SweMcpToolRegistry:
         def plan_swe_code_change(
             problem_description: str,
             target_language: Optional[str] = None,
+            target_file_hints: Optional[List[str]] = None,
             nfr_focus: Optional[List[str]] = None,
             user_prompt_data: Optional[str] = None,
         ) -> CodeGenPlan:
             return self.plan_swe_code_change(
                 problem_description=problem_description,
                 target_language=target_language,
+                target_file_hints=target_file_hints,
                 nfr_focus=nfr_focus,
                 user_prompt_data=user_prompt_data,
             )
@@ -196,6 +216,20 @@ class SweMcpToolRegistry:
                 min_score=min_score,
                 target_language=target_language,
                 nfr_focus=nfr_focus,
+            )
+
+        @mcp.tool()
+        def verify_testability_gate(
+            repo_path: str,
+            base_ref: str,
+            generated_code_by_file: dict[str, str],
+            timeout_seconds: int = 300,
+        ) -> dict[str, Any]:
+            return self.verify_testability_gate(
+                repo_path=repo_path,
+                base_ref=base_ref,
+                generated_code_by_file=generated_code_by_file,
+                timeout_seconds=timeout_seconds,
             )
 
 

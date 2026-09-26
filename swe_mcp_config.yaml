@@ -43,3 +43,17 @@ execution:
 localizer:
   enable_semantic_nlp: false
 
+semantic_index:
+  enable_graph_memory: true
+  graph_memory_hops: 2
+  semantic_index_dir: .semantic_index
+  persist_semantic_index: true
+  vector_backend: local_tfidf
+  graph_storage_backend: in_memory
+  enable_neo4j_beta: false
+  neo4j_uri:
+  neo4j_username:
+  neo4j_password:
+  neo4j_password_env_var: NEO4J_PASSWORD
+  neo4j_database: neo4j
+

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.service.localizer.ast.symbol_set import SymbolSet
+from src.models.localizer.models import SymbolSet
 
 
 class GenericSymbolExtractor:

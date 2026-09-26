@@ -6,9 +6,12 @@ import difflib
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+import tempfile
+import time
+import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -20,6 +23,8 @@ from mcp.client.stdio import stdio_client
 
 from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
+from src.models.issue_tracking import ParsedIssueUrl
+from src.models.swe_config import SweMcpConfig
 from src.report.experiment_report_writer import (
     metrics_rows,
     write_csv_report,
@@ -27,14 +32,6 @@ from src.report.experiment_report_writer import (
     write_markdown_report,
 )
 from src.service.localizer import RepositoryIssueLocalizer
-
-
-@dataclass(frozen=True)
-class ParsedIssueUrl:
-    owner: str
-    repo: str
-    issue_number: int
-    url: str
 
 
 def _default_execution_id() -> str:
@@ -91,6 +88,7 @@ def _write_llm_debug_artifacts(
     original_code: str,
     reference_modified_code: str,
     mcp_payload: dict[str, Any],
+    generated_code_for_diff: str | None = None,
 ) -> list[str]:
     debug_dir.mkdir(parents=True, exist_ok=True)
     for old_md in debug_dir.glob("*.md"):
@@ -100,7 +98,13 @@ def _write_llm_debug_artifacts(
     apply_payload = (
         apply_value if isinstance(apply_value, dict) else {"error": str(apply_value)}
     )
-    generated_code = apply_payload.get("generated_code", original_code)
+    generated_code: str
+    if isinstance(generated_code_for_diff, str):
+        generated_code = generated_code_for_diff
+    elif isinstance(mcp_payload.get("combined_generated_code"), str):
+        generated_code = str(mcp_payload.get("combined_generated_code"))
+    else:
+        generated_code = str(apply_payload.get("generated_code", original_code))
 
     plan_payload = mcp_payload.get("plan") or {}
     judge_payload = mcp_payload.get("judgement") or {}
@@ -289,6 +293,298 @@ def _parse_issue_url(issue_url: str) -> ParsedIssueUrl:
     )
 
 
+def _tail_text(text: str | None, lines: int = 20) -> str:
+    if not text:
+        return ""
+    chunks = text.splitlines()
+    return "\n".join(chunks[-lines:])
+
+
+def _parse_junit_totals(junit_xml_path: Path) -> dict[str, int] | None:
+    if not junit_xml_path.exists():
+        return None
+    try:
+        root = ET.parse(junit_xml_path).getroot()
+    except ET.ParseError:
+        return None
+
+    if root.tag == "testsuite":
+        tests = int(root.attrib.get("tests", 0))
+        failures = int(root.attrib.get("failures", 0))
+        errors = int(root.attrib.get("errors", 0))
+        skipped = int(root.attrib.get("skipped", 0))
+        return {
+            "tests": tests,
+            "failures": failures,
+            "errors": errors,
+            "skipped": skipped,
+            "passed": max(tests - failures - errors - skipped, 0),
+        }
+
+    if root.tag == "testsuites":
+        tests = failures = errors = skipped = 0
+        for suite in root.findall("testsuite"):
+            tests += int(suite.attrib.get("tests", 0))
+            failures += int(suite.attrib.get("failures", 0))
+            errors += int(suite.attrib.get("errors", 0))
+            skipped += int(suite.attrib.get("skipped", 0))
+        return {
+            "tests": tests,
+            "failures": failures,
+            "errors": errors,
+            "skipped": skipped,
+            "passed": max(tests - failures - errors - skipped, 0),
+        }
+
+    return None
+
+
+def _run_command_with_timeout(
+    command: list[str],
+    cwd: Path,
+    timeout_seconds: int,
+) -> dict[str, Any]:
+    started = time.monotonic()
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            text=True,
+            capture_output=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+        duration = time.monotonic() - started
+        return {
+            "status": "pass" if completed.returncode == 0 else "fail",
+            "exit_code": completed.returncode,
+            "duration_seconds": round(duration, 3),
+            "stdout_tail": _tail_text(completed.stdout),
+            "stderr_tail": _tail_text(completed.stderr),
+            "timed_out": False,
+        }
+    except subprocess.TimeoutExpired as exc:
+        duration = time.monotonic() - started
+        return {
+            "status": "timeout",
+            "exit_code": None,
+            "duration_seconds": round(duration, 3),
+            "stdout_tail": _tail_text(exc.stdout if isinstance(exc.stdout, str) else ""),
+            "stderr_tail": _tail_text(exc.stderr if isinstance(exc.stderr, str) else ""),
+            "timed_out": True,
+        }
+
+
+def _discover_verification_commands(
+    repo_path: Path,
+    junit_xml_path: Path,
+    coverage_xml_path: Path,
+) -> dict[str, Any]:
+    pyproject = repo_path / "pyproject.toml"
+    pytest_ini = repo_path / "pytest.ini"
+    tests_dir = repo_path / "tests"
+    src_dir = repo_path / "src"
+
+    has_python_project = pyproject.exists() or pytest_ini.exists() or tests_dir.exists()
+    has_pytest = shutil.which("pytest") is not None
+
+    build_command: list[str] | None = None
+    if has_python_project and src_dir.exists():
+        build_command = [sys.executable, "-m", "compileall", "-q", "src"]
+
+    test_command: list[str] | None = None
+    if has_python_project and (has_pytest or pytest_ini.exists() or tests_dir.exists()):
+        test_command = [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--maxfail=1",
+            "--disable-warnings",
+            f"--junitxml={junit_xml_path.as_posix()}",
+            f"--cov-report=xml:{coverage_xml_path.as_posix()}",
+            "--cov=src",
+        ]
+
+    return {
+        "project_type": "python" if has_python_project else "unknown",
+        "build_command": build_command,
+        "test_command": test_command,
+    }
+
+
+def _run_pre_judgement_verification_gate(
+    repo_path: Path,
+    base_ref: str,
+    generated_code_by_file: dict[str, str],
+    timeout_seconds: int,
+    log_lines: list[str],
+) -> dict[str, Any]:
+    gate_result: dict[str, Any] = {
+        "enabled": True,
+        "build": {
+            "status": "not-run",
+            "command": None,
+        },
+        "test": {
+            "status": "not-run",
+            "command": None,
+        },
+        "coverage": {
+            "available": False,
+            "path": None,
+        },
+        "junit": {
+            "available": False,
+            "path": None,
+            "totals": None,
+        },
+        "testability_gate": {
+            "build_status": "not-run",
+            "test_status": "not-run",
+            "reason": "Gate not executed.",
+        },
+        "test_pass_rate_source": "not-run",
+        "test_pass_rate": None,
+    }
+
+    with tempfile.TemporaryDirectory(prefix="issue-mcp-gate-") as temp_dir:
+        worktree_path = Path(temp_dir)
+        setup_result = subprocess.run(
+            ["git", "-C", str(repo_path), "worktree", "add", "--detach", str(worktree_path), base_ref],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if setup_result.returncode != 0:
+            reason = (
+                "Could not create temporary worktree for verification gate: "
+                f"{_tail_text(setup_result.stderr) or _tail_text(setup_result.stdout)}"
+            )
+            gate_result["testability_gate"] = {
+                "build_status": "not-run",
+                "test_status": "not-run",
+                "reason": reason,
+            }
+            log_lines.append(reason)
+            return gate_result
+
+        try:
+            for relative_path, content in generated_code_by_file.items():
+                file_path = worktree_path / relative_path
+                file_path.parent.mkdir(parents=True, exist_ok=True)
+                file_path.write_text(content, encoding="utf-8")
+
+            artifacts_dir = worktree_path / ".experiment_artifacts"
+            artifacts_dir.mkdir(parents=True, exist_ok=True)
+            junit_xml_path = artifacts_dir / "junit.xml"
+            coverage_xml_path = artifacts_dir / "coverage.xml"
+
+            discovery = _discover_verification_commands(
+                repo_path=worktree_path,
+                junit_xml_path=junit_xml_path,
+                coverage_xml_path=coverage_xml_path,
+            )
+
+            build_command = discovery.get("build_command")
+            test_command = discovery.get("test_command")
+
+            if isinstance(build_command, list):
+                gate_result["build"]["command"] = build_command
+                log_lines.append(
+                    "Verification gate build command discovered: "
+                    + " ".join(build_command)
+                )
+                build_execution = _run_command_with_timeout(
+                    build_command,
+                    cwd=worktree_path,
+                    timeout_seconds=timeout_seconds,
+                )
+                gate_result["build"].update(build_execution)
+            else:
+                gate_result["build"]["status"] = "not-run"
+
+            if isinstance(test_command, list):
+                gate_result["test"]["command"] = test_command
+                log_lines.append(
+                    "Verification gate test command discovered: "
+                    + " ".join(test_command)
+                )
+                test_execution = _run_command_with_timeout(
+                    test_command,
+                    cwd=worktree_path,
+                    timeout_seconds=timeout_seconds,
+                )
+                gate_result["test"].update(test_execution)
+            else:
+                gate_result["test"]["status"] = "not-run"
+
+            junit_totals = _parse_junit_totals(junit_xml_path)
+            if junit_totals is not None:
+                tests = int(junit_totals.get("tests", 0))
+                failures = int(junit_totals.get("failures", 0))
+                errors = int(junit_totals.get("errors", 0))
+                passed = int(junit_totals.get("passed", 0))
+                rate = (passed / tests) if tests > 0 else 0.0
+                gate_result["junit"] = {
+                    "available": True,
+                    "path": str(junit_xml_path),
+                    "totals": junit_totals,
+                }
+                gate_result["test_pass_rate_source"] = "junit_xml"
+                gate_result["test_pass_rate"] = {
+                    "rate": rate,
+                    "total": tests,
+                    "passed": passed,
+                    "failures": failures,
+                    "errors": errors,
+                }
+
+            if coverage_xml_path.exists():
+                gate_result["coverage"] = {
+                    "available": True,
+                    "path": str(coverage_xml_path),
+                }
+
+            build_status = str(gate_result["build"].get("status", "not-run"))
+            test_status = str(gate_result["test"].get("status", "not-run"))
+            if build_status == "pass" and test_status == "pass":
+                reason = "Build and tests passed in generated-code verification worktree."
+            elif test_status in {"fail", "timeout"}:
+                reason = "Tests failed or timed out in generated-code verification worktree."
+            elif build_status in {"fail", "timeout"}:
+                reason = "Build failed or timed out in generated-code verification worktree."
+            elif build_status == "not-run" and test_status == "not-run":
+                reason = "No build/test command discovered for this repository."
+            else:
+                reason = "Verification gate completed with partial execution."
+
+            gate_result["testability_gate"] = {
+                "build_status": build_status,
+                "test_status": test_status,
+                "reason": reason,
+            }
+            log_lines.append(
+                "Verification gate result: "
+                f"build={build_status}, test={test_status}, reason={reason}"
+            )
+            return gate_result
+        finally:
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repo_path),
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(worktree_path),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+
 class GitHubIssueClient:
     def __init__(
         self, token: str | None = None, api_base: str = "https://api.github.com"
@@ -406,12 +702,15 @@ def _resolve_head_ref(
 
 async def _run_mcp_workflow(
     repo_path: Path,
+    base_ref: str,
     issue_prompt: str,
     target_files: list[str],
     original_code_by_file: dict[str, str],
     nfr_focus: list[str],
     temperature: float,
     seed: int,
+    verification_timeout_seconds: int,
+    skip_verification_gate: bool,
     log_lines: list[str],
 ) -> dict[str, Any]:
     workspace_root = Path(__file__).resolve().parents[2]
@@ -433,6 +732,7 @@ async def _run_mcp_workflow(
                 "plan_swe_code_change",
                 {
                     "problem_description": issue_prompt,
+                    "target_file_hints": target_files,
                     "nfr_focus": nfr_focus,
                 },
             )
@@ -505,12 +805,79 @@ async def _run_mcp_workflow(
                 for path in target_files
             )
 
+            if skip_verification_gate:
+                verification_gate = {
+                    "enabled": False,
+                    "build": {"status": "not-run", "command": None},
+                    "test": {"status": "not-run", "command": None},
+                    "coverage": {"available": False, "path": None},
+                    "junit": {"available": False, "path": None, "totals": None},
+                    "testability_gate": {
+                        "build_status": "not-run",
+                        "test_status": "not-run",
+                        "reason": "Verification gate explicitly skipped by configuration.",
+                    },
+                    "test_pass_rate_source": "not-run",
+                    "test_pass_rate": None,
+                }
+                log_lines.append("Pre-judgement verification gate skipped by CLI flag.")
+            else:
+                verification_result = await session.call_tool(
+                    "verify_testability_gate",
+                    {
+                        "repo_path": str(repo_path),
+                        "base_ref": base_ref,
+                        "generated_code_by_file": generated_code_by_file,
+                        "timeout_seconds": verification_timeout_seconds,
+                    },
+                )
+                verification_content = _coerce_json(
+                    verification_result.content[0].text
+                    if verification_result.content
+                    else None
+                )
+                if isinstance(verification_content, dict):
+                    verification_gate = verification_content
+                else:
+                    verification_gate = {
+                        "enabled": True,
+                        "build": {"status": "not-run", "command": None},
+                        "test": {"status": "not-run", "command": None},
+                        "coverage": {"available": False, "path": None},
+                        "junit": {"available": False, "path": None, "totals": None},
+                        "testability_gate": {
+                            "build_status": "not-run",
+                            "test_status": "not-run",
+                            "reason": "Verification gate returned invalid payload.",
+                        },
+                        "test_pass_rate_source": "not-run",
+                        "test_pass_rate": None,
+                        "log_lines": [f"verify_testability_gate invalid payload: {verification_content}"],
+                    }
+                extra_logs = verification_gate.get("log_lines")
+                if isinstance(extra_logs, list):
+                    log_lines.extend(str(line) for line in extra_logs if str(line).strip())
+
+            judgement_payload = combined_modified
+            judgement_summary = {
+                "testability_gate": verification_gate.get("testability_gate"),
+                "build": verification_gate.get("build"),
+                "test": verification_gate.get("test"),
+                "coverage": verification_gate.get("coverage"),
+                "junit": verification_gate.get("junit"),
+            }
+            judgement_payload = (
+                judgement_payload
+                + "\n\n### PRE_JUDGEMENT_VERIFICATION_GATE\n"
+                + _as_pretty_json(judgement_summary)
+            )
+
             judge_result = await session.call_tool(
                 "judge_swe_code_change",
                 {
                     "swe_context": context_content,
                     "original_code": combined_original,
-                    "modified_code": combined_modified,
+                    "modified_code": judgement_payload,
                 },
             )
             judge_content = _coerce_json(
@@ -528,6 +895,7 @@ async def _run_mcp_workflow(
                 "apply": first_apply,
                 "apply_results": apply_results,
                 "generated_code_by_file": generated_code_by_file,
+                "verification": verification_gate,
                 "judgement": judge_content,
                 "combined_original_code": combined_original,
                 "combined_generated_code": combined_modified,
@@ -558,39 +926,30 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         parsed_issue.issue_number,
         per_page=args.max_issue_comments,
     )
-    detected_pr = args.pull_request_number
-    if detected_pr is None and args.auto_detect_pr:
-        detected_pr = gh_client.detect_linked_pr(
-            parsed_issue.owner,
-            parsed_issue.repo,
-            parsed_issue.issue_number,
-        )
+    # IMPORTANT: linked PR metadata is intentionally not used before MCP execution
+    # to avoid future-knowledge leakage in open-world issue runs.
+    detected_pr: int | None = None
 
     issue_prompt = _build_issue_prompt(issue, comments)
 
     pr_candidate_files: list[str] | None = None
-    if detected_pr is not None:
-        try:
-            pr_files = gh_client.fetch_pull_files(
-                parsed_issue.owner,
-                parsed_issue.repo,
-                detected_pr,
-            )
-            pr_candidate_files = [
-                str(item.get("filename") or "").strip()
-                for item in pr_files
-                if str(item.get("filename") or "").strip()
-            ]
-            log_lines.append(
-                f"Localizer candidate pool from PR #{detected_pr}: {len(pr_candidate_files)} files"
-            )
-        except Exception as exc:
-            log_lines.append(
-                f"Could not fetch PR files for localization ({type(exc).__name__}: {exc}); falling back to repository scan."
-            )
 
+    config = SweMcpConfig.load(str(repo_path))
+    semantic_index_config = config.semantic_index
     localizer = RepositoryIssueLocalizer(
         enable_semantic_nlp=args.enable_nlp_localizer,
+        enable_graph_memory=semantic_index_config.enable_graph_memory,
+        graph_memory_hops=semantic_index_config.graph_memory_hops,
+        semantic_index_dir=semantic_index_config.semantic_index_dir,
+        persist_semantic_index=semantic_index_config.persist_semantic_index,
+        vector_backend=semantic_index_config.vector_backend,
+        graph_storage_backend=semantic_index_config.graph_storage_backend,
+        enable_neo4j_beta=semantic_index_config.enable_neo4j_beta,
+        neo4j_uri=semantic_index_config.neo4j_uri,
+        neo4j_username=semantic_index_config.neo4j_username,
+        neo4j_password=semantic_index_config.neo4j_password,
+        neo4j_password_env_var=semantic_index_config.neo4j_password_env_var,
+        neo4j_database=semantic_index_config.neo4j_database,
     )
     localization = localizer.localize(
         repo_path=repo_path,
@@ -608,7 +967,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         repo_path,
         gh_client,
         parsed_issue,
-        detected_pr,
+        None,
         args.head_ref,
         log_lines,
     )
@@ -618,15 +977,35 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     reference_modified_by_file: dict[str, str] = {}
     reference_diff_by_file: dict[str, str] = {}
     for target_file in target_files:
-        original_code_by_file[target_file] = _run_git(
-            repo_path, ["show", f"{base_ref}:{target_file}"]
-        )
-        reference_modified_by_file[target_file] = _run_git(
-            repo_path, ["show", f"{head_ref}:{target_file}"]
-        )
-        reference_diff_by_file[target_file] = _run_git(
-            repo_path, ["diff", f"{base_ref}..{head_ref}", "--", target_file]
-        )
+        try:
+            original_code_by_file[target_file] = _run_git(
+                repo_path, ["show", f"{base_ref}:{target_file}"]
+            )
+        except subprocess.CalledProcessError:
+            original_code_by_file[target_file] = ""
+            log_lines.append(
+                f"Base ref file not found ({base_ref}:{target_file}); using empty original content."
+            )
+
+        try:
+            reference_modified_by_file[target_file] = _run_git(
+                repo_path, ["show", f"{head_ref}:{target_file}"]
+            )
+        except subprocess.CalledProcessError:
+            reference_modified_by_file[target_file] = ""
+            log_lines.append(
+                f"Head ref file not found ({head_ref}:{target_file}); using empty reference content."
+            )
+
+        try:
+            reference_diff_by_file[target_file] = _run_git(
+                repo_path, ["diff", f"{base_ref}..{head_ref}", "--", target_file]
+            )
+        except subprocess.CalledProcessError:
+            reference_diff_by_file[target_file] = ""
+            log_lines.append(
+                f"Could not compute reference diff for {target_file} between {base_ref} and {head_ref}."
+            )
 
     if args.model:
         os.environ["DEFAULT_MODEL"] = args.model
@@ -637,12 +1016,15 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     mcp_payload = asyncio.run(
         _run_mcp_workflow(
             repo_path=repo_path,
+            base_ref=base_ref,
             issue_prompt=issue_prompt,
             target_files=target_files,
             original_code_by_file=original_code_by_file,
             nfr_focus=nfr_focus,
             temperature=args.temperature,
             seed=args.seed,
+            verification_timeout_seconds=args.verification_timeout_seconds,
+            skip_verification_gate=args.skip_verification_gate,
             log_lines=log_lines,
         )
     )
@@ -664,6 +1046,69 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         generated_code_by_file.setdefault(
             target_file, original_code_by_file.get(target_file, "")
         )
+
+    verification_gate = (
+        mcp_payload.get("verification")
+        if isinstance(mcp_payload.get("verification"), dict)
+        else {
+            "enabled": False,
+            "build": {"status": "not-run", "command": None},
+            "test": {"status": "not-run", "command": None},
+            "coverage": {"available": False, "path": None},
+            "junit": {"available": False, "path": None, "totals": None},
+            "testability_gate": {
+                "build_status": "not-run",
+                "test_status": "not-run",
+                "reason": "Verification gate payload missing in MCP workflow result.",
+            },
+            "test_pass_rate_source": "not-run",
+            "test_pass_rate": None,
+        }
+    )
+
+    # Post-execution paired validation: detect/use linked PR only after generation.
+    post_execution_pr = args.pull_request_number
+    if post_execution_pr is None and args.auto_detect_pr:
+        post_execution_pr = gh_client.detect_linked_pr(
+            parsed_issue.owner,
+            parsed_issue.repo,
+            parsed_issue.issue_number,
+        )
+
+    if post_execution_pr is not None:
+        detected_pr = post_execution_pr
+        head_ref = _resolve_head_ref(
+            repo_path,
+            gh_client,
+            parsed_issue,
+            detected_pr,
+            args.head_ref,
+            log_lines,
+        )
+        log_lines.append(
+            f"Post-execution paired validation enabled with PR #{detected_pr} and head ref {head_ref}."
+        )
+
+        for target_file in target_files:
+            try:
+                reference_modified_by_file[target_file] = _run_git(
+                    repo_path, ["show", f"{head_ref}:{target_file}"]
+                )
+            except subprocess.CalledProcessError:
+                reference_modified_by_file[target_file] = ""
+                log_lines.append(
+                    f"Head ref file not found ({head_ref}:{target_file}); using empty reference content."
+                )
+
+            try:
+                reference_diff_by_file[target_file] = _run_git(
+                    repo_path, ["diff", f"{base_ref}..{head_ref}", "--", target_file]
+                )
+            except subprocess.CalledProcessError:
+                reference_diff_by_file[target_file] = ""
+                log_lines.append(
+                    f"Could not compute reference diff for {target_file} between {base_ref} and {head_ref}."
+                )
 
     generated_diff_by_file: dict[str, str] = {}
     for target_file in target_files:
@@ -713,6 +1158,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             original_code=original_code,
             reference_modified_code=reference_modified_code,
             mcp_payload=mcp_payload,
+            generated_code_for_diff=generated_code,
         )
         log_lines.append(
             f"LLM debug artifacts written to {llm_debug_dir} ({len(llm_debug_files)} files)."
@@ -788,12 +1234,23 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         artifacts=original_code,
         test_total=None,
     )
+    gate_test_pass_rate = verification_gate.get("test_pass_rate")
+    gate_test_total = None
+    gate_test_failures = None
+    gate_test_errors = 0
+    if isinstance(gate_test_pass_rate, dict):
+        gate_test_total = int(gate_test_pass_rate.get("total", 0))
+        gate_test_failures = int(gate_test_pass_rate.get("failures", 0))
+        gate_test_errors = int(gate_test_pass_rate.get("errors", 0))
+
     modified_metrics = evaluator.evaluate_all(
         generated_code=generated_code,
         reference_code=original_code,
         requirements=[issue_prompt],
         artifacts=generated_code,
-        test_total=None,
+        test_total=gate_test_total,
+        test_failures=gate_test_failures,
+        test_errors=gate_test_errors,
     )
 
     delta = {
@@ -872,7 +1329,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "metrics": {
                 "semantic_similarity_model": "microsoft/codebert-base",
                 "requirements_coverage_strategy": "token-coverage",
-                "test_pass_rate_source": "not-run",
+                "test_pass_rate_source": verification_gate.get(
+                    "test_pass_rate_source", "not-run"
+                ),
                 "readability": ["buse_weimer_proxy", "llm_evaluation"],
                 "solid_delta_source": "sonarqube" if solid_delta_payload else "not-run",
                 "sonarqube": {
@@ -903,6 +1362,10 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
                 },
                 "llm_debug_dir": str(llm_debug_dir) if llm_debug_dir else None,
                 "llm_debug_files": llm_debug_files,
+                "verification_gate": {
+                    "enabled": verification_gate.get("enabled", True),
+                    "timeout_seconds": args.verification_timeout_seconds,
+                },
             },
         },
         "mcp": {
@@ -914,9 +1377,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "judgement": mcp_payload["judgement"],
         },
         "testability_gate": {
-            "build_status": "not-run",
-            "test_status": "not-run",
-            "reason": "Gate not executed in this experiment run.",
+            "build_status": verification_gate["testability_gate"]["build_status"],
+            "test_status": verification_gate["testability_gate"]["test_status"],
+            "reason": verification_gate["testability_gate"]["reason"],
         },
         "diff": {
             "reference_unified_diff": reference_unified_diff,
@@ -935,6 +1398,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "logs": {
             "lines": log_lines,
         },
+        "verification": verification_gate,
     }
     return report
 
@@ -969,7 +1433,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--auto-detect-pr",
         action="store_true",
-        help="Try to detect linked PR from issue references.",
+        help=(
+            "Detect linked PR from issue references only after execution for paired validation."
+        ),
     )
     parser.add_argument(
         "--max-issue-comments",
@@ -1082,6 +1548,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "Execution identifier used in metadata and output templates. "
             "Defaults to UTC timestamp when omitted."
         ),
+    )
+    parser.add_argument(
+        "--verification-timeout-seconds",
+        type=int,
+        default=300,
+        help="Timeout (seconds) for each build/test command in pre-judgement verification gate.",
+    )
+    parser.add_argument(
+        "--skip-verification-gate",
+        action="store_true",
+        help="Skip the pre-judgement verification gate (build/test discovery and execution).",
     )
     parser.add_argument(
         "--clean-output",

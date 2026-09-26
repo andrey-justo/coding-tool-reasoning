@@ -125,7 +125,7 @@ class SweKnowledgeBase:
         self._rebuild_edges_from_ground_truth()
         self._ensure_nodes_for_edges()
         self._infer_nfr_categories()
-        logger.info(
+        logger.debug(
             f"Loaded {len(self.nodes)} nodes and {len(self.edges)} edges "
             f"from {self.ground_data_dir} and {self.linked_data_dir}"
         )
