@@ -1,4 +1,4 @@
-# Experiment Design
+﻿# Experiment Design
 
 ---
 
@@ -6,9 +6,9 @@
 
 | RQ | Method | Baseline | Primary Metric | Statistical Test | Min N | Pass Criterion |
 |---|---|---|---|---|---|---|
-| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | Structural improvement delta | Wilcoxon signed-rank (paired) | 3-5 sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement ≥ 10 pp; target p < 0.05 |
-| RQ3 | Within-subjects (10 paraphrases per task set) | Zero-shot, same 10 paraphrases over the same repository/issue-anchored task | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets × 10 anchored tasks = 30-50 observations | Consistency ≥ 0.80 and supervised > baseline |
-| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Structural improvement delta on legacy-only subset | Wilcoxon signed-rank (paired) | 3-5 legacy sets × 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement > 0 on legacy corpus; target p < 0.05 |
+| RQ2 | Within-subjects (paired supervised vs. prompt-only per issue) | Zero-shot, same LLM and run protocol | Structural improvement delta | Wilcoxon signed-rank (paired) | 3-5 sets Ã— 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement â‰¥ 10 pp; target p < 0.05 |
+| RQ3 | Within-subjects (10 paraphrases per task set) | Zero-shot, same 10 paraphrases over the same repository/issue-anchored task | Verdict consistency ratio | McNemar (paraphrase-level) + descriptive consistency gap | 3-5 sets Ã— 10 anchored tasks = 30-50 observations | Consistency â‰¥ 0.80 and supervised > baseline |
+| RQ4 | Within-subjects (paired supervised vs. prompt-only) on legacy corpus | Prompt-only on same legacy hotspot issues | Structural improvement delta on legacy-only subset | Wilcoxon signed-rank (paired) | 3-5 legacy sets Ã— 10 issues (paired supervised vs. baseline) = 30-50 pairs | median improvement > 0 on legacy corpus; target p < 0.05 |
 
 RQ1 remains in the project as an artifact qualification question (knowledge base design and traceability), but it is not part of the controlled experiment matrix.
 
@@ -46,9 +46,9 @@ Additional metrics for future implementation are tracked separately in `docs/req
 
 ---
 
-## RQ2 — Structural Improvement Effectiveness
+## RQ2 â€” Structural Improvement Effectiveness
 
-**Null hypothesis H₀²**: structural improvement under supervised generation is not greater than under zero-shot generation.
+**Null hypothesis Hâ‚€Â²**: structural improvement under supervised generation is not greater than under zero-shot generation.
 
 **Procedure**:
 1. Select 3-5 sets x 10 issues with fixed repository/issue anchoring.
@@ -62,17 +62,17 @@ Additional metrics for future implementation are tracked separately in `docs/req
 
 ---
 
-## RQ3 — Verdict Robustness Across Prompt Variations
+## RQ3 â€” Verdict Robustness Across Prompt Variations
 
-**Null hypothesis H₀³**: Verdict consistency ratio under supervised generation ≤ verdict consistency ratio under zero-shot generation.
+**Null hypothesis Hâ‚€Â³**: Verdict consistency ratio under supervised generation â‰¤ verdict consistency ratio under zero-shot generation.
 
 **Procedure**:
 1. Select **3-5 task sets**, each composed of 10 software engineering tasks anchored to a specific repository/issue pair.
 2. For each anchored task, produce **10 human-authored paraphrases** that preserve the same repository/issue context and requested change:
-   - Formal specification style ("The system shall…")
-   - Casual bug report ("This thing breaks when…")
+   - Formal specification style ("The system shallâ€¦")
+   - Casual bug report ("This thing breaks whenâ€¦")
    - Imperative command ("Refactor X to do Y")
-   - Passive description ("X is not working because…")
+   - Passive description ("X is not working becauseâ€¦")
    - Non-native speaker phrasing (simplified vocabulary, direct translation patterns)
 3. Run each paraphrase through the supervised agent and the zero-shot baseline while keeping repository, issue, code revision, and evaluation pipeline fixed.
 4. Compute verdict consistency ratio = (trials agreeing with majority verdict) / 10 per anchored task.
@@ -82,9 +82,9 @@ Additional metrics for future implementation are tracked separately in `docs/req
 
 ---
 
-## RQ4a — Configuration Effectiveness
+## RQ4a â€” Configuration Effectiveness
 
-**Null hypothesis H₀⁴ᵃ**: Verdict distribution and structural-improvement delta are independent of the `strictness` configuration value.
+**Null hypothesis Hâ‚€â´áµƒ**: Verdict distribution and structural-improvement delta are independent of the `strictness` configuration value.
 
 **Conditions / levels**:
 - `strictness=low`: permissive supervisor; emits guidance with minimal rejection/escalation.
@@ -104,20 +104,20 @@ Additional metrics for future implementation are tracked separately in `docs/req
 4. Record the final supervisor verdict (`accept`, `revise`, `reject`) and the resulting structural-improvement delta for each run.
 5. Treat `strictness=medium` as the pre-declared baseline for pairwise follow-up comparisons (`low` vs `medium`, `high` vs `medium`).
 
-**Sample size**: **3-5 sets × 10 repeated runs × 3 levels = 90-150 total runs**; for pairwise repeated-measures comparisons against the `medium` baseline, this yields **30-50 paired observations** per comparison.
+**Sample size**: **3-5 sets Ã— 10 repeated runs Ã— 3 levels = 90-150 total runs**; for pairwise repeated-measures comparisons against the `medium` baseline, this yields **30-50 paired observations** per comparison.
 
 **Planned statistical tests**:
-- For the 3-level verdict distribution: **chi-square test of independence** on the aggregated contingency table of verdict × `strictness`; if any expected cell count is < 5, use **Fisher's exact test** instead.
+- For the 3-level verdict distribution: **chi-square test of independence** on the aggregated contingency table of verdict Ã— `strictness`; if any expected cell count is < 5, use **Fisher's exact test** instead.
 - For repeated-measures comparison of structural-improvement delta across the three levels: **Friedman test** by set/run block.
 - If the Friedman test is significant, run post-hoc **Wilcoxon signed-rank** tests for `low` vs `medium` and `high` vs `medium`, with Holm correction.
 
-**Pass criterion**: reject H₀⁴ᵃ only if verdict distribution differs significantly by `strictness` and at least one non-default level shows a practically meaningful change versus `medium` (≥ 10 percentage-point change in acceptance rate or a positive median structural-improvement delta).
+**Pass criterion**: reject Hâ‚€â´áµƒ only if verdict distribution differs significantly by `strictness` and at least one non-default level shows a practically meaningful change versus `medium` (â‰¥ 10 percentage-point change in acceptance rate or a positive median structural-improvement delta).
 
 ---
 
-## RQ4 — Legacy-Corpus Effectiveness
+## RQ4 â€” Legacy-Corpus Effectiveness
 
-**Null hypothesis H₀⁴**: On the legacy-only corpus, structural improvement under supervised generation is not greater than under prompt-only generation.
+**Null hypothesis Hâ‚€â´**: On the legacy-only corpus, structural improvement under supervised generation is not greater than under prompt-only generation.
 
 **Procedure**:
 1. Curate **3-5 legacy sets**, each with 10 issues from repositories with structural debt indicators (age, low test coverage, and elevated code-smell/complexity burden).
@@ -147,4 +147,5 @@ appear as future work:
 ---
 
 ## References
+
 
