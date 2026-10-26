@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from src.service.semantic_context_service import SemanticContextService
+from src.service.localizer.ast.tree_sitter_symbol_extractor import (
+    _LANG_MODULE_BY_SUFFIX,
+)
+from src.service.semantic_context_service import (
+    _CALL_NODE_TYPES,
+    SemanticContextService,
+)
 from src.service.symbol_context_service import RepositorySymbolContextService
 
 
@@ -56,9 +62,7 @@ def test_resolves_callee_declared_far_from_the_failing_line():
 
     service = SemanticContextService()
 
-    contexts = service.describe(
-        "Generator.cs", CSHARP_SOURCE, [_csharp_diagnostic()]
-    )
+    contexts = service.describe("Generator.cs", CSHARP_SOURCE, [_csharp_diagnostic()])
 
     assert len(contexts) == 1
     context = contexts[0]
@@ -79,9 +83,7 @@ def test_resolves_callee_declared_far_from_the_failing_line():
 def test_symbols_absent_from_file_and_repository_are_marked_external():
     service = SemanticContextService()
 
-    contexts = service.describe(
-        "Generator.cs", CSHARP_SOURCE, [_csharp_diagnostic()]
-    )
+    contexts = service.describe("Generator.cs", CSHARP_SOURCE, [_csharp_diagnostic()])
 
     origins = {symbol.symbol: symbol.origin for symbol in contexts[0].symbols}
     assert origins["ITypeSymbol"] == "external_or_unresolved"
@@ -111,9 +113,7 @@ def test_overloaded_declarations_are_all_reported():
     contexts = SemanticContextService().describe("Box.cs", source, [diagnostic])
 
     declarations = next(
-        symbol.declarations
-        for symbol in contexts[0].symbols
-        if symbol.symbol == "Add"
+        symbol.declarations for symbol in contexts[0].symbols if symbol.symbol == "Add"
     )
     signatures = [item["signature"] for item in declarations]
     assert len(signatures) == 2
@@ -123,11 +123,6 @@ def test_overloaded_declarations_are_all_reported():
 
 def test_resolution_is_driven_by_the_grammar_table_not_by_csharp():
     """Nothing in the resolver is C#-specific: it keys off the shared grammars."""
-
-    from src.service.localizer.ast.tree_sitter_symbol_extractor import (
-        _LANG_MODULE_BY_SUFFIX,
-    )
-    from src.service.semantic_context_service import _CALL_NODE_TYPES
 
     assert {".ts", ".go", ".java", ".rs", ".js", ".cpp"} <= set(_LANG_MODULE_BY_SUFFIX)
     # Call nodes from the JavaScript/Python, Java, Rust and C/C++ grammars.
@@ -169,9 +164,7 @@ def test_repository_declarations_are_used_when_the_file_does_not_declare_it(tmp_
         symbol_resolver=RepositorySymbolContextService(),
     )
 
-    callee = next(
-        symbol for symbol in contexts[0].symbols if symbol.symbol == "Helper"
-    )
+    callee = next(symbol for symbol in contexts[0].symbols if symbol.symbol == "Helper")
     assert callee.origin == "repository"
     assert callee.file == "Helper.cs"
     assert callee.declarations

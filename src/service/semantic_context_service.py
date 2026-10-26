@@ -29,6 +29,7 @@ from src.service.ast_context_service import AstContextService, declaration_signa
 from src.service.localizer.ast.tree_sitter_symbol_extractor import (
     TreeSitterSymbolExtractor,
 )
+from src.service.symbol_context_service import extract_diagnostic_symbols
 from src.service.syntax_validator import SyntaxValidator
 
 #: Call-like constructs across the supported grammars. Resolving the call site
@@ -370,8 +371,6 @@ class SemanticContextService:
         max_symbols: int,
         max_usages: int,
     ) -> list[SemanticSymbolContext]:
-        from src.service.symbol_context_service import extract_diagnostic_symbols
-
         ordered: list[str] = []
         if call_site and call_site.callee:
             ordered.append(call_site.callee)

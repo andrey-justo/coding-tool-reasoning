@@ -10,7 +10,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path
-from typing import ClassVar, Iterable, Sequence
+from typing import ClassVar, Iterable
 
 from src.service.build_diagnostics.build_diagnostic import (
     ERROR_SEVERITY,
@@ -61,53 +61,6 @@ class BuildDiagnosticParser(ABC):
             available=bool(selected),
             diagnostics=selected[: max(int(max_diagnostics), 1)],
         )
-
-
-class BuildDiagnosticParserResolver:
-    """Select the build-output parser for a repository/language combination."""
-
-    def __init__(
-        self,
-        parsers: Sequence[BuildDiagnosticParser] | None = None,
-        fallback: BuildDiagnosticParser | None = None,
-    ) -> None:
-        from src.service.build_diagnostics.dotnet_parser import (
-            DotnetBuildDiagnosticParser,
-        )
-        from src.service.build_diagnostics.generic_parser import (
-            GenericBuildDiagnosticParser,
-        )
-        from src.service.build_diagnostics.python_parser import (
-            PythonBuildDiagnosticParser,
-        )
-
-        self._parsers: tuple[BuildDiagnosticParser, ...] = tuple(
-            parsers
-            if parsers is not None
-            else (DotnetBuildDiagnosticParser(), PythonBuildDiagnosticParser())
-        )
-        self._fallback = fallback or GenericBuildDiagnosticParser()
-
-    def resolve(self, context: BuildDiagnosticContext) -> BuildDiagnosticParser:
-        for parser in self._parsers:
-            if parser.matches(context):
-                return parser
-        return self._fallback
-
-    def parse(
-        self,
-        output: str,
-        context: BuildDiagnosticContext,
-        *,
-        max_diagnostics: int = 20,
-    ) -> BuildDiagnosticsResult:
-        parser = self.resolve(context)
-        result = parser.build(output, max_diagnostics=max_diagnostics)
-        if result.diagnostics or parser is self._fallback:
-            return result
-        # A language parser that recognizes nothing would hide the failure
-        # cause, so the generic parser still gets a chance at the same output.
-        return self._fallback.build(output, max_diagnostics=max_diagnostics)
 
 
 def match_diagnostic_file(
