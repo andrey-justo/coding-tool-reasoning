@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Iterable
 
 from src.models.localizer.models import LocalizationHit
-from src.service.localizer.utils import extract_symbols, safe_read_text
+from src.service.localizer.utils import extract_focus_symbols, safe_read_text
 
 
 class SymbolImpactStrategy:
@@ -74,7 +74,7 @@ class SymbolImpactStrategy:
         issue_text: str,
         candidate_paths: Iterable[str],
     ) -> dict[str, LocalizationHit]:
-        target_symbols = {s.lower() for s in extract_symbols(issue_text)}
+        target_symbols = {s.lower() for s in extract_focus_symbols(issue_text)}
         if not target_symbols:
             return {}
 

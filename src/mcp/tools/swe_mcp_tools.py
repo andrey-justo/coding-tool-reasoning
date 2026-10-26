@@ -8,6 +8,8 @@ from src.mcp.tools.build_swe_code_context_tool import BuildSweCodeContextTool
 from src.mcp.tools.find_best_issue_candidates_tool import FindBestIssueCandidatesTool
 from src.mcp.tools.judge_swe_code_change_tool import JudgeSweCodeChangeTool
 from src.mcp.tools.plan_swe_code_change_tool import PlanSweCodeChangeTool
+from src.mcp.tools.repair_build_failure_tool import RepairBuildFailureTool
+from src.mcp.tools.repair_test_failure_tool import RepairTestFailureTool
 from src.mcp.tools.verify_testability_gate_tool import VerifyTestabilityGateTool
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.issue_candidate_ranking import (
@@ -43,6 +45,8 @@ class SweMcpToolRegistry:
         self._apply_plan_tool = ApplyPlanSweCodeChangeTool(self)
         self._judge_tool = JudgeSweCodeChangeTool(self)
         self._verify_testability_gate_tool = VerifyTestabilityGateTool(self)
+        self._repair_build_failure_tool = RepairBuildFailureTool(self)
+        self._repair_test_failure_tool = RepairTestFailureTool(self)
         self._find_best_issue_candidates_tool = FindBestIssueCandidatesTool(self)
 
     def apply_plan_swe_code_change(
@@ -135,6 +139,60 @@ class SweMcpToolRegistry:
             base_ref=base_ref,
             generated_code_by_file=generated_code_by_file,
             timeout_seconds=timeout_seconds,
+        )
+
+    def repair_build_failure(
+        self,
+        problem_summary: str,
+        build_output: str,
+        generated_code_by_file: dict[str, str],
+        build_command: Optional[List[str]] = None,
+        attempt: int = 1,
+        max_attempts: int = 10,
+        temperature: Optional[float] = None,
+        seed: Optional[int] = None,
+        repo_path: Optional[str] = None,
+        repair_history: Optional[List[dict[str, Any]]] = None,
+        escalate_routing: bool = False,
+    ) -> dict[str, Any]:
+        return self._repair_build_failure_tool.execute(
+            problem_summary=problem_summary,
+            build_output=build_output,
+            generated_code_by_file=generated_code_by_file,
+            build_command=build_command,
+            attempt=attempt,
+            max_attempts=max_attempts,
+            temperature=temperature,
+            seed=seed,
+            repo_path=repo_path,
+            repair_history=repair_history,
+            escalate_routing=escalate_routing,
+        )
+
+    def repair_test_failure(
+        self,
+        problem_summary: str,
+        test_output: str,
+        generated_code_by_file: dict[str, str],
+        results_path: Optional[str] = None,
+        test_command: Optional[List[str]] = None,
+        attempt: int = 1,
+        max_attempts: int = 10,
+        temperature: Optional[float] = None,
+        seed: Optional[int] = None,
+        repo_path: Optional[str] = None,
+    ) -> dict[str, Any]:
+        return self._repair_test_failure_tool.execute(
+            problem_summary=problem_summary,
+            test_output=test_output,
+            generated_code_by_file=generated_code_by_file,
+            results_path=results_path,
+            test_command=test_command,
+            attempt=attempt,
+            max_attempts=max_attempts,
+            temperature=temperature,
+            seed=seed,
+            repo_path=repo_path,
         )
 
     def register_on_mcp(self, mcp: Any) -> None:
@@ -230,6 +288,60 @@ class SweMcpToolRegistry:
                 base_ref=base_ref,
                 generated_code_by_file=generated_code_by_file,
                 timeout_seconds=timeout_seconds,
+            )
+
+        @mcp.tool()
+        def repair_build_failure(
+            problem_summary: str,
+            build_output: str,
+            generated_code_by_file: dict[str, str],
+            build_command: Optional[List[str]] = None,
+            attempt: int = 1,
+            max_attempts: int = 10,
+            temperature: Optional[float] = None,
+            seed: Optional[int] = None,
+            repo_path: Optional[str] = None,
+            repair_history: Optional[List[dict[str, Any]]] = None,
+            escalate_routing: bool = False,
+        ) -> dict[str, Any]:
+            return self.repair_build_failure(
+                problem_summary=problem_summary,
+                build_output=build_output,
+                generated_code_by_file=generated_code_by_file,
+                build_command=build_command,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                temperature=temperature,
+                seed=seed,
+                repo_path=repo_path,
+                repair_history=repair_history,
+                escalate_routing=escalate_routing,
+            )
+
+        @mcp.tool()
+        def repair_test_failure(
+            problem_summary: str,
+            test_output: str,
+            generated_code_by_file: dict[str, str],
+            results_path: Optional[str] = None,
+            test_command: Optional[List[str]] = None,
+            attempt: int = 1,
+            max_attempts: int = 10,
+            temperature: Optional[float] = None,
+            seed: Optional[int] = None,
+            repo_path: Optional[str] = None,
+        ) -> dict[str, Any]:
+            return self.repair_test_failure(
+                problem_summary=problem_summary,
+                test_output=test_output,
+                generated_code_by_file=generated_code_by_file,
+                results_path=results_path,
+                test_command=test_command,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                temperature=temperature,
+                seed=seed,
+                repo_path=repo_path,
             )
 
 

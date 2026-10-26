@@ -182,13 +182,33 @@ def write_markdown_report(
     lines.append(f"- Repositorio alvo: {report['subject']['repo_path']}")
     target_files = report["subject"].get("target_files") or []
     if target_files:
-        lines.append(f"- Arquivos avaliados: {len(target_files)}")
+        lines.append(f"- Arquivos-alvo selecionados pelo localizador: {len(target_files)}")
         for file_path in target_files:
             lines.append(f"  - {file_path}")
     else:
-        lines.append(
-            f"- Arquivo avaliado: {report['subject'].get('target_file', 'n/a')}"
-        )
+        lines.append("- Arquivos-alvo selecionados pelo localizador: 0")
+    candidate_source = report["subject"].get("candidate_source", "n/a")
+    lines.append(f"- Universo de candidatos: {candidate_source}")
+    candidate_paths = report["subject"].get("candidate_paths") or []
+    if candidate_paths:
+        lines.append(f"- Candidatos fornecidos ao localizador: {len(candidate_paths)}")
+        for file_path in candidate_paths:
+            lines.append(f"  - {file_path}")
+    selected_details = {
+        item.get("path"): item
+        for item in (report["subject"].get("localizer", {}).get("details") or [])
+        if isinstance(item, dict) and item.get("path")
+    }
+    if target_files:
+        lines.append("- Evidência dos arquivos-alvo:")
+        for file_path in target_files:
+            details = selected_details.get(file_path) or {}
+            reasons = details.get("reasons") or []
+            lines.append(
+                f"  - {file_path} "
+                f"(score={details.get('score', 'n/a')}, "
+                f"motivos={'; '.join(str(reason) for reason in reasons) or 'n/a'})"
+            )
     lines.append(f"- Base ref: {report['subject']['base_ref']}")
     lines.append(f"- Head ref: {report['subject']['head_ref']}")
     lines.append(f"- Verdict MCP: {verdict}")
@@ -198,6 +218,9 @@ def write_markdown_report(
         lines.append("## Localizer")
         lines.append("")
         lines.append(f"- Strategies loaded: {localizer.get('strategy_count', 'n/a')}")
+        lines.append(
+            f"- Candidate source: {report['subject'].get('candidate_source', 'n/a')}"
+        )
         details = localizer.get("details") or []
         if details:
             lines.append("- Top localized candidates:")
@@ -242,6 +265,29 @@ def write_markdown_report(
     lines.append(f"- Build status: {report['testability_gate']['build_status']}")
     lines.append(f"- Test status: {report['testability_gate']['test_status']}")
     lines.append(f"- Justificativa gate: {report['testability_gate']['reason']}")
+    build_repair_rounds = report["mcp"].get("build_repair") or []
+    lines.append(f"- Rodadas de auto-reparo de build: {len(build_repair_rounds)}")
+    for round_payload in build_repair_rounds:
+        repaired = round_payload.get("repaired_files") or []
+        lines.append(
+            f"  - Tentativa {round_payload.get('attempt')}: "
+            f"parser={round_payload.get('diagnostics_parser')}, "
+            f"arquivos reparados={len(repaired)}, "
+            f"build antes={round_payload.get('build_status_before')}, "
+            f"build depois={round_payload.get('build_status_after')}"
+        )
+    test_repair_rounds = report["mcp"].get("test_repair") or []
+    lines.append(f"- Rodadas de auto-reparo de testes: {len(test_repair_rounds)}")
+    for round_payload in test_repair_rounds:
+        repaired = round_payload.get("repaired_files") or []
+        lines.append(
+            f"  - Tentativa {round_payload.get('attempt')}: "
+            f"parser={round_payload.get('failures_parser')}, "
+            f"arquivos reparados={len(repaired)}, "
+            f"testes antes={round_payload.get('test_status_before')}, "
+            f"testes depois={round_payload.get('test_status_after')}, "
+            f"build depois={round_payload.get('build_status_after')}"
+        )
     lines.append("")
     lines.append("## Tabela Final de Metricas")
     lines.append("")

@@ -2,10 +2,10 @@ command: issue-experiment
 args:
   issue_url: https://github.com/akkadotnet/akka.net/issues/8349
   repo_path: C:/Users/Andrey Victor Justo/workspace/workspace-experiments-repos/akka.net
-  pull_request_number: 8416
-  base_ref: 010e0fd6c88d938794c8dbb6cde42be45c3bdc9c
-  head_ref: 4d6e08847b5437440f84f73a5e512542ba8dbd37
-  max_target_files: 6
+  pull_request_number: 8364
+  base_ref: b3a28318f460d40bd02c8c7b27d96f4566a4e822
+  head_ref: 8ae7add55f054cc2242b495bdad637173a59525c
+  localizer_relative_score_threshold: 0.5
   nfr_focus:
     - Reliability
     - Maintainability
@@ -13,7 +13,10 @@ args:
   model: gpt-5.3-codex
   temperature: 0.2
   seed: 42
-  execution_id: pilot2-akka-8349-supervised-codex
+  execution_id: pilot2-akka-8349-supervised-codex-openworld
+  verification_timeout_seconds: 2400
+  max_build_repair_attempts: 10
+  max_test_repair_attempts: 10
   out_json: reports/pilot2_akka_8349_{execution_id}.json
   out_md: reports/pilot2_akka_8349_{execution_id}.md
   out_csv: reports/pilot2_akka_8349_{execution_id}.csv

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 import yaml
 from pydantic import BaseModel, Field, model_validator
@@ -125,7 +125,8 @@ class ConcernAssetsConfig(BaseModel):
     """Configuration for concern-specific data and prompt templates.
 
     Files are loaded from:
-    - knowledge/template/*.md
+    - knowledge/template/*.md (concern prompt templates)
+    - knowledge/template/tool/*.md (tool prompt templates, not injected as concerns)
     - knowledge/data/<swe_concern>/<swe_subject>/data.json
     """
 
@@ -181,6 +182,200 @@ class ToolExecutionConfig(BaseModel):
         default=160,
         ge=20,
         description="Chunk size in lines when chunked generation mode is used.",
+    )
+    max_syntax_repair_attempts: int = Field(
+        default=2,
+        ge=0,
+        le=3,
+        description=(
+            "Maximum diagnostic-guided LLM repair attempts when generated source "
+            "does not produce a valid syntax tree."
+        ),
+    )
+    max_syntax_diagnostics: int = Field(
+        default=20,
+        ge=1,
+        le=100,
+        description="Maximum tree-sitter syntax diagnostics included in a repair prompt.",
+    )
+    max_build_repair_attempts: int = Field(
+        default=10,
+        ge=0,
+        le=25,
+        description=(
+            "Maximum build-diagnostic-guided LLM repair rounds when generated code "
+            "parses correctly but fails to compile. Bounds the repair loop so a "
+            "model that never converges cannot run indefinitely."
+        ),
+    )
+    max_build_diagnostics: int = Field(
+        default=20,
+        ge=1,
+        le=200,
+        description="Maximum compiler diagnostics included in a build repair prompt.",
+    )
+    max_build_repair_chunks: int = Field(
+        default=4,
+        ge=1,
+        le=20,
+        description=(
+            "Maximum relevant chunks sent to the model per large-file build repair. "
+            "Chunking reuses max_single_shot_code_chars and chunk_lines."
+        ),
+    )
+    max_semantic_diagnostics: int = Field(
+        default=6,
+        ge=1,
+        le=50,
+        description=(
+            "Maximum diagnostic positions resolved into call-site and symbol "
+            "declaration context for a repair prompt."
+        ),
+    )
+    max_escalated_repair_targets: int = Field(
+        default=2,
+        ge=1,
+        le=10,
+        description=(
+            "Maximum extra files a stalled diagnostic may be routed to, ranked "
+            "by how strongly its message names the file."
+        ),
+    )
+    max_build_output_chars: int = Field(
+        default=6000,
+        ge=500,
+        description="Maximum characters of build output tail included in a repair prompt.",
+    )
+    max_build_ast_locations: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description=(
+            "Maximum failing locations per file described with AST scope and source "
+            "neighborhood in a build repair prompt."
+        ),
+    )
+    max_test_repair_attempts: int = Field(
+        default=10,
+        ge=0,
+        le=25,
+        description=(
+            "Maximum test-failure-guided LLM repair rounds when generated code "
+            "compiles but fails its tests. Bounds the repair loop so a model that "
+            "never converges cannot run indefinitely."
+        ),
+    )
+    max_test_failures: int = Field(
+        default=10,
+        ge=1,
+        le=200,
+        description="Maximum failing tests included in a test repair prompt.",
+    )
+    max_test_output_chars: int = Field(
+        default=6000,
+        ge=500,
+        description="Maximum characters of test output tail included in a repair prompt.",
+    )
+    max_test_ast_locations: int = Field(
+        default=5,
+        ge=1,
+        le=50,
+        description=(
+            "Maximum failing locations per file described with AST scope and source "
+            "neighborhood in a test repair prompt."
+        ),
+    )
+    max_test_repair_files: int = Field(
+        default=3,
+        ge=1,
+        le=25,
+        description=(
+            "Maximum files repaired per test repair round. Bounds prompt and cost "
+            "growth when many generated files could explain a failure."
+        ),
+    )
+    max_test_related_declarations: int = Field(
+        default=40,
+        ge=1,
+        le=400,
+        description=(
+            "Maximum declarations listed per related file in the cross-file index "
+            "of a test repair prompt."
+        ),
+    )
+    max_related_symbols: int = Field(
+        default=8,
+        ge=0,
+        le=50,
+        description=(
+            "Maximum symbols taken from verification diagnostics when resolving "
+            "read-only declaration context from the repository."
+        ),
+    )
+    max_related_symbol_files: int = Field(
+        default=5,
+        ge=0,
+        le=25,
+        description=(
+            "Maximum repository files whose declarations are attached to a repair "
+            "prompt as read-only cross-file context."
+        ),
+    )
+    max_related_declarations: int = Field(
+        default=12,
+        ge=1,
+        le=200,
+        description=(
+            "Maximum declarations listed per resolved repository symbol in a "
+            "repair prompt."
+        ),
+    )
+
+
+class VerificationCommandOverrideConfig(BaseModel):
+    """Explicit build/test command override for one language."""
+
+    build_command: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Build command tokens. Supports {repo_path}, {junit_xml} and "
+            "{coverage_xml} placeholders."
+        ),
+    )
+    test_command: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Test command tokens. Supports {repo_path}, {junit_xml} and "
+            "{coverage_xml} placeholders."
+        ),
+    )
+
+    extra_build_args: Optional[List[str]] = Field(
+        default=None,
+        description="Arguments appended to the discovered build command.",
+    )
+    extra_test_args: Optional[List[str]] = Field(
+        default=None,
+        description="Arguments appended to the discovered test command.",
+    )
+
+
+class VerificationConfig(BaseModel):
+    """Configuration for the testability gate verification strategy."""
+
+    project_type: str = Field(
+        default="auto",
+        description=(
+            "Verification strategy selection: auto (detect from repository and "
+            "changed-file language), none (skip verification), or an explicit "
+            "strategy name such as python or dotnet."
+        ),
+    )
+    language_overrides: Dict[str, VerificationCommandOverrideConfig] = Field(
+        default_factory=dict,
+        description=(
+            "Per-language command overrides keyed by language name (e.g. python, c#)."
+        ),
     )
 
 
@@ -285,6 +480,7 @@ class SweMcpConfig(BaseModel):
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
     concern_assets: ConcernAssetsConfig = Field(default_factory=ConcernAssetsConfig)
     execution: ToolExecutionConfig = Field(default_factory=ToolExecutionConfig)
+    verification: VerificationConfig = Field(default_factory=VerificationConfig)
     localizer: LocalizerConfig = Field(default_factory=LocalizerConfig)
     semantic_index: SemanticIndexConfig = Field(default_factory=SemanticIndexConfig)
 
@@ -347,4 +543,3 @@ class SweMcpConfig(BaseModel):
         except Exception:
             # Fall back to defaults on any parsing error to keep the server robust.
             return cls()
-

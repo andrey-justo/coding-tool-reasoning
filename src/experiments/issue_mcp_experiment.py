@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import contextlib
 import difflib
 import json
 import os
@@ -14,7 +15,7 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
 
 import requests
 from dotenv import load_dotenv
@@ -24,6 +25,7 @@ from mcp.client.stdio import stdio_client
 from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
 from src.models.issue_tracking import ParsedIssueUrl
+from src.models.localizer.models import LocalizerResult
 from src.models.swe_config import SweMcpConfig
 from src.report.experiment_report_writer import (
     metrics_rows,
@@ -80,6 +82,74 @@ def _as_pretty_json(value: Any) -> str:
         return json.dumps(value, indent=2, ensure_ascii=False)
     except TypeError:
         return str(value)
+
+
+def _count_apply_outcomes(
+    apply_results: dict[str, dict[str, Any]],
+) -> dict[str, int]:
+    """Aggregate per-file apply outcomes into explicit state counts."""
+
+    counts: dict[str, int] = {}
+    for payload in apply_results.values():
+        if not isinstance(payload, dict):
+            continue
+        outcome = payload.get("apply_outcome")
+        if not outcome:
+            outcome = (
+                "unchanged_model_output"
+                if payload.get("used_fallback_to_original", False)
+                else "modified"
+            )
+        counts[str(outcome)] = counts.get(str(outcome), 0) + 1
+    return counts
+
+
+def _enforce_verification_verdict(
+    judgement: Any,
+    apply_results: dict[str, dict[str, Any]],
+    verification_gate: dict[str, Any],
+) -> dict[str, Any]:
+    result = dict(judgement) if isinstance(judgement, dict) else {}
+    blocking_reasons: list[str] = []
+
+    for target_file, apply_result in apply_results.items():
+        syntax_validation = apply_result.get("syntax_validation")
+        if isinstance(syntax_validation, dict) and syntax_validation.get(
+            "rejected_invalid_generation"
+        ):
+            blocking_reasons.append(
+                f"{target_file}: generated code failed syntax validation after repair."
+            )
+        elif apply_result.get("error"):
+            blocking_reasons.append(
+                f"{target_file}: apply stage reported {apply_result['error']}"
+            )
+
+    gate_status = verification_gate.get("testability_gate")
+    if isinstance(gate_status, dict):
+        build_status = str(gate_status.get("build_status", "not-run"))
+        test_status = str(gate_status.get("test_status", "not-run"))
+        if build_status in {"fail", "timeout"}:
+            blocking_reasons.append(f"verification build status is {build_status}.")
+        if test_status in {"fail", "timeout"}:
+            blocking_reasons.append(f"verification test status is {test_status}.")
+
+    if not blocking_reasons:
+        return result
+
+    prior_verdict = result.get("overall_verdict")
+    prior_rationale = str(result.get("rationale", "")).strip()
+    result["llm_overall_verdict"] = prior_verdict
+    result["overall_verdict"] = "rejected"
+    result["verification_blocking_reasons"] = blocking_reasons
+    result["rationale"] = " ".join(
+        [
+            "Automated verification rejected the generated change:",
+            " ".join(blocking_reasons),
+            prior_rationale,
+        ]
+    ).strip()
+    return result
 
 
 def _write_llm_debug_artifacts(
@@ -150,6 +220,64 @@ def _write_llm_debug_artifacts(
             "parsed_output": judge_payload,
         },
     ]
+
+    build_repair_rounds = mcp_payload.get("build_repair")
+    if isinstance(build_repair_rounds, list):
+        for round_payload in build_repair_rounds:
+            if not isinstance(round_payload, dict):
+                continue
+            attempt = round_payload.get("attempt")
+            for index, file_result in enumerate(
+                round_payload.get("file_results") or [], start=1
+            ):
+                if not isinstance(file_result, dict) or not file_result.get("prompt"):
+                    continue
+                target_file = str(file_result.get("target_file") or "unknown")
+                safe_target = re.sub(r"[^A-Za-z0-9_.-]+", "_", target_file)
+                debug_items.append(
+                    {
+                        "prefix": f"05-repair_build_failure-attempt{attempt}-{index:02d}-{safe_target}",
+                        "call_name": (
+                            f"repair_build_failure (attempt {attempt}, {target_file})"
+                        ),
+                        "llm_input": file_result.get("prompt"),
+                        "llm_output": file_result.get("raw_response"),
+                        "parsed_output": {
+                            key: value
+                            for key, value in file_result.items()
+                            if key not in {"prompt", "raw_response"}
+                        },
+                    }
+                )
+
+    test_repair_rounds = mcp_payload.get("test_repair")
+    if isinstance(test_repair_rounds, list):
+        for round_payload in test_repair_rounds:
+            if not isinstance(round_payload, dict):
+                continue
+            attempt = round_payload.get("attempt")
+            for index, file_result in enumerate(
+                round_payload.get("file_results") or [], start=1
+            ):
+                if not isinstance(file_result, dict) or not file_result.get("prompt"):
+                    continue
+                target_file = str(file_result.get("target_file") or "unknown")
+                safe_target = re.sub(r"[^A-Za-z0-9_.-]+", "_", target_file)
+                debug_items.append(
+                    {
+                        "prefix": f"06-repair_test_failure-attempt{attempt}-{index:02d}-{safe_target}",
+                        "call_name": (
+                            f"repair_test_failure (attempt {attempt}, {target_file})"
+                        ),
+                        "llm_input": file_result.get("prompt"),
+                        "llm_output": file_result.get("raw_response"),
+                        "parsed_output": {
+                            key: value
+                            for key, value in file_result.items()
+                            if key not in {"prompt", "raw_response"}
+                        },
+                    }
+                )
 
     written_files: list[str] = []
     for item in debug_items:
@@ -266,6 +394,7 @@ def _write_llm_debug_artifacts(
                         "used_fallback_to_original": apply_payload.get(
                             "used_fallback_to_original"
                         ),
+                        "apply_outcome": apply_payload.get("apply_outcome"),
                         "apply_error": apply_payload.get("error"),
                         "chunked": apply_payload.get("chunked"),
                         "chunk_count": apply_payload.get("chunk_count"),
@@ -369,8 +498,12 @@ def _run_command_with_timeout(
             "status": "timeout",
             "exit_code": None,
             "duration_seconds": round(duration, 3),
-            "stdout_tail": _tail_text(exc.stdout if isinstance(exc.stdout, str) else ""),
-            "stderr_tail": _tail_text(exc.stderr if isinstance(exc.stderr, str) else ""),
+            "stdout_tail": _tail_text(
+                exc.stdout if isinstance(exc.stdout, str) else ""
+            ),
+            "stderr_tail": _tail_text(
+                exc.stderr if isinstance(exc.stderr, str) else ""
+            ),
             "timed_out": True,
         }
 
@@ -450,7 +583,16 @@ def _run_pre_judgement_verification_gate(
     with tempfile.TemporaryDirectory(prefix="issue-mcp-gate-") as temp_dir:
         worktree_path = Path(temp_dir)
         setup_result = subprocess.run(
-            ["git", "-C", str(repo_path), "worktree", "add", "--detach", str(worktree_path), base_ref],
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                "--detach",
+                str(worktree_path),
+                base_ref,
+            ],
             text=True,
             capture_output=True,
             check=False,
@@ -548,11 +690,17 @@ def _run_pre_judgement_verification_gate(
             build_status = str(gate_result["build"].get("status", "not-run"))
             test_status = str(gate_result["test"].get("status", "not-run"))
             if build_status == "pass" and test_status == "pass":
-                reason = "Build and tests passed in generated-code verification worktree."
+                reason = (
+                    "Build and tests passed in generated-code verification worktree."
+                )
             elif test_status in {"fail", "timeout"}:
-                reason = "Tests failed or timed out in generated-code verification worktree."
+                reason = (
+                    "Tests failed or timed out in generated-code verification worktree."
+                )
             elif build_status in {"fail", "timeout"}:
-                reason = "Build failed or timed out in generated-code verification worktree."
+                reason = (
+                    "Build failed or timed out in generated-code verification worktree."
+                )
             elif build_status == "not-run" and test_status == "not-run":
                 reason = "No build/test command discovered for this repository."
             else:
@@ -700,6 +848,460 @@ def _resolve_head_ref(
         return "HEAD"
 
 
+def _build_output_for_repair(verification_gate: dict[str, Any]) -> str:
+    build = verification_gate.get("build")
+    if not isinstance(build, dict):
+        return ""
+    parts = [
+        str(build.get("stdout_tail") or ""),
+        str(build.get("stderr_tail") or ""),
+    ]
+    return "\n".join(part for part in parts if part.strip())
+
+
+def _test_output_for_repair(verification_gate: dict[str, Any]) -> str:
+    test = verification_gate.get("test")
+    if not isinstance(test, dict):
+        return ""
+    parts = [
+        str(test.get("stdout_tail") or ""),
+        str(test.get("stderr_tail") or ""),
+    ]
+    return "\n".join(part for part in parts if part.strip())
+
+
+def _test_results_path_for_repair(verification_gate: dict[str, Any]) -> str | None:
+    junit = verification_gate.get("junit")
+    if not isinstance(junit, dict):
+        return None
+    path_value = junit.get("path")
+    return str(path_value) if path_value else None
+
+
+def _summarize_test_repair_round(round_payload: dict[str, Any]) -> str:
+    repaired = round_payload.get("repaired_files") or []
+    return (
+        f"test repair attempt {round_payload.get('attempt')}: "
+        f"parser={round_payload.get('failures_parser')}, "
+        f"files_repaired={len(repaired)}, "
+        f"test_after={round_payload.get('test_status_after', 'n/a')}, "
+        f"build_after={round_payload.get('build_status_after', 'n/a')}"
+    )
+
+
+def _summarize_repair_round(round_payload: dict[str, Any]) -> str:
+    repaired = round_payload.get("repaired_files") or []
+    return (
+        f"build repair attempt {round_payload.get('attempt')}: "
+        f"parser={round_payload.get('diagnostics_parser')}, "
+        f"files_repaired={len(repaired)}, "
+        f"build_after={round_payload.get('build_status_after', 'n/a')}"
+    )
+
+
+def _sanitize_build_repair_rounds(rounds: Any) -> list[dict[str, Any]]:
+    """Keep build repair rounds auditable in the report without inlining prompts.
+
+    Full prompts and raw responses are preserved as LLM debug artifacts; the JSON
+    report keeps their sizes plus the decision metadata of each round.
+    """
+
+    if not isinstance(rounds, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+    for round_payload in rounds:
+        if not isinstance(round_payload, dict):
+            continue
+
+        file_results: list[dict[str, Any]] = []
+        for file_result in round_payload.get("file_results") or []:
+            if not isinstance(file_result, dict):
+                continue
+            file_results.append(
+                {
+                    "target_file": file_result.get("target_file"),
+                    "diagnostic_count": file_result.get("diagnostic_count"),
+                    "ast_context_available": file_result.get("ast_context_available"),
+                    "chunked_mode": file_result.get("chunked_mode"),
+                    "repair_history_size": file_result.get("repair_history_size"),
+                    "related_symbol_files": file_result.get("related_symbol_files"),
+                    "semantic_context_resolved_symbols": file_result.get(
+                        "semantic_context_resolved_symbols"
+                    ),
+                    "semantic_context_error": file_result.get(
+                        "semantic_context_error"
+                    ),
+                    "changed": file_result.get("changed"),
+                    "rejected_reason": file_result.get("rejected_reason"),
+                    "error": file_result.get("error"),
+                    "syntax_validation": file_result.get("syntax_validation"),
+                    "prompt_chars": len(str(file_result.get("prompt") or "")),
+                    "raw_response_chars": len(
+                        str(file_result.get("raw_response") or "")
+                    ),
+                }
+            )
+
+        sanitized.append(
+            {
+                "attempt": round_payload.get("attempt"),
+                "max_attempts": round_payload.get("max_attempts"),
+                "diagnostics_parser": round_payload.get("diagnostics_parser"),
+                "diagnostics_by_file": round_payload.get("diagnostics_by_file"),
+                "unmatched_diagnostics": round_payload.get("unmatched_diagnostics"),
+                "deferred_diagnostics": round_payload.get("deferred_diagnostics"),
+                "inferred_diagnostic_mappings": round_payload.get(
+                    "inferred_diagnostic_mappings"
+                ),
+                "escalated_targets": round_payload.get("escalated_targets"),
+                "repaired_files": round_payload.get("repaired_files"),
+                "changed": round_payload.get("changed"),
+                "build_status_before": round_payload.get("build_status_before"),
+                "build_status_after": round_payload.get("build_status_after"),
+                "stopped_reason": round_payload.get("stopped_reason"),
+                "error": round_payload.get("error"),
+                "file_results": file_results,
+            }
+        )
+
+    return sanitized
+
+
+def _sanitize_test_repair_rounds(rounds: Any) -> list[dict[str, Any]]:
+    """Keep test repair rounds auditable in the report without inlining prompts."""
+
+    if not isinstance(rounds, list):
+        return []
+
+    sanitized: list[dict[str, Any]] = []
+    for round_payload in rounds:
+        if not isinstance(round_payload, dict):
+            continue
+
+        file_results: list[dict[str, Any]] = []
+        for file_result in round_payload.get("file_results") or []:
+            if not isinstance(file_result, dict):
+                continue
+            file_results.append(
+                {
+                    "target_file": file_result.get("target_file"),
+                    "failure_count": file_result.get("failure_count"),
+                    "matched_by_stack_trace": file_result.get("matched_by_stack_trace"),
+                    "ast_context_available": file_result.get("ast_context_available"),
+                    "related_files": file_result.get("related_files"),
+                    "changed": file_result.get("changed"),
+                    "rejected_reason": file_result.get("rejected_reason"),
+                    "error": file_result.get("error"),
+                    "syntax_validation": file_result.get("syntax_validation"),
+                    "prompt_chars": len(str(file_result.get("prompt") or "")),
+                    "raw_response_chars": len(
+                        str(file_result.get("raw_response") or "")
+                    ),
+                }
+            )
+
+        sanitized.append(
+            {
+                "attempt": round_payload.get("attempt"),
+                "max_attempts": round_payload.get("max_attempts"),
+                "failures_parser": round_payload.get("failures_parser"),
+                "failures_by_file": round_payload.get("failures_by_file"),
+                "unmatched_failures": round_payload.get("unmatched_failures"),
+                "repair_targets": round_payload.get("repair_targets"),
+                "repaired_files": round_payload.get("repaired_files"),
+                "changed": round_payload.get("changed"),
+                "test_status_before": round_payload.get("test_status_before"),
+                "test_status_after": round_payload.get("test_status_after"),
+                "build_status_after": round_payload.get("build_status_after"),
+                "test_pass_rate_before": round_payload.get("test_pass_rate_before"),
+                "test_pass_rate_after": round_payload.get("test_pass_rate_after"),
+                "build_recovery_rounds": round_payload.get("build_recovery_rounds"),
+                "stopped_reason": round_payload.get("stopped_reason"),
+                "error": round_payload.get("error"),
+                "file_results": file_results,
+            }
+        )
+
+    return sanitized
+
+
+async def _repair_tests_until_pass(
+    *,
+    session: Any,
+    verification_gate: dict[str, Any],
+    generated_code_by_file: dict[str, str],
+    apply_results: dict[str, dict[str, Any]],
+    problem_summary: str,
+    temperature: float,
+    seed: int,
+    max_attempts: int,
+    run_gate: Any,
+    log_lines: list[str],
+    recover_build: Any = None,
+    symbol_context_repo: Path | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Repair failing tests and re-verify, up to a bounded number of rounds.
+
+    The loop stops as soon as the tests pass, when the repair step cannot change
+    any file, when no test output survived the gate, or when the attempt budget
+    is exhausted. Because a behavioral repair can break compilation, the build is
+    recovered before the next attempt whenever it regresses.
+    """
+
+    rounds: list[dict[str, Any]] = []
+    if max_attempts <= 0:
+        return verification_gate, rounds
+
+    for attempt in range(1, int(max_attempts) + 1):
+        test = verification_gate.get("test")
+        test_status = str(test.get("status")) if isinstance(test, dict) else "not-run"
+        if test_status != "fail":
+            break
+
+        test_output = _test_output_for_repair(verification_gate)
+        results_path = _test_results_path_for_repair(verification_gate)
+        if not test_output.strip() and not results_path:
+            log_lines.append(
+                "Test repair skipped: verification gate preserved no test output."
+            )
+            break
+
+        repair_result = await session.call_tool(
+            "repair_test_failure",
+            {
+                "problem_summary": problem_summary,
+                "test_output": test_output,
+                "generated_code_by_file": generated_code_by_file,
+                "results_path": results_path,
+                "test_command": test.get("command") if isinstance(test, dict) else None,
+                "attempt": attempt,
+                "max_attempts": int(max_attempts),
+                "temperature": temperature,
+                "seed": seed,
+                "repo_path": str(symbol_context_repo)
+                if symbol_context_repo
+                else None,
+            },
+        )
+        repair_content = _coerce_json(
+            repair_result.content[0].text if repair_result.content else None
+        )
+        if not isinstance(repair_content, dict):
+            log_lines.append(
+                f"repair_test_failure returned invalid payload: {repair_content}"
+            )
+            break
+
+        round_payload: dict[str, Any] = dict(repair_content)
+        round_payload["test_status_before"] = test_status
+        round_payload["test_pass_rate_before"] = verification_gate.get("test_pass_rate")
+
+        if not repair_content.get("changed"):
+            round_payload["test_status_after"] = test_status
+            round_payload["stopped_reason"] = repair_content.get("error") or (
+                "No file could be repaired in this attempt."
+            )
+            rounds.append(round_payload)
+            log_lines.append(_summarize_test_repair_round(round_payload))
+            break
+
+        repaired_code_by_file = repair_content.get("generated_code_by_file")
+        if isinstance(repaired_code_by_file, dict):
+            for target_file, code in repaired_code_by_file.items():
+                if not isinstance(code, str):
+                    continue
+                generated_code_by_file[target_file] = code
+                apply_result = apply_results.get(target_file)
+                if isinstance(apply_result, dict):
+                    apply_result["generated_code"] = code
+                    apply_result["test_repair_applied"] = True
+
+        verification_gate = await run_gate(generated_code_by_file)
+
+        updated_build = verification_gate.get("build")
+        build_status = (
+            str(updated_build.get("status"))
+            if isinstance(updated_build, dict)
+            else "not-run"
+        )
+        if build_status == "fail" and recover_build is not None:
+            verification_gate, recovery_rounds = await recover_build(verification_gate)
+            round_payload["build_recovery_rounds"] = len(recovery_rounds)
+            updated_build = verification_gate.get("build")
+            build_status = (
+                str(updated_build.get("status"))
+                if isinstance(updated_build, dict)
+                else "not-run"
+            )
+
+        updated_test = verification_gate.get("test")
+        round_payload["build_status_after"] = build_status
+        round_payload["test_status_after"] = (
+            str(updated_test.get("status"))
+            if isinstance(updated_test, dict)
+            else "not-run"
+        )
+        round_payload["test_pass_rate_after"] = verification_gate.get("test_pass_rate")
+        round_payload["generated_code_by_file"] = {
+            target_file: generated_code_by_file.get(target_file, "")
+            for target_file in repair_content.get("repaired_files") or []
+        }
+        rounds.append(round_payload)
+        log_lines.append(_summarize_test_repair_round(round_payload))
+
+        if round_payload["test_status_after"] == "pass":
+            break
+
+    return verification_gate, rounds
+
+
+async def _repair_build_until_pass(
+    *,
+    session: Any,
+    verification_gate: dict[str, Any],
+    generated_code_by_file: dict[str, str],
+    apply_results: dict[str, dict[str, Any]],
+    problem_summary: str,
+    temperature: float,
+    seed: int,
+    max_attempts: int,
+    run_gate: Any,
+    log_lines: list[str],
+    symbol_context_repo: Path | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    """Repair compilation failures and re-verify, up to a bounded number of rounds.
+
+    The loop stops as soon as the build passes, when the repair step cannot change
+    any file, or when the attempt budget is exhausted, so a model that never
+    converges cannot keep the pipeline running indefinitely.
+    """
+
+    rounds: list[dict[str, Any]] = []
+    repair_history: list[dict[str, Any]] = []
+    escalate_routing = False
+    if max_attempts <= 0:
+        return verification_gate, rounds
+
+    for attempt in range(1, int(max_attempts) + 1):
+        build = verification_gate.get("build")
+        build_status = (
+            str(build.get("status")) if isinstance(build, dict) else "not-run"
+        )
+        if build_status != "fail":
+            break
+
+        build_output = _build_output_for_repair(verification_gate)
+        if not build_output.strip():
+            log_lines.append(
+                "Build repair skipped: verification gate preserved no build output."
+            )
+            break
+
+        repair_result = await session.call_tool(
+            "repair_build_failure",
+            {
+                "problem_summary": problem_summary,
+                "build_output": build_output,
+                "generated_code_by_file": generated_code_by_file,
+                "build_command": build.get("command")
+                if isinstance(build, dict)
+                else None,
+                "attempt": attempt,
+                "max_attempts": int(max_attempts),
+                "temperature": temperature,
+                "seed": seed,
+                "repo_path": str(symbol_context_repo)
+                if symbol_context_repo
+                else None,
+                "repair_history": repair_history[-5:],
+                "escalate_routing": escalate_routing,
+            },
+        )
+        repair_content = _coerce_json(
+            repair_result.content[0].text if repair_result.content else None
+        )
+        if not isinstance(repair_content, dict):
+            log_lines.append(
+                f"repair_build_failure returned invalid payload: {repair_content}"
+            )
+            break
+
+        round_payload: dict[str, Any] = dict(repair_content)
+        round_payload["build_status_before"] = build_status
+
+        if not repair_content.get("changed"):
+            round_payload["build_status_after"] = build_status
+            # Repairing the attributed owner changed nothing, so the owner is
+            # not where the fix belongs. Widen the routing once before giving
+            # up, instead of spending the remaining budget on the same target.
+            retry_with_escalation = not escalate_routing and attempt < int(
+                max_attempts
+            )
+            round_payload["stopped_reason"] = repair_content.get("error") or (
+                "No file could be repaired; escalating routing to the files "
+                "named by the diagnostics."
+                if retry_with_escalation
+                else "No file could be repaired in this attempt."
+            )
+            rounds.append(round_payload)
+            repair_history.append(
+                {
+                    "attempt": attempt,
+                    "build_status_before": build_status,
+                    "build_status_after": build_status,
+                    "diagnostics_by_file": repair_content.get(
+                        "diagnostics_by_file", {}
+                    ),
+                }
+            )
+            log_lines.append(_summarize_repair_round(round_payload))
+            if retry_with_escalation:
+                escalate_routing = True
+                continue
+            break
+
+        repaired_code_by_file = repair_content.get("generated_code_by_file")
+        if isinstance(repaired_code_by_file, dict):
+            for target_file, code in repaired_code_by_file.items():
+                if not isinstance(code, str):
+                    continue
+                generated_code_by_file[target_file] = code
+                apply_result = apply_results.get(target_file)
+                if isinstance(apply_result, dict):
+                    apply_result["generated_code"] = code
+                    apply_result["build_repair_applied"] = True
+
+        verification_gate = await run_gate(generated_code_by_file)
+        updated_build = verification_gate.get("build")
+        round_payload["build_status_after"] = (
+            str(updated_build.get("status"))
+            if isinstance(updated_build, dict)
+            else "not-run"
+        )
+        round_payload["generated_code_by_file"] = {
+            target_file: generated_code_by_file.get(target_file, "")
+            for target_file in repair_content.get("repaired_files") or []
+        }
+        rounds.append(round_payload)
+        repair_history.append(
+            {
+                "attempt": attempt,
+                "build_status_before": build_status,
+                "build_status_after": round_payload["build_status_after"],
+                "diagnostics_by_file": repair_content.get(
+                    "diagnostics_by_file", {}
+                ),
+            }
+        )
+        log_lines.append(_summarize_repair_round(round_payload))
+
+        if round_payload["build_status_after"] == "pass":
+            break
+
+    return verification_gate, rounds
+
+
 async def _run_mcp_workflow(
     repo_path: Path,
     base_ref: str,
@@ -712,6 +1314,8 @@ async def _run_mcp_workflow(
     verification_timeout_seconds: int,
     skip_verification_gate: bool,
     log_lines: list[str],
+    max_build_repair_attempts: int = 10,
+    max_test_repair_attempts: int = 10,
 ) -> dict[str, Any]:
     workspace_root = Path(__file__).resolve().parents[2]
     server_params = StdioServerParameters(
@@ -800,11 +1404,51 @@ async def _run_mcp_workflow(
                 f"### FILE: {path}\n{original_code_by_file.get(path, '')}"
                 for path in target_files
             )
-            combined_modified = "\n\n".join(
-                f"### FILE: {path}\n{generated_code_by_file.get(path, '')}"
-                for path in target_files
-            )
 
+            async def _run_verification_gate(
+                code_by_file: dict[str, str],
+            ) -> dict[str, Any]:
+                verification_result = await session.call_tool(
+                    "verify_testability_gate",
+                    {
+                        "repo_path": str(repo_path),
+                        "base_ref": base_ref,
+                        "generated_code_by_file": code_by_file,
+                        "timeout_seconds": verification_timeout_seconds,
+                    },
+                )
+                verification_content = _coerce_json(
+                    verification_result.content[0].text
+                    if verification_result.content
+                    else None
+                )
+                if not isinstance(verification_content, dict):
+                    verification_content = {
+                        "enabled": True,
+                        "build": {"status": "not-run", "command": None},
+                        "test": {"status": "not-run", "command": None},
+                        "coverage": {"available": False, "path": None},
+                        "junit": {"available": False, "path": None, "totals": None},
+                        "testability_gate": {
+                            "build_status": "not-run",
+                            "test_status": "not-run",
+                            "reason": "Verification gate returned invalid payload.",
+                        },
+                        "test_pass_rate_source": "not-run",
+                        "test_pass_rate": None,
+                        "log_lines": [
+                            f"verify_testability_gate invalid payload: {verification_content}"
+                        ],
+                    }
+                extra_logs = verification_content.get("log_lines")
+                if isinstance(extra_logs, list):
+                    log_lines.extend(
+                        str(line) for line in extra_logs if str(line).strip()
+                    )
+                return verification_content
+
+            build_repair_rounds: list[dict[str, Any]] = []
+            test_repair_rounds: list[dict[str, Any]] = []
             if skip_verification_gate:
                 verification_gate = {
                     "enabled": False,
@@ -822,41 +1466,62 @@ async def _run_mcp_workflow(
                 }
                 log_lines.append("Pre-judgement verification gate skipped by CLI flag.")
             else:
-                verification_result = await session.call_tool(
-                    "verify_testability_gate",
-                    {
-                        "repo_path": str(repo_path),
-                        "base_ref": base_ref,
-                        "generated_code_by_file": generated_code_by_file,
-                        "timeout_seconds": verification_timeout_seconds,
-                    },
-                )
-                verification_content = _coerce_json(
-                    verification_result.content[0].text
-                    if verification_result.content
-                    else None
-                )
-                if isinstance(verification_content, dict):
-                    verification_gate = verification_content
-                else:
-                    verification_gate = {
-                        "enabled": True,
-                        "build": {"status": "not-run", "command": None},
-                        "test": {"status": "not-run", "command": None},
-                        "coverage": {"available": False, "path": None},
-                        "junit": {"available": False, "path": None, "totals": None},
-                        "testability_gate": {
-                            "build_status": "not-run",
-                            "test_status": "not-run",
-                            "reason": "Verification gate returned invalid payload.",
-                        },
-                        "test_pass_rate_source": "not-run",
-                        "test_pass_rate": None,
-                        "log_lines": [f"verify_testability_gate invalid payload: {verification_content}"],
-                    }
-                extra_logs = verification_gate.get("log_lines")
-                if isinstance(extra_logs, list):
-                    log_lines.extend(str(line) for line in extra_logs if str(line).strip())
+                verification_gate = await _run_verification_gate(generated_code_by_file)
+
+                with _base_ref_worktree(
+                    repo_path, base_ref, log_lines
+                ) as symbol_context_repo:
+
+                    async def _recover_build(
+                        gate: dict[str, Any],
+                    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+                        return await _repair_build_until_pass(
+                            session=session,
+                            verification_gate=gate,
+                            generated_code_by_file=generated_code_by_file,
+                            apply_results=apply_results,
+                            problem_summary=issue_prompt,
+                            temperature=temperature,
+                            seed=seed,
+                            max_attempts=max_build_repair_attempts,
+                            run_gate=_run_verification_gate,
+                            log_lines=log_lines,
+                            symbol_context_repo=symbol_context_repo,
+                        )
+
+                    verification_gate, build_repair_rounds = await _recover_build(
+                        verification_gate
+                    )
+
+                    async def _recover_build_during_test_repair(
+                        gate: dict[str, Any],
+                    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+                        gate, recovery_rounds = await _recover_build(gate)
+                        build_repair_rounds.extend(recovery_rounds)
+                        return gate, recovery_rounds
+
+                    (
+                        verification_gate,
+                        test_repair_rounds,
+                    ) = await _repair_tests_until_pass(
+                        session=session,
+                        verification_gate=verification_gate,
+                        generated_code_by_file=generated_code_by_file,
+                        apply_results=apply_results,
+                        problem_summary=issue_prompt,
+                        temperature=temperature,
+                        seed=seed,
+                        max_attempts=max_test_repair_attempts,
+                        run_gate=_run_verification_gate,
+                        log_lines=log_lines,
+                        recover_build=_recover_build_during_test_repair,
+                        symbol_context_repo=symbol_context_repo,
+                    )
+
+            combined_modified = "\n\n".join(
+                f"### FILE: {path}\n{generated_code_by_file.get(path, '')}"
+                for path in target_files
+            )
 
             judgement_payload = combined_modified
             judgement_summary = {
@@ -865,6 +1530,50 @@ async def _run_mcp_workflow(
                 "test": verification_gate.get("test"),
                 "coverage": verification_gate.get("coverage"),
                 "junit": verification_gate.get("junit"),
+                "build_repair": {
+                    "attempts": len(build_repair_rounds),
+                    "max_attempts": int(max_build_repair_attempts),
+                    "repaired_files": sorted(
+                        {
+                            target_file
+                            for round_payload in build_repair_rounds
+                            for target_file in round_payload.get("repaired_files") or []
+                        }
+                    ),
+                    "related_symbol_files": sorted(
+                        {
+                            related_file
+                            for round_payload in build_repair_rounds
+                            for file_result in round_payload.get("file_results") or []
+                            for related_file in file_result.get(
+                                "related_symbol_files"
+                            )
+                            or []
+                        }
+                    ),
+                },
+                "test_repair": {
+                    "attempts": len(test_repair_rounds),
+                    "max_attempts": int(max_test_repair_attempts),
+                    "repaired_files": sorted(
+                        {
+                            target_file
+                            for round_payload in test_repair_rounds
+                            for target_file in round_payload.get("repaired_files") or []
+                        }
+                    ),
+                    "related_symbol_files": sorted(
+                        {
+                            related_file
+                            for round_payload in test_repair_rounds
+                            for file_result in round_payload.get("file_results") or []
+                            for related_file in file_result.get(
+                                "related_symbol_files"
+                            )
+                            or []
+                        }
+                    ),
+                },
             }
             judgement_payload = (
                 judgement_payload
@@ -883,6 +1592,11 @@ async def _run_mcp_workflow(
             judge_content = _coerce_json(
                 judge_result.content[0].text if judge_result.content else None
             )
+            judge_content = _enforce_verification_verdict(
+                judgement=judge_content,
+                apply_results=apply_results,
+                verification_gate=verification_gate,
+            )
             log_lines.append("judge_swe_code_change completed")
 
             first_target = target_files[0] if target_files else ""
@@ -896,6 +1610,8 @@ async def _run_mcp_workflow(
                 "apply_results": apply_results,
                 "generated_code_by_file": generated_code_by_file,
                 "verification": verification_gate,
+                "build_repair": build_repair_rounds,
+                "test_repair": test_repair_rounds,
                 "judgement": judge_content,
                 "combined_original_code": combined_original,
                 "combined_generated_code": combined_modified,
@@ -905,6 +1621,135 @@ async def _run_mcp_workflow(
                     "cwd": server_params.cwd,
                 },
             }
+
+
+@contextlib.contextmanager
+def _base_ref_worktree(
+    repo_path: Path,
+    base_ref: str,
+    log_lines: list[str],
+) -> Iterator[Path | None]:
+    """Materialize ``base_ref`` once for the whole run, or yield ``None``.
+
+    Repair stages resolve cross-file symbol declarations from the repository.
+    Reading them from the working tree would describe a different commit than
+    the one being built and tested, so the base commit is checked out once and
+    reused by every repair round instead of per round, which would be costly.
+    """
+
+    with tempfile.TemporaryDirectory(prefix="issue-mcp-baseref-") as temp_dir:
+        worktree_path = Path(temp_dir) / "base"
+        setup_result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                "--detach",
+                str(worktree_path),
+                base_ref,
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if setup_result.returncode != 0:
+            log_lines.append(
+                "Could not materialize base ref for symbol context "
+                f"({base_ref}); repair stages will run without it: "
+                f"{_tail_text(setup_result.stderr) or _tail_text(setup_result.stdout)}"
+            )
+            yield None
+            return
+
+        try:
+            yield worktree_path
+        finally:
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repo_path),
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(worktree_path),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+
+
+def _localize_at_base_ref(
+    repo_path: Path,
+    base_ref: str,
+    localizer: RepositoryIssueLocalizer,
+    issue_text: str,
+    candidate_paths: list[str] | None,
+    log_lines: list[str],
+) -> LocalizerResult:
+    """Localize against the base commit rather than the current working tree.
+
+    Every later stage of the experiment (original file contents, the build and
+    test gate, the reference diff) is anchored on ``base_ref``. Localizing on
+    whatever the working tree happens to contain would rank a different set of
+    files than the one that is later generated and verified, so the candidate
+    universe is materialized from ``base_ref`` in a disposable worktree.
+    """
+
+    with tempfile.TemporaryDirectory(prefix="issue-mcp-localize-") as temp_dir:
+        worktree_path = Path(temp_dir) / "base"
+        setup_result = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(repo_path),
+                "worktree",
+                "add",
+                "--detach",
+                str(worktree_path),
+                base_ref,
+            ],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if setup_result.returncode != 0:
+            log_lines.append(
+                "Could not materialize base ref for localization "
+                f"({base_ref}); falling back to the working tree: "
+                f"{_tail_text(setup_result.stderr) or _tail_text(setup_result.stdout)}"
+            )
+            return localizer.localize(
+                repo_path=repo_path,
+                issue_text=issue_text,
+                candidate_paths=candidate_paths,
+            )
+
+        try:
+            log_lines.append(f"Localizing against base ref {base_ref}.")
+            return localizer.localize(
+                repo_path=worktree_path,
+                issue_text=issue_text,
+                candidate_paths=candidate_paths,
+            )
+        finally:
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(repo_path),
+                    "worktree",
+                    "remove",
+                    "--force",
+                    str(worktree_path),
+                ],
+                text=True,
+                capture_output=True,
+                check=False,
+            )
 
 
 def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
@@ -932,7 +1777,9 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
 
     issue_prompt = _build_issue_prompt(issue, comments)
 
-    pr_candidate_files: list[str] | None = None
+    pr_candidate_files = [
+        item.strip() for item in (args.candidate_files or "").split(",") if item.strip()
+    ] or None
 
     config = SweMcpConfig.load(str(repo_path))
     semantic_index_config = config.semantic_index
@@ -950,12 +1797,15 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         neo4j_password=semantic_index_config.neo4j_password,
         neo4j_password_env_var=semantic_index_config.neo4j_password_env_var,
         neo4j_database=semantic_index_config.neo4j_database,
+        min_relative_score=args.localizer_relative_score_threshold,
     )
-    localization = localizer.localize(
+    localization = _localize_at_base_ref(
         repo_path=repo_path,
+        base_ref=args.base_ref,
+        localizer=localizer,
         issue_text=issue_prompt,
-        top_k=args.max_target_files,
         candidate_paths=pr_candidate_files,
+        log_lines=log_lines,
     )
     target_files = localization.selected_files
     if not target_files:
@@ -1026,12 +1876,11 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             verification_timeout_seconds=args.verification_timeout_seconds,
             skip_verification_gate=args.skip_verification_gate,
             log_lines=log_lines,
+            max_build_repair_attempts=args.max_build_repair_attempts,
+            max_test_repair_attempts=args.max_test_repair_attempts,
         )
     )
 
-    apply_payload = (
-        mcp_payload.get("apply") if isinstance(mcp_payload.get("apply"), dict) else None
-    )
     apply_results = (
         mcp_payload.get("apply_results")
         if isinstance(mcp_payload.get("apply_results"), dict)
@@ -1292,19 +2141,36 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "target_file": target_files[0] if target_files else None,
             "target_files": target_files,
             "target_file_count": len(target_files),
+            "candidate_paths": pr_candidate_files or [],
+            "candidate_source": (
+                "explicit_candidate_paths"
+                if pr_candidate_files
+                else "repository_discovery"
+            ),
             "localizer": {
                 "strategy_count": len(localizer.strategies),
+                "relative_score_threshold": localizer.min_relative_score,
                 "details": localization.details,
+                "selected_files": target_files,
             },
             "base_ref": base_ref,
             "head_ref": head_ref,
             "linked_pr_number": detected_pr,
             "generated_code_source": (
                 "mcp_apply_plan_swe_code_change"
-                if apply_payload
-                and not apply_payload.get("used_fallback_to_original", False)
+                if any(
+                    isinstance(payload, dict)
+                    and not payload.get("used_fallback_to_original", False)
+                    for payload in apply_results.values()
+                )
                 else "original_code_fallback"
             ),
+            "apply_outcomes": {
+                path: payload.get("apply_outcome")
+                for path, payload in apply_results.items()
+                if isinstance(payload, dict)
+            },
+            "apply_outcome_counts": _count_apply_outcomes(apply_results),
         },
         "run_config": {
             "github": {
@@ -1374,6 +2240,10 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "context": mcp_payload["context"],
             "apply": mcp_payload.get("apply"),
             "apply_results": mcp_payload.get("apply_results", {}),
+            "build_repair": _sanitize_build_repair_rounds(
+                mcp_payload.get("build_repair")
+            ),
+            "test_repair": _sanitize_test_repair_rounds(mcp_payload.get("test_repair")),
             "judgement": mcp_payload["judgement"],
         },
         "testability_gate": {
@@ -1408,15 +2278,26 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--issue-url", required=True, help="GitHub issue URL")
     parser.add_argument("--repo-path", required=True, help="Local repository path")
     parser.add_argument(
-        "--max-target-files",
-        type=int,
-        default=5,
-        help="Maximum number of files selected by the localizer.",
+        "--candidate-files",
+        default="",
+        help=(
+            "Optional comma-separated candidate files for a controlled experiment. "
+            "When omitted, the localizer searches the repository normally."
+        ),
     )
     parser.add_argument(
         "--enable-nlp-localizer",
         action="store_true",
         help="Enable semantic NLP localizer strategy (TF-IDF cosine).",
+    )
+    parser.add_argument(
+        "--localizer-relative-score-threshold",
+        type=float,
+        default=RepositoryIssueLocalizer.DEFAULT_MIN_RELATIVE_SCORE,
+        help=(
+            "Select every file whose score reaches this fraction of the best "
+            "localization score; this does not limit the number of files."
+        ),
     )
     parser.add_argument("--base-ref", default="HEAD", help="Git reference for baseline")
     parser.add_argument(
@@ -1561,6 +2442,24 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Skip the pre-judgement verification gate (build/test discovery and execution).",
     )
     parser.add_argument(
+        "--max-build-repair-attempts",
+        type=int,
+        default=10,
+        help=(
+            "Maximum diagnostic-guided repair rounds when the generated code parses "
+            "but fails to compile. Use 0 to disable the build repair loop."
+        ),
+    )
+    parser.add_argument(
+        "--max-test-repair-attempts",
+        type=int,
+        default=10,
+        help=(
+            "Maximum failure-guided repair rounds when the generated code compiles "
+            "but fails its tests. Use 0 to disable the test repair loop."
+        ),
+    )
+    parser.add_argument(
         "--clean-output",
         action="store_true",
         help="Delete output artifacts for the selected output paths before writing new ones.",
@@ -1631,4 +2530,3 @@ def main(argv: list[str] | None = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

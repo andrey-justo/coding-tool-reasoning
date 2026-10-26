@@ -11,7 +11,7 @@ args:
     - Reliability
     - Maintainability
     - Security
-  max_target_files: 5
+  localizer_relative_score_threshold: 0.5
   model: localai
   temperature: 0.2
   seed: 42

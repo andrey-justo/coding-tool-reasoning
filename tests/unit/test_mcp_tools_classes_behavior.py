@@ -32,6 +32,29 @@ class _FakeLlmChunked:
         return "```\nUPDATED_CHUNK\n```"
 
 
+class _FakeLlmInvalidThenRepair:
+    last_instance = None
+
+    def __init__(self) -> None:
+        self.calls = 0
+        type(self).last_instance = self
+
+    def chat(self, prompt: str, **kwargs) -> str:
+        self.calls += 1
+        if self.calls == 1:
+            return "```csharp\npublic class Example { public void Run( { }\n```"
+        return (
+            "```csharp\n"
+            'public class Example { public void Run() { Console.WriteLine("updated"); } }\n'
+            "```"
+        )
+
+
+class _FakeLlmAlwaysInvalid:
+    def chat(self, prompt: str, **kwargs) -> str:
+        return "```csharp\npublic class Example { public void Run( { }\n```"
+
+
 def _build_swe_context() -> SweContext:
     return SweContext(
         plan=CodeGenPlan(
@@ -82,6 +105,7 @@ def test_apply_plan_tool_executes_single_shot_and_forwards_chat_kwargs() -> None
     assert result["chunked"] is False
     assert "print('updated')" in result["generated_code"]
     assert result["used_fallback_to_original"] is False
+    assert result["apply_outcome"] == "modified"
 
 
 def test_apply_plan_tool_returns_fallback_on_llm_error() -> None:
@@ -98,6 +122,7 @@ def test_apply_plan_tool_returns_fallback_on_llm_error() -> None:
     assert result["used_fallback_to_original"] is True
     assert result["chunked"] is False
     assert "RuntimeError" in result["error"]
+    assert result["apply_outcome"] == "generation_error_fallback"
 
 
 def test_apply_plan_tool_chunked_mode_uses_multiple_chunks() -> None:
@@ -122,6 +147,137 @@ def test_apply_plan_tool_helpers_cover_edge_cases() -> None:
         {"start": 1, "end": 1, "code": ""}
     ]
     assert ApplyPlanSweCodeChangeTool._normalize_generated_formatting("x", "") == "x"
+    assert (
+        ApplyPlanSweCodeChangeTool._strip_transport_bom("\ufeffclass C {}")
+        == "class C {}"
+    )
+    assert (
+        ApplyPlanSweCodeChangeTool._strip_transport_bom("ï»¿class C {}") == "class C {}"
+    )
+
+
+def test_apply_plan_tool_repairs_syntax_invalid_csharp_generation() -> None:
+    registry = _build_registry(_FakeLlmInvalidThenRepair)
+    tool = ApplyPlanSweCodeChangeTool(registry)
+    original = "public class Example { public void Run() { } }\n"
+
+    result = tool.execute(
+        swe_context=_build_swe_context(),
+        original_code=original,
+        target_file="src/Example.cs",
+    )
+
+    assert 'Console.WriteLine("updated")' in result["generated_code"]
+    assert result["used_fallback_to_original"] is False
+    assert result["syntax_validation"]["final"]["valid"] is True
+    assert result["syntax_validation"]["rejected_invalid_generation"] is False
+    assert len(result["syntax_validation"]["repair_attempts"]) == 1
+    assert _FakeLlmInvalidThenRepair.last_instance.calls == 2
+
+
+def test_apply_plan_tool_rejects_csharp_that_remains_syntax_invalid() -> None:
+    registry = _build_registry(_FakeLlmAlwaysInvalid)
+    tool = ApplyPlanSweCodeChangeTool(registry)
+    original = "public class Example { public void Run() { } }\n"
+
+    result = tool.execute(
+        swe_context=_build_swe_context(),
+        original_code=original,
+        target_file="src/Example.cs",
+    )
+
+    assert result["generated_code"] == original
+    assert result["used_fallback_to_original"] is True
+    assert result["syntax_validation"]["rejected_invalid_generation"] is True
+    assert len(result["syntax_validation"]["repair_attempts"]) == 2
+    assert "syntactically invalid" in result["error"]
+    assert result["apply_outcome"] == "syntax_rejected_fallback"
+
+
+class _FakeLlmNoOp:
+    def chat(self, prompt: str, **kwargs: object) -> str:
+        return "No change is required.\n\n```python\nprint('old')\n```"
+
+
+class _FakeLlmEmpty:
+    def chat(self, prompt: str, **kwargs: object) -> str:
+        return "   "
+
+
+def test_apply_plan_tool_distinguishes_model_no_op_from_fallback() -> None:
+    registry = _build_registry(_FakeLlmNoOp)
+    tool = ApplyPlanSweCodeChangeTool(registry)
+    original = "print('old')"
+
+    result = tool.execute(
+        swe_context=_build_swe_context(),
+        original_code=original,
+        target_file="src/file.py",
+    )
+
+    assert result["generated_code"].strip() == original
+    assert result["used_fallback_to_original"] is True
+    assert result["apply_outcome"] == "unchanged_model_output"
+    assert result["empty_generated_guardrail_triggered"] is False
+    assert result["error"] is None
+
+
+def test_apply_plan_tool_flags_empty_response_fallback() -> None:
+    registry = _build_registry(_FakeLlmEmpty)
+    tool = ApplyPlanSweCodeChangeTool(registry)
+    original = "print('old')"
+
+    result = tool.execute(
+        swe_context=_build_swe_context(),
+        original_code=original,
+        target_file="src/file.py",
+    )
+
+    assert result["generated_code"] == original
+    assert result["used_fallback_to_original"] is True
+    assert result["empty_generated_guardrail_triggered"] is False
+    assert result["apply_outcome"] == "empty_response_fallback"
+
+
+def test_apply_plan_tool_flags_documentation_guardrail_block() -> None:
+    registry = _build_registry(_FakeLlmSuccess)
+    tool = ApplyPlanSweCodeChangeTool(registry)
+
+    result = tool.execute(
+        swe_context=_build_swe_context(),
+        original_code="# docs",
+        target_file="docs/readme.md",
+    )
+
+    assert result["guardrail_blocked"] is True
+    assert result["apply_outcome"] == "guardrail_blocked"
+
+
+def test_apply_plan_tool_classifier_prioritizes_infrastructure_states() -> None:
+    classify = ApplyPlanSweCodeChangeTool._classify_apply_outcome
+
+    assert (
+        classify(
+            original_code="a",
+            generated_code="b",
+            empty_generated_guardrail_triggered=False,
+            syntax_rejected=False,
+            generation_error=False,
+            guardrail_blocked=False,
+        )
+        == "modified"
+    )
+    assert (
+        classify(
+            original_code="a",
+            generated_code="a",
+            empty_generated_guardrail_triggered=False,
+            syntax_rejected=False,
+            generation_error=True,
+            guardrail_blocked=False,
+        )
+        == "generation_error_fallback"
+    )
 
 
 class _FakeExplanationService:

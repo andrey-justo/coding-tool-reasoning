@@ -3,12 +3,23 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
-from pathlib import Path
 import re
+from pathlib import Path
 from typing import Any
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.swe_context import SweContext
+from src.service.syntax_validator import SyntaxValidationResult, SyntaxValidator
+from src.service.tool_prompt_template_service import ToolPromptTemplateService
+
+SYNTAX_REPAIR_TEMPLATE_NAME = "syntax_repair"
+
+APPLY_OUTCOME_MODIFIED = "modified"
+APPLY_OUTCOME_UNCHANGED_MODEL_OUTPUT = "unchanged_model_output"
+APPLY_OUTCOME_EMPTY_RESPONSE_FALLBACK = "empty_response_fallback"
+APPLY_OUTCOME_SYNTAX_REJECTED_FALLBACK = "syntax_rejected_fallback"
+APPLY_OUTCOME_GENERATION_ERROR_FALLBACK = "generation_error_fallback"
+APPLY_OUTCOME_GUARDRAIL_BLOCKED = "guardrail_blocked"
 
 
 class ApplyPlanSweCodeChangeTool:
@@ -38,6 +49,42 @@ class ApplyPlanSweCodeChangeTool:
     @staticmethod
     def _sha256_text(value: str) -> str:
         return hashlib.sha256(value.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _classify_apply_outcome(
+        *,
+        original_code: str,
+        generated_code: str,
+        empty_generated_guardrail_triggered: bool,
+        syntax_rejected: bool,
+        generation_error: bool,
+        guardrail_blocked: bool,
+        raw_response: str = "",
+        extracted_blocks: list[dict[str, str]] | None = None,
+    ) -> str:
+        """Classify why the applied code does or does not differ from the original.
+
+        ``used_fallback_to_original`` only reports textual equality, which merges a
+        deliberate no-op from the model with infrastructure fallbacks. This returns
+        a single explicit state so reports can tell those cases apart.
+        """
+
+        if guardrail_blocked:
+            return APPLY_OUTCOME_GUARDRAIL_BLOCKED
+        if generation_error:
+            return APPLY_OUTCOME_GENERATION_ERROR_FALLBACK
+        if empty_generated_guardrail_triggered:
+            return APPLY_OUTCOME_EMPTY_RESPONSE_FALLBACK
+        if syntax_rejected:
+            return APPLY_OUTCOME_SYNTAX_REJECTED_FALLBACK
+        if generated_code.strip() != original_code.strip():
+            return APPLY_OUTCOME_MODIFIED
+
+        # Output equals the original. A response carrying no usable code means the
+        # original was restored by fallback, not that the model chose a no-op.
+        if not raw_response.strip() and not (extracted_blocks or []):
+            return APPLY_OUTCOME_EMPTY_RESPONSE_FALLBACK
+        return APPLY_OUTCOME_UNCHANGED_MODEL_OUTPUT
 
     @classmethod
     def _build_content_reference(
@@ -168,6 +215,10 @@ class ApplyPlanSweCodeChangeTool:
         return normalized
 
     @staticmethod
+    def _strip_transport_bom(value: str) -> str:
+        return SyntaxValidator.normalize_transport_bom(value)
+
+    @staticmethod
     def _build_single_shot_prompt(
         target_path: str,
         compact_context_json: str,
@@ -212,6 +263,160 @@ class ApplyPlanSweCodeChangeTool:
             f"```\n{chunk_code}\n```\n"
         )
 
+    @staticmethod
+    def _resolve_templates_root(server_context: Any) -> str | None:
+        """Resolve the knowledge template root from the server context.
+
+        Returns ``None`` so the template service falls back to its packaged
+        default when the context does not expose a usable root.
+        """
+
+        configured = getattr(
+            getattr(server_context, "config", None), "concern_assets", None
+        )
+        templates_root = getattr(configured, "templates_root_dir", None)
+        repo_root = getattr(server_context, "repo_root", None)
+
+        if not templates_root:
+            if not repo_root:
+                return None
+            return str(Path(repo_root) / "knowledge" / "template")
+
+        path = Path(templates_root)
+        if path.is_absolute() or not repo_root:
+            return str(path)
+        return str(Path(repo_root) / path)
+
+    @staticmethod
+    def _build_syntax_repair_prompt(
+        target_path: str,
+        original_code: str,
+        generated_code: str,
+        validation: SyntaxValidationResult,
+        attempt: int,
+        max_attempts: int,
+        template_service: ToolPromptTemplateService | None = None,
+    ) -> str:
+        diagnostics_json = json.dumps(
+            [diagnostic.__dict__ for diagnostic in validation.diagnostics],
+            ensure_ascii=False,
+            indent=2,
+        )
+        service = template_service or ToolPromptTemplateService()
+        return service.render(
+            SYNTAX_REPAIR_TEMPLATE_NAME,
+            {
+                "TARGET_PATH": target_path,
+                "ATTEMPT": str(attempt),
+                "MAX_ATTEMPTS": str(max_attempts),
+                "DIAGNOSTICS_JSON": diagnostics_json,
+                "ORIGINAL_CODE": original_code,
+                "GENERATED_CODE": generated_code,
+            },
+        )
+
+    def _validate_and_repair_syntax(
+        self,
+        *,
+        llm_client: Any,
+        original_code: str,
+        generated_code: str,
+        target_path: str,
+        max_attempts: int,
+        max_diagnostics: int,
+        chat_kwargs: dict[str, Any],
+        template_service: ToolPromptTemplateService | None = None,
+    ) -> tuple[str, dict[str, Any]]:
+        validator = SyntaxValidator()
+        original_validation = validator.validate(
+            target_path,
+            original_code,
+            max_diagnostics=max_diagnostics,
+        )
+        validation = validator.validate(
+            target_path,
+            generated_code,
+            max_diagnostics=max_diagnostics,
+        )
+        repair_attempts: list[dict[str, Any]] = []
+
+        original_error_count = len(original_validation.diagnostics)
+        generated_error_count = len(validation.diagnostics)
+        introduced_invalid_syntax = (
+            validation.available
+            and not validation.valid
+            and (
+                original_validation.valid
+                or generated_error_count > original_error_count
+            )
+        )
+
+        for attempt in range(1, max_attempts + 1):
+            if not introduced_invalid_syntax:
+                break
+            try:
+                prompt = self._build_syntax_repair_prompt(
+                    target_path=target_path,
+                    original_code=original_code,
+                    generated_code=generated_code,
+                    validation=validation,
+                    attempt=attempt,
+                    max_attempts=max_attempts,
+                    template_service=template_service,
+                )
+                raw_response = llm_client.chat(prompt, **chat_kwargs)
+                blocks = self._extract_code_blocks(raw_response)
+                repaired_code = self._select_generated_code(
+                    generated_code,
+                    blocks,
+                    raw_response,
+                )
+                repaired_code = self._normalize_generated_formatting(
+                    original_code=generated_code,
+                    generated_code=repaired_code,
+                )
+                repaired_validation = validator.validate(
+                    target_path,
+                    repaired_code,
+                    max_diagnostics=max_diagnostics,
+                )
+                repair_attempts.append(
+                    {
+                        "attempt": attempt,
+                        "validation": repaired_validation.to_dict(),
+                    }
+                )
+                generated_code = repaired_code
+                validation = repaired_validation
+                generated_error_count = len(validation.diagnostics)
+                introduced_invalid_syntax = (
+                    validation.available
+                    and not validation.valid
+                    and (
+                        original_validation.valid
+                        or generated_error_count > original_error_count
+                    )
+                )
+            except Exception as exc:
+                repair_attempts.append(
+                    {
+                        "attempt": attempt,
+                        "error": f"{type(exc).__name__}: {exc}",
+                    }
+                )
+
+        rejected = introduced_invalid_syntax
+        if rejected:
+            generated_code = original_code
+
+        return generated_code, {
+            "available": validation.available,
+            "original": original_validation.to_dict(),
+            "final": validation.to_dict(),
+            "repair_attempts": repair_attempts,
+            "rejected_invalid_generation": rejected,
+        }
+
     def execute(
         self,
         swe_context: SweContext,
@@ -225,7 +430,11 @@ class ApplyPlanSweCodeChangeTool:
         llm_cls = self._registry._llm_client_cls or MultiModelLLMClient
         llm_client = llm_cls()
 
-        config = self._registry._create_swe_server_context().config.execution
+        server_context = self._registry._create_swe_server_context()
+        config = server_context.config.execution
+        template_service = ToolPromptTemplateService(
+            self._resolve_templates_root(server_context)
+        )
 
         target_path = target_file or "target_file"
         target_language = swe_context.plan.target_language
@@ -241,6 +450,7 @@ class ApplyPlanSweCodeChangeTool:
                 "raw_response": "",
                 "extracted_code_blocks": [],
                 "used_fallback_to_original": True,
+                "apply_outcome": APPLY_OUTCOME_GUARDRAIL_BLOCKED,
                 "error": guardrail_error,
                 "guardrail_blocked": True,
                 "prompt": "[guardrail-blocked: documentation target]",
@@ -292,6 +502,7 @@ class ApplyPlanSweCodeChangeTool:
                     "raw_response": "",
                     "extracted_code_blocks": [],
                     "used_fallback_to_original": True,
+                    "apply_outcome": APPLY_OUTCOME_GENERATION_ERROR_FALLBACK,
                     "error": f"{type(exc).__name__}: {exc}",
                     "prompt": prompt,
                     "compact_context": compact_context,
@@ -360,19 +571,50 @@ class ApplyPlanSweCodeChangeTool:
             original_code=original_code,
             generated_code=generated_code,
         )
+        generated_code = self._strip_transport_bom(generated_code)
 
         empty_generated_guardrail_triggered = False
         if not generated_code.strip():
             generated_code = original_code
             empty_generated_guardrail_triggered = True
 
+        max_repair_attempts = int(getattr(config, "max_syntax_repair_attempts", 2))
+        max_syntax_diagnostics = int(getattr(config, "max_syntax_diagnostics", 20))
+        generated_code, syntax_validation = self._validate_and_repair_syntax(
+            llm_client=llm_client,
+            original_code=original_code,
+            generated_code=generated_code,
+            target_path=target_path,
+            max_attempts=max_repair_attempts,
+            max_diagnostics=max_syntax_diagnostics,
+            chat_kwargs=chat_kwargs,
+            template_service=template_service,
+        )
+        syntax_rejected = bool(
+            syntax_validation.get("rejected_invalid_generation", False)
+        )
+
+        unchanged = generated_code.strip() == original_code.strip()
+        chunk_generation_failed = bool(chunk_errors) and unchanged
+
+        apply_outcome = self._classify_apply_outcome(
+            original_code=original_code,
+            generated_code=generated_code,
+            empty_generated_guardrail_triggered=empty_generated_guardrail_triggered,
+            syntax_rejected=syntax_rejected,
+            generation_error=chunk_generation_failed,
+            guardrail_blocked=False,
+            raw_response=raw_response,
+            extracted_blocks=extracted_blocks,
+        )
+
         return {
             "target_file": target_path,
             "generated_code": generated_code,
             "raw_response": raw_response,
             "extracted_code_blocks": extracted_blocks,
-            "used_fallback_to_original": generated_code.strip()
-            == original_code.strip(),
+            "used_fallback_to_original": unchanged,
+            "apply_outcome": apply_outcome,
             "prompt": prompt,
             "compact_context": compact_context,
             "chunked": chunked,
@@ -385,11 +627,14 @@ class ApplyPlanSweCodeChangeTool:
             "chunk_errors": chunk_errors if chunked else [],
             "formatting_normalized": True,
             "empty_generated_guardrail_triggered": empty_generated_guardrail_triggered,
+            "syntax_validation": syntax_validation,
             "execution_config": {
                 "max_summary_chars": config.max_summary_chars,
                 "max_security_context_chars": config.max_security_context_chars,
                 "max_single_shot_code_chars": config.max_single_shot_code_chars,
                 "chunk_lines": config.chunk_lines,
+                "max_syntax_repair_attempts": max_repair_attempts,
+                "max_syntax_diagnostics": max_syntax_diagnostics,
             },
             "content_reference": self._build_content_reference(
                 target_file=target_path,
@@ -400,6 +645,11 @@ class ApplyPlanSweCodeChangeTool:
             "error": (
                 "Guardrail fallback: generated code was empty after normalization."
                 if empty_generated_guardrail_triggered
-                else None
+                else (
+                    "Guardrail fallback: generated code remained syntactically invalid "
+                    "after bounded repair attempts."
+                    if syntax_rejected
+                    else None
+                )
             ),
         }
