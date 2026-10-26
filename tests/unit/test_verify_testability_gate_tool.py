@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -81,7 +82,9 @@ def test_run_command_with_timeout_covers_pass_fail_and_timeout(
             return _Completed(0, "ok\n", "")
         if calls["count"] == 2:
             return _Completed(3, "", "failed\n")
-        raise subprocess.TimeoutExpired(cmd=["x"], timeout=1, output="a\n", stderr="b\n")
+        raise subprocess.TimeoutExpired(
+            cmd=["x"], timeout=1, output="a\n", stderr="b\n"
+        )
 
     monkeypatch.setattr(
         "src.mcp.tools.verify_testability_gate_tool.subprocess.run",
@@ -110,13 +113,23 @@ def test_discover_verification_commands_for_python_and_unknown(
     (py_repo / "tests").mkdir()
     (py_repo / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
 
-    monkeypatch.setattr("src.mcp.tools.verify_testability_gate_tool.shutil.which", lambda _: None)
+    monkeypatch.setattr(
+        "src.service.code_sanitization.python_strategy.shutil.which", lambda _: None
+    )
 
     junit = py_repo / ".experiment_artifacts" / "junit.xml"
     cov = py_repo / ".experiment_artifacts" / "coverage.xml"
-    discovered = VerifyTestabilityGateTool._discover_verification_commands(py_repo, junit, cov)
+    discovered = VerifyTestabilityGateTool._discover_verification_commands(
+        py_repo, junit, cov
+    )
     assert discovered["project_type"] == "python"
-    assert discovered["build_command"] == [sys.executable, "-m", "compileall", "-q", "src"]
+    assert discovered["build_command"] == [
+        sys.executable,
+        "-m",
+        "compileall",
+        "-q",
+        "src",
+    ]
     assert isinstance(discovered["test_command"], list)
 
     unknown_repo = tmp_path / "unknown_repo"
@@ -127,6 +140,37 @@ def test_discover_verification_commands_for_python_and_unknown(
     assert unknown["project_type"] == "unknown"
     assert unknown["build_command"] is None
     assert unknown["test_command"] is None
+
+
+def test_discover_verification_commands_for_dotnet_changed_project(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "dotnet_repo"
+    changed_project = repo / "src" / "Core"
+    test_project = repo / "src" / "Core.Tests"
+    changed_project.mkdir(parents=True)
+    test_project.mkdir(parents=True)
+    (repo / "Product.slnx").write_text("<Solution />", encoding="utf-8")
+    (changed_project / "Core.csproj").write_text("<Project />", encoding="utf-8")
+    (changed_project / "Changed.cs").write_text("class Changed {}", encoding="utf-8")
+    (test_project / "Core.Tests.csproj").write_text(
+        "<Project />",
+        encoding="utf-8",
+    )
+
+    artifacts = repo / ".experiment_artifacts"
+    discovered = VerifyTestabilityGateTool._discover_verification_commands(
+        repo,
+        artifacts / "junit.xml",
+        artifacts / "coverage.xml",
+        changed_files=["src/Core/Changed.cs"],
+    )
+
+    assert discovered["project_type"] == "dotnet"
+    assert discovered["build_command"][:2] == ["dotnet", "build"]
+    assert "gate-targets.proj" in discovered["build_command"][2]
+    assert discovered["test_command"][:2] == ["dotnet", "test"]
+    assert "src\\Core.Tests\\Core.Tests.csproj" in discovered["test_command"]
 
 
 def test_execute_returns_reason_when_worktree_add_fails(
@@ -174,12 +218,21 @@ def test_execute_success_path_populates_gate_and_metrics(
             return _Completed(0)
         return real_run(command, *args, **kwargs)
 
-    def _discover(*, repo_path: Path, junit_xml_path: Path, coverage_xml_path: Path):
+    def _discover(
+        *,
+        repo_path: Path,
+        junit_xml_path: Path,
+        coverage_xml_path: Path,
+        changed_files: list[str] | None = None,
+        verification_config: object = None,
+    ):
         del repo_path
+        del changed_files
+        del verification_config
         build = [sys.executable, "-c", "print('build-ok')"]
         test_script = (
             "from pathlib import Path;"
-            f"Path(r'{junit_xml_path}').write_text('<testsuite tests=\"4\" failures=\"1\" errors=\"0\" skipped=\"1\" />', encoding='utf-8');"
+            f'Path(r\'{junit_xml_path}\').write_text(\'<testsuite tests="4" failures="1" errors="0" skipped="1" />\', encoding=\'utf-8\');'
             f"Path(r'{coverage_xml_path}').write_text('<coverage/>', encoding='utf-8');"
             "print('test-ok')"
         )
@@ -236,9 +289,16 @@ def test_execute_reason_when_tests_fail_and_when_no_commands(
     )
 
     def _discover_with_failing_tests(
-        *, repo_path: Path, junit_xml_path: Path, coverage_xml_path: Path
+        *,
+        repo_path: Path,
+        junit_xml_path: Path,
+        coverage_xml_path: Path,
+        changed_files: list[str] | None = None,
+        verification_config: object = None,
     ):
         del repo_path
+        del changed_files
+        del verification_config
         del junit_xml_path, coverage_xml_path
         build = [sys.executable, "-c", "print('build-ok')"]
         test = [sys.executable, "-c", "import sys; sys.exit(2)"]
@@ -262,7 +322,12 @@ def test_execute_reason_when_tests_fail_and_when_no_commands(
         VerifyTestabilityGateTool,
         "_discover_verification_commands",
         staticmethod(
-            lambda *, repo_path, junit_xml_path, coverage_xml_path: {
+            lambda *,
+            repo_path,
+            junit_xml_path,
+            coverage_xml_path,
+            changed_files=None,
+            verification_config=None: {
                 "project_type": "unknown",
                 "build_command": None,
                 "test_command": None,
@@ -277,4 +342,66 @@ def test_execute_reason_when_tests_fail_and_when_no_commands(
     )
     assert no_cmd["testability_gate"]["build_status"] == "not-run"
     assert no_cmd["testability_gate"]["test_status"] == "not-run"
-    assert no_cmd["testability_gate"]["reason"] == "No build/test command discovered for this repository."
+    assert (
+        no_cmd["testability_gate"]["reason"]
+        == "No build/test command discovered for this repository."
+    )
+
+
+def test_parse_trx_totals_from_real_dotnet_results(tmp_path: Path) -> None:
+    trx_path = tmp_path / "junit.trx"
+    trx_path.write_text(
+        '<TestRun xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">'
+        '<ResultSummary outcome="Completed">'
+        '<Counters total="1894" executed="1860" passed="1860" failed="0" error="0"'
+        ' timeout="0" aborted="0" />'
+        "</ResultSummary></TestRun>",
+        encoding="utf-8",
+    )
+
+    totals = VerifyTestabilityGateTool._parse_trx_totals(trx_path)
+
+    assert totals == {
+        "tests": 1894,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 34,
+        "passed": 1860,
+    }
+
+
+def test_parse_trx_totals_returns_none_for_missing_file(tmp_path: Path) -> None:
+    assert VerifyTestabilityGateTool._parse_trx_totals(tmp_path / "absent.trx") is None
+
+
+def test_preserve_artifact_copies_file_out_of_the_disposable_worktree(
+    tmp_path: Path,
+) -> None:
+    worktree_artifact = tmp_path / "worktree" / "junit.trx"
+    worktree_artifact.parent.mkdir(parents=True)
+    worktree_artifact.write_text("<TestRun />", encoding="utf-8")
+
+    log_lines: list[str] = []
+    preserved = VerifyTestabilityGateTool._preserve_artifact(
+        worktree_artifact, log_lines
+    )
+
+    shutil.rmtree(worktree_artifact.parent)
+
+    assert Path(preserved) != worktree_artifact
+    assert Path(preserved).exists()
+    assert Path(preserved).read_text(encoding="utf-8") == "<TestRun />"
+    assert log_lines == []
+    shutil.rmtree(Path(preserved).parent)
+
+
+def test_preserve_artifact_falls_back_to_the_original_path_on_failure(
+    tmp_path: Path,
+) -> None:
+    missing = tmp_path / "absent.trx"
+
+    log_lines: list[str] = []
+    preserved = VerifyTestabilityGateTool._preserve_artifact(missing, log_lines)
+
+    assert preserved == str(missing)
+    assert log_lines and "absent.trx" in log_lines[0]

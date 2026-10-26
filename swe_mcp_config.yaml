@@ -39,6 +39,20 @@ execution:
   max_security_context_chars: 2000
   max_single_shot_code_chars: 12000
   chunk_lines: 160
+  max_syntax_repair_attempts: 2
+  max_syntax_diagnostics: 20
+  max_build_repair_chunks: 4
+  max_semantic_diagnostics: 6
+  max_escalated_repair_targets: 2
+
+verification:
+  project_type: auto
+  language_overrides:
+    "c#":
+      # Akka.NET sets TreatWarningsAsErrors=true, which promotes NuGet audit
+      # warnings (NU1902) to build errors unrelated to generated code.
+      extra_build_args:
+        - -p:WarningsNotAsErrors=NU1902
 
 localizer:
   enable_semantic_nlp: false
@@ -56,4 +70,3 @@ semantic_index:
   neo4j_password:
   neo4j_password_env_var: NEO4J_PASSWORD
   neo4j_database: neo4j
-

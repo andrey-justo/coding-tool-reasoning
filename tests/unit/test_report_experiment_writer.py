@@ -19,6 +19,8 @@ def _base_report() -> dict:
         "subject": {
             "repo_path": "repo",
             "target_files": ["src/a.py", "src/b.py"],
+            "candidate_paths": ["src/a.py", "src/b.py", "src/c.py"],
+            "candidate_source": "explicit_candidate_paths",
             "base_ref": "main",
             "head_ref": "feature",
             "localizer": {
@@ -129,6 +131,10 @@ def test_write_reports_generate_expected_files(tmp_path: Path) -> None:
     assert "Relatorio de Execucao do Experimento" in md
     assert "Verdict MCP: acceptable" in md
     assert "src/a.py" in md
+    assert "Arquivos-alvo selecionados pelo localizador: 2" in md
+    assert "Universo de candidatos: explicit_candidate_paths" in md
+    assert "Candidatos fornecidos ao localizador: 3" in md
+    assert "Evidência dos arquivos-alvo:" in md
 
 
 def test_write_markdown_report_handles_missing_target_files_branch(
@@ -150,4 +156,4 @@ def test_write_markdown_report_handles_missing_target_files_branch(
     )
 
     content = md_path.read_text(encoding="utf-8")
-    assert "Arquivo avaliado: single.py" in content
+    assert "Arquivos-alvo selecionados pelo localizador: 0" in content

@@ -1,6 +1,10 @@
 import json
+import re
 from typing import List, Optional
 
+from pydantic import ValidationError
+
+from src.errors.TextLLMException import TextLLMException
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
@@ -56,34 +60,91 @@ class ExplanationService:
         raw_response: str | None = None
         try:
             raw_response = self.llm_client.chat(prompt)
-            data = json.loads(raw_response)
+            data = self._parse_json_response(raw_response)
             return self._from_llm_json(
                 plan_json=plan.model_dump(),
                 data=data,
                 llm_prompt=prompt,
                 llm_raw_response=raw_response,
             )
-        except Exception:
-            # Fallback: produce a conservative explanation that at least
-            # records the plan and points the user at manual review.
-            return SweCodeChangeExplanation(
+        except (TextLLMException, TypeError, ValueError, ValidationError) as exc:
+            return self._fallback_explanation(
                 plan=plan,
-                overall_verdict="manual-review-required",
-                rationale=(
-                    "The explanation model could not parse a structured response. "
-                    "Please review the code diff manually and re-run the judge tool."
-                ),
-                nfr_impacts=[],
-                risks=[
-                    "Automated explanation failed; ensure tests pass and that the change "
-                    "matches the high-level steps from the plan.",
-                ],
-                recommended_tests=[
-                    "Run existing unit and integration tests relevant to the modified modules.",
-                ],
-                llm_prompt=prompt,
-                llm_raw_response=raw_response,
+                prompt=prompt,
+                raw_response=raw_response,
+                error=exc,
             )
+
+    @staticmethod
+    def _fallback_explanation(
+        *,
+        plan: CodeGenPlan,
+        prompt: str,
+        raw_response: str | None,
+        error: Exception,
+    ) -> SweCodeChangeExplanation:
+        """Keep the pipeline auditable when judging cannot produce structured JSON."""
+
+        return SweCodeChangeExplanation(
+            plan=plan,
+            overall_verdict="manual-review-required",
+            rationale=(
+                "The explanation model did not produce a valid structured response: "
+                f"{type(error).__name__}: {error}. "
+                "Please review the code diff manually and re-run the judge tool."
+            ),
+            nfr_impacts=[],
+            risks=[
+                "Automated explanation failed; ensure tests pass and that the change "
+                "matches the high-level steps from the plan.",
+            ],
+            recommended_tests=[
+                "Run existing unit and integration tests relevant to the modified modules.",
+            ],
+            llm_prompt=prompt,
+            llm_raw_response=raw_response,
+        )
+
+    @staticmethod
+    def _parse_json_response(raw_response: str) -> dict:
+        """Parse JSON returned with optional Markdown or surrounding commentary."""
+
+        if not isinstance(raw_response, str) or not raw_response.strip():
+            raise ValueError("empty LLM response")
+
+        candidates = [raw_response.strip()]
+        fenced = re.search(
+            r"```(?:json)?\s*(?P<json>\{.*\})\s*```",
+            raw_response,
+            flags=re.IGNORECASE | re.DOTALL,
+        )
+        if fenced:
+            candidates.insert(0, fenced.group("json"))
+
+        decoder = json.JSONDecoder()
+        for candidate in candidates:
+            try:
+                data, end = decoder.raw_decode(candidate)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(data, dict):
+                raise ValueError("structured response must be a JSON object")
+            if candidate[end:].strip():
+                continue
+            return data
+
+        object_start = raw_response.find("{")
+        while object_start >= 0:
+            try:
+                data, _ = decoder.raw_decode(raw_response[object_start:])
+            except json.JSONDecodeError:
+                object_start = raw_response.find("{", object_start + 1)
+                continue
+            if isinstance(data, dict):
+                return data
+            object_start = raw_response.find("{", object_start + 1)
+
+        raise ValueError("response did not contain a valid JSON object")
 
     # ------------------------- helpers ---------------------------
     def _build_prompt(
@@ -212,4 +273,3 @@ class ExplanationService:
             llm_prompt=llm_prompt,
             llm_raw_response=llm_raw_response,
         )
-

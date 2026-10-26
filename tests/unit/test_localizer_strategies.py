@@ -129,12 +129,11 @@ def test_repository_issue_localizer_combines_strategies(tmp_path: Path) -> None:
     result = localizer.localize(
         repo_path=tmp_path,
         issue_text="authentication retry failing in manager",
-        top_k=1,
         candidate_paths=["src/auth_manager.py", "src/view.py"],
     )
 
     assert result.selected_files
-    assert result.selected_files[0] == "src/auth_manager.py"
+    assert result.selected_files == ["src/auth_manager.py"]
     assert any(item["path"] == "src/auth_manager.py" for item in result.details)
 
 

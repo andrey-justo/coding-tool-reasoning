@@ -15,14 +15,14 @@ currently implements it end-to-end**.
 
 | ID | Metric | Role | Typical instrument / source | Current repo status |
 |---|---|---|---|---|
-| M-1 | Structural improvement delta | Primary DV | Language-specific local static analysis strategy bundle | Not implemented (no multi-strategy runner wired into evaluation harness) |
+| M-1 | Structural improvement delta | Primary DV | Language-specific local static analysis strategy bundle | Not implemented (no multi-strategy runner wired into evaluation runner/arcabouco experimental) |
 | M-2 | Testability gate outcome | Prerequisite | Repo build + unit test commands | Not implemented (no build/test gate runner wired) |
 | M-3 | Cyclomatic complexity | Must (syntax/maintainability signal) | Static analysis / CI quality tools | Not implemented |
 | M-4 | Test coverage | Must (testability signal) | Coverage tool + CI | Not implemented |
 | M-5 | Code duplication | Must (maintainability signal) | Clone detection / static analysis | Not implemented |
 | M-6 | Code conventions | Must (style/compliance signal) | Linter/formatter/analyzers | Not implemented |
 | M-7 | Code security findings | Must (security signal) | SAST / security analyzers | Not implemented |
-| M-8 | Semantic similarity (optional) | Optional | Code-aware similarity model | Partially implemented (BERTScore tooling exists; integration into judge/harness not fully wired) |
+| M-8 | Semantic similarity (optional) | Optional | Code-aware similarity model | Partially implemented (BERTScore tooling exists; integration into judge/runner not fully wired) |
 
 Additional metrics planned for future implementation are documented in `docs/requirements/metrics-future.md`.
 

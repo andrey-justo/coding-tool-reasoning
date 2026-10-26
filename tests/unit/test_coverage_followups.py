@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.evaluation.metrics.solid import SolidMetricsStrategy
 import src.mcp.swe_mcp_server as swe_mcp_server
+from src.evaluation.metrics.solid import SolidMetricsStrategy
 from src.mcp.swe_mcp_server import SweMcpServerContextProvider
 from src.models.swe_config import SweMcpConfig
 from src.service.localizer import models as models_module
@@ -27,11 +27,15 @@ def test_language_detection_from_file_paths_and_text_markers() -> None:
     )
 
     assert (
-        language_detection.infer_language_from_text("Refactor this Python service using pytest")
+        language_detection.infer_language_from_text(
+            "Refactor this Python service using pytest"
+        )
         == "python"
     )
     assert (
-        language_detection.infer_language_from_text("Build with maven and junit for java app")
+        language_detection.infer_language_from_text(
+            "Build with maven and junit for java app"
+        )
         == "java"
     )
     assert (
@@ -49,7 +53,9 @@ def test_solid_metrics_strategy_delta_count_and_compute() -> None:
     assert improved.delta == 0.6
     assert improved.absolute_delta == -6
 
-    unchanged_zero = strategy.solid_violation_delta(violations_before=0, violations_after=0)
+    unchanged_zero = strategy.solid_violation_delta(
+        violations_before=0, violations_after=0
+    )
     assert unchanged_zero.delta == 0.0
 
     regressed_from_zero = strategy.solid_violation_delta(
@@ -127,10 +133,15 @@ def test_swe_mcp_server_helpers_and_wrappers(monkeypatch, tmp_path: Path) -> Non
 
     examples_dir = tmp_path / "tests" / "examples"
     examples_dir.mkdir(parents=True)
-    (examples_dir / "retry_pattern.py").write_text("def retry():\n    return 1\n", encoding="utf-8")
+    (examples_dir / "retry_pattern.py").write_text(
+        "def retry():\n    return 1\n", encoding="utf-8"
+    )
 
     assert provider._resolve_code_example("retry_pattern")
-    assert provider._extract_unit_test_example({"unit_test_example": "assert True"}) == "assert True"
+    assert (
+        provider._extract_unit_test_example({"unit_test_example": "assert True"})
+        == "assert True"
+    )
     assert provider._extract_unit_test_example({"tests": ["a", "", "b"]}) == "- a\n- b"
 
     data_path = tmp_path / "payload.json"
@@ -178,8 +189,12 @@ def test_swe_mcp_server_load_concern_assets_with_subject_filter(tmp_path: Path) 
     data_group_b = repo_root / "knowledge" / "data" / "reliability" / "group_b"
     data_group_a.mkdir(parents=True)
     data_group_b.mkdir(parents=True)
-    (data_group_a / "data.json").write_text(json.dumps({"name": "group_a"}), encoding="utf-8")
-    (data_group_b / "data.json").write_text(json.dumps({"name": "group_b"}), encoding="utf-8")
+    (data_group_a / "data.json").write_text(
+        json.dumps({"name": "group_a"}), encoding="utf-8"
+    )
+    (data_group_b / "data.json").write_text(
+        json.dumps({"name": "group_b"}), encoding="utf-8"
+    )
 
     config = SweMcpConfig()
     config.concern_assets.swe_concern = "reliability"
@@ -188,7 +203,9 @@ def test_swe_mcp_server_load_concern_assets_with_subject_filter(tmp_path: Path) 
     provider = SweMcpServerContextProvider(repo_root=str(repo_root))
     assets = provider._load_concern_assets(config=config)
 
-    template_assets = [asset for asset in assets if asset["kind"] == "swe_concern_template"]
+    template_assets = [
+        asset for asset in assets if asset["kind"] == "swe_concern_template"
+    ]
     data_assets = [asset for asset in assets if asset["kind"] == "swe_concern_data"]
     assert len(template_assets) == 1
     assert len(data_assets) == 1

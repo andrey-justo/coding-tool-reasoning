@@ -16,10 +16,27 @@ from src.service.localizer.strategies.graph_memory import (
 from src.service.localizer.strategies.regex_content import RegexContentMatchingStrategy
 from src.service.localizer.strategies.semantic_nlp import SemanticNlpMatchingStrategy
 from src.service.localizer.strategies.symbol_impact import SymbolImpactStrategy
+from src.service.localizer.strategies.tfidf_content import TfIdfContentStrategy
 
 
 class RepositoryIssueLocalizer:
     """Locate relevant files from repository + issue text using pluggable strategies."""
+
+    DEFAULT_MIN_RELATIVE_SCORE = 0.5
+
+    #: Relative influence of each strategy on the aggregated ranking. Strategies
+    #: produce scores on incompatible scales, so summing raw values lets the
+    #: most verbose strategy decide the outcome regardless of its precision.
+    #: Each strategy is therefore rescaled to ``[0, weight]`` before summing.
+    DEFAULT_STRATEGY_WEIGHTS = {
+        "filename": 1.5,
+        "regex": 0.5,
+        "tfidf": 3.0,
+        "graph_memory": 1.0,
+        "semantic_nlp": 1.0,
+        "ast": 1.0,
+        "symbol_impact": 1.0,
+    }
 
     def __init__(
         self,
@@ -38,7 +55,17 @@ class RepositoryIssueLocalizer:
         neo4j_password: str | None = None,
         neo4j_password_env_var: str = "NEO4J_PASSWORD",
         neo4j_database: str = "neo4j",
+        strategy_weights: dict[str, float] | None = None,
+        min_relative_score: float = DEFAULT_MIN_RELATIVE_SCORE,
     ) -> None:
+        if not 0 < min_relative_score <= 1:
+            raise ValueError("min_relative_score must be greater than 0 and at most 1.")
+        self.min_relative_score = min_relative_score
+        self.strategy_weights = dict(
+            strategy_weights
+            if strategy_weights is not None
+            else self.DEFAULT_STRATEGY_WEIGHTS
+        )
         if strategies is not None:
             self.strategies = strategies
             return
@@ -46,6 +73,7 @@ class RepositoryIssueLocalizer:
         assembled: list[LocalizationStrategy] = [
             FilenameMatchingStrategy(),
             RegexContentMatchingStrategy(),
+            TfIdfContentStrategy(),
             GraphMemoryRelationshipStrategy(
                 hops=graph_memory_hops,
                 semantic_index_dir=semantic_index_dir,
@@ -74,7 +102,6 @@ class RepositoryIssueLocalizer:
         self,
         repo_path: Path,
         issue_text: str,
-        top_k: int = 5,
         candidate_paths: list[str] | None = None,
     ) -> LocalizerResult:
         candidates = candidate_paths or discover_repository_code_files(repo_path)
@@ -88,12 +115,21 @@ class RepositoryIssueLocalizer:
 
         for strategy in self.strategies:
             strategy_hits = strategy.score(repo_path, issue_text, candidates)
+            if not strategy_hits:
+                continue
+
+            # Rescale this strategy's output to [0, weight] so that strategies
+            # with naturally larger raw scores do not dominate the ensemble.
+            weight = self.strategy_weights.get(strategy.name, 1.0)
+            best = max(hit.score for hit in strategy_hits.values())
+            normalizer = (weight / best) if best > 0 else 0.0
+
             for rel_path, hit in strategy_hits.items():
                 current = aggregate.setdefault(
                     rel_path,
                     LocalizationHit(path=rel_path, score=0.0),
                 )
-                current.score += hit.score
+                current.score += hit.score * normalizer
                 current.reasons.extend(
                     f"[{strategy.name}] {reason}" for reason in hit.reasons
                 )
@@ -104,16 +140,24 @@ class RepositoryIssueLocalizer:
             reverse=True,
         )
 
-        selected = [item.path for item in ranked if item.score > 0][: max(1, top_k)]
-        if not selected:
-            selected = candidates[: max(1, top_k)]
+        best_score = ranked[0].score if ranked else 0.0
+        threshold = best_score * self.min_relative_score
+        selected = [
+            item.path
+            for item in ranked
+            if item.score > 0 and item.score >= threshold
+        ]
 
         details = [
             {
                 "path": item.path,
                 "score": round(item.score, 4),
+                "relative_score": (
+                    round(item.score / best_score, 4) if best_score > 0 else 0.0
+                ),
+                "selected": item.path in selected,
                 "reasons": item.reasons[:8],
             }
-            for item in ranked[: max(top_k, 10)]
+            for item in ranked
         ]
         return LocalizerResult(selected_files=selected, details=details)

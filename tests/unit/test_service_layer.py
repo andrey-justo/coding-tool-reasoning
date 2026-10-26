@@ -1,5 +1,6 @@
 import json
 
+from src.errors.TextLLMException import TextLLMException
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
@@ -161,6 +162,73 @@ def test_explanation_service_uses_fallback_when_llm_response_is_invalid():
     assert explanation.overall_verdict == "manual-review-required"
     assert explanation.risks
     assert "Automated explanation failed" in explanation.risks[0]
+    assert "valid JSON object" in explanation.rationale
+
+
+def test_explanation_service_uses_fallback_when_llm_request_fails():
+    class FakeKB:
+        def find_nfr_ids(self, nfr_focus):
+            return []
+
+        def summarize_for_prompt(self, nfr_ids, depth=1):
+            return "knowledge base"
+
+    class FakeLLMClient:
+        def chat(self, prompt):
+            raise TextLLMException("Request timeout")
+
+    plan = CodeGenPlan(
+        problem_description="Refactor auth service",
+        high_level_steps=["Step 1"],
+    )
+    context = SweContext(plan=plan, swe_summary="summary")
+
+    explanation = ExplanationService(
+        kb=FakeKB(), llm_client=FakeLLMClient(), config=SweMcpConfig()
+    ).explain_change(
+        swe_context=context,
+        original_code="before",
+        modified_code="after",
+    )
+
+    assert explanation.overall_verdict == "manual-review-required"
+    assert "TextLLMException" in explanation.rationale
+    assert "Request timeout" in explanation.rationale
+    assert explanation.llm_raw_response is None
+
+
+def test_explanation_service_parses_json_wrapped_in_markdown() -> None:
+    class FakeKB:
+        def find_nfr_ids(self, nfr_focus):
+            return []
+
+        def summarize_for_prompt(self, nfr_ids, depth=1):
+            return "knowledge base"
+
+    class FakeLLMClient:
+        def chat(self, prompt):
+            return (
+                "Here is the structured judgment:\n"
+                "```json\n"
+                '{"overall_verdict":"acceptable","rationale":"The change follows the plan.",'
+                '"nfr_impacts":[],"risks":[],"recommended_tests":[]}'
+                "\n```\n"
+            )
+
+    plan = CodeGenPlan(
+        problem_description="Refactor auth service",
+        high_level_steps=["Step 1"],
+    )
+    explanation = ExplanationService(
+        kb=FakeKB(), llm_client=FakeLLMClient(), config=SweMcpConfig()
+    ).explain_change(
+        swe_context=SweContext(plan=plan, swe_summary="summary"),
+        original_code="before",
+        modified_code="after",
+    )
+
+    assert explanation.overall_verdict == "acceptable"
+    assert explanation.rationale == "The change follows the plan."
 
 
 def test_swe_knowledge_base_find_nfr_ids_matches_by_id_name_and_category_case_insensitive():
@@ -240,4 +308,3 @@ def test_swe_knowledge_base_summary_depth_controls_expansion():
     assert "related_to: Retry Logic" in summary_depth_1
     assert "Long Method" not in summary_depth_1
     assert "Long Method" in summary_depth_2
-
