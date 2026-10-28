@@ -402,7 +402,9 @@ def test_discover_verification_commands_for_dotnet_changed_project(
     assert discovered["build_command"][:2] == ["dotnet", "build"]
     assert "gate-targets.proj" in discovered["build_command"][2]
     assert discovered["test_command"][:2] == ["dotnet", "test"]
-    assert "src\\Core.Tests\\Core.Tests.csproj" in discovered["test_command"]
+    assert discovered["test_command"][2] == str(
+        (test_project / "Core.Tests.csproj").relative_to(repo)
+    )
 
 
 def test_execute_returns_reason_when_worktree_add_fails(
