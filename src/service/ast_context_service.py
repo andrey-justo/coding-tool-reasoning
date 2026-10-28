@@ -1,9 +1,4 @@
-"""AST context extraction around build-error locations.
-
-Compiler diagnostics point at a line, but a repair model also needs the
-enclosing declaration to change the right symbol. This service reuses the
-tree-sitter parsers already used by the localizer and the syntax validator.
-"""
+"""Factual syntax-tree context for RAG and LLM prompts, without repair findings."""
 
 from __future__ import annotations
 
@@ -25,6 +20,7 @@ _SCOPE_NODE_TYPES = {
     "record_declaration",
     "record_struct_declaration",
     "namespace_declaration",
+    "file_scoped_namespace_declaration",
     "method_declaration",
     "constructor_declaration",
     "destructor_declaration",
@@ -42,30 +38,9 @@ _SCOPE_NODE_TYPES = {
     "decorated_definition",
 }
 
-_NAME_NODE_TYPES = {
-    "identifier",
-    "type_identifier",
-    "property_identifier",
-    "field_identifier",
-    "qualified_name",
-}
-
-
 def declaration_signature_at(lines: list[str], start_line: int) -> str:
-    """Return the declaration line, skipping attributes and decorators.
-
-    Tree-sitter anchors an annotated declaration at its first attribute, so
-    reading the start line verbatim would surface ``[Attribute(...)]`` instead
-    of the signature the model needs.
-    """
-
-    index = max(0, start_line - 1)
-    for offset in range(index, min(len(lines), index + 10)):
-        candidate = lines[offset].strip()
-        if not candidate or candidate.startswith(("[", "@", "//", "#", "/*", "*")):
-            continue
-        return candidate
-    return ""
+    """Return a literal source line; do not infer a signature from spellings."""
+    return lines[start_line - 1].strip() if 1 <= start_line <= len(lines) else ""
 
 
 @dataclass(frozen=True)
@@ -76,6 +51,7 @@ class AstScope:
     name: str | None
     start_line: int
     end_line: int
+    header: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -113,6 +89,8 @@ class AstOutline:
     available: bool
     declarations: list[AstScope] = field(default_factory=list)
     error: str | None = None
+    truncated: bool = False
+    has_syntax_errors: bool = False
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -122,6 +100,8 @@ class AstOutline:
                 declaration.to_dict() for declaration in self.declarations
             ],
             "error": self.error,
+            "truncated": self.truncated,
+            "has_syntax_errors": self.has_syntax_errors,
         }
 
 
@@ -225,24 +205,33 @@ class AstContextService:
 
         source_bytes = normalized.encode("utf-8", errors="ignore")
         declarations: list[AstScope] = []
+        truncated = False
 
         def walk(node) -> None:
-            if len(declarations) >= max(int(max_declarations), 1):
+            nonlocal truncated
+            if truncated:
                 return
             if node.type in _SCOPE_NODE_TYPES:
+                if len(declarations) >= max(int(max_declarations), 1):
+                    truncated = True
+                    return
                 declarations.append(
                     AstScope(
                         node_type=node.type,
                         name=self._node_name(node, source_bytes),
                         start_line=int(node.start_point[0]) + 1,
                         end_line=int(node.end_point[0]) + 1,
+                        header=self._header(node, source_bytes),
                     )
                 )
             for child in node.children:
                 walk(child)
 
         walk(tree.root_node)
-        return AstOutline(file=target_file, available=True, declarations=declarations)
+        return AstOutline(
+            file=target_file, available=True, declarations=declarations,
+            truncated=truncated, has_syntax_errors=bool(tree.root_node.has_error),
+        )
 
     def _scopes_for_line(self, root, source_bytes: bytes, line: int) -> list[AstScope]:
         scopes: list[AstScope] = []
@@ -260,6 +249,7 @@ class AstContextService:
                         name=self._node_name(node, source_bytes),
                         start_line=start_line,
                         end_line=end_line,
+                        header=self._header(node, source_bytes),
                     )
                 )
 
@@ -276,12 +266,13 @@ class AstContextService:
             if text:
                 return text
 
-        for child in node.children:
-            if child.type in _NAME_NODE_TYPES:
-                text = self._extractor._node_text(source_bytes, child).strip()
-                if text:
-                    return text
         return None
+
+    @staticmethod
+    def _header(node, source_bytes: bytes) -> str:
+        body = node.child_by_field_name("body")
+        end = body.start_byte if body is not None else node.end_byte
+        return source_bytes[node.start_byte:end].decode("utf-8").strip()
 
     @staticmethod
     def _snippet_start(line: int, context_lines: int) -> int:

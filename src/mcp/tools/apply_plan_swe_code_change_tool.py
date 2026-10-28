@@ -3,6 +3,7 @@ from __future__ import annotations
 import difflib
 import hashlib
 import json
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from src.models.swe_context import SweContext
 from src.service.syntax_validator import SyntaxValidationResult, SyntaxValidator
 from src.service.tool_prompt_template_service import ToolPromptTemplateService
 
+logger = logging.getLogger(__name__)
 SYNTAX_REPAIR_TEMPLATE_NAME = "syntax_repair"
 
 APPLY_OUTCOME_MODIFIED = "modified"
@@ -155,6 +157,16 @@ class ApplyPlanSweCodeChangeTool:
             "nfr_focus": plan.nfr_focus or [],
             "target_language": plan.target_language,
             "high_level_steps": plan.high_level_steps,
+            "issue_summary": plan.issue_summary.model_dump()
+            if plan.issue_summary
+            else None,
+            "nfr_discovery": [item.model_dump() for item in plan.nfr_discovery],
+            "nfr_discovery_source": plan.nfr_discovery_source,
+            "endorsed_entities": plan.related_entities,
+            "implementation_plan": [
+                step.model_dump() for step in plan.implementation_plan
+            ],
+            "baseline_context": plan.baseline_context,
             "swe_summary": cls._truncate_text(
                 swe_context.swe_summary, max_summary_chars
             ),
@@ -231,6 +243,9 @@ class ApplyPlanSweCodeChangeTool:
             "1) Output exactly one fenced code block.\n"
             "2) Do not output prose, JSON, bullets, or explanations.\n"
             "3) The code block must contain full-file content, not a diff.\n\n"
+            "If a structured implementation_plan is supplied, follow its ownership, "
+            "requirements and validation. Reuse existing declarations and preserve "
+            "files/symbols not assigned for modification.\n"
             f"Target file: {target_path}\n"
             "=== Compact plan/context ===\n"
             f"{compact_context_json}\n\n"
@@ -255,6 +270,11 @@ class ApplyPlanSweCodeChangeTool:
             "2) Return ONLY the updated chunk content for the same line span.\n"
             "3) If no changes are needed in this chunk, return it unchanged.\n"
             "4) No prose or explanations.\n\n"
+            "When implementation_plan is supplied, apply only edits assigned to this "
+            "file and intersecting this baseline line range. A create action is owned "
+            "ONLY by the chunk containing its insertion anchor. Never introduce that "
+            "declaration in another chunk. Other baseline declarations are read-only "
+            "contracts, not code to duplicate. Return unassigned regions unchanged.\n"
             f"Target file: {target_path}\n"
             f"Chunk: {chunk_index}/{chunk_total} (lines {start_line}-{end_line})\n"
             "=== Compact plan/context ===\n"
@@ -296,13 +316,16 @@ class ApplyPlanSweCodeChangeTool:
         attempt: int,
         max_attempts: int,
         template_service: ToolPromptTemplateService | None = None,
+        review_context: str = "",
     ) -> str:
         diagnostics_json = json.dumps(
             [diagnostic.__dict__ for diagnostic in validation.diagnostics],
             ensure_ascii=False,
             indent=2,
         )
-        service = template_service or ToolPromptTemplateService()
+        service = template_service or ToolPromptTemplateService(
+            Path(__file__).resolve().parents[3] / "templates", subdirectory="utils"
+        )
         return service.render(
             SYNTAX_REPAIR_TEMPLATE_NAME,
             {
@@ -312,6 +335,7 @@ class ApplyPlanSweCodeChangeTool:
                 "DIAGNOSTICS_JSON": diagnostics_json,
                 "ORIGINAL_CODE": original_code,
                 "GENERATED_CODE": generated_code,
+                "REVIEW_CONTEXT": review_context,
             },
         )
 
@@ -326,6 +350,7 @@ class ApplyPlanSweCodeChangeTool:
         max_diagnostics: int,
         chat_kwargs: dict[str, Any],
         template_service: ToolPromptTemplateService | None = None,
+        problem_summary: str = "",
     ) -> tuple[str, dict[str, Any]]:
         validator = SyntaxValidator()
         original_validation = validator.validate(
@@ -340,72 +365,46 @@ class ApplyPlanSweCodeChangeTool:
         )
         repair_attempts: list[dict[str, Any]] = []
 
-        original_error_count = len(original_validation.diagnostics)
-        generated_error_count = len(validation.diagnostics)
-        introduced_invalid_syntax = (
-            validation.available
-            and not validation.valid
-            and (
-                original_validation.valid
-                or generated_error_count > original_error_count
+        def review_candidate(code, facts):
+            return validator.review_repair(
+                target_path, original_code, code, problem_summary=problem_summary,
+                diagnostics=[{"original_parser_facts": original_validation.to_dict(),
+                              "candidate_parser_facts": facts.to_dict()}],
             )
-        )
+
+        review = review_candidate(generated_code, validation)
+        initial_review = review.model_dump()
 
         for attempt in range(1, max_attempts + 1):
-            if not introduced_invalid_syntax:
+            if review.approved:
                 break
-            try:
-                prompt = self._build_syntax_repair_prompt(
-                    target_path=target_path,
-                    original_code=original_code,
-                    generated_code=generated_code,
-                    validation=validation,
-                    attempt=attempt,
-                    max_attempts=max_attempts,
-                    template_service=template_service,
-                )
-                raw_response = llm_client.chat(prompt, **chat_kwargs)
-                blocks = self._extract_code_blocks(raw_response)
-                repaired_code = self._select_generated_code(
-                    generated_code,
-                    blocks,
-                    raw_response,
-                )
-                repaired_code = self._normalize_generated_formatting(
-                    original_code=generated_code,
-                    generated_code=repaired_code,
-                )
-                repaired_validation = validator.validate(
-                    target_path,
-                    repaired_code,
-                    max_diagnostics=max_diagnostics,
-                )
-                repair_attempts.append(
-                    {
-                        "attempt": attempt,
-                        "validation": repaired_validation.to_dict(),
-                    }
-                )
-                generated_code = repaired_code
-                validation = repaired_validation
-                generated_error_count = len(validation.diagnostics)
-                introduced_invalid_syntax = (
-                    validation.available
-                    and not validation.valid
-                    and (
-                        original_validation.valid
-                        or generated_error_count > original_error_count
-                    )
-                )
-            except Exception as exc:
-                repair_attempts.append(
-                    {
-                        "attempt": attempt,
-                        "error": f"{type(exc).__name__}: {exc}",
-                    }
-                )
+            prompt = self._build_syntax_repair_prompt(
+                target_path=target_path,
+                original_code=original_code,
+                generated_code=generated_code,
+                validation=validation,
+                attempt=attempt,
+                max_attempts=max_attempts,
+                template_service=template_service,
+                review_context=json.dumps({"requirements": problem_summary, "review": review.model_dump()}),
+            )
+            raw_response = llm_client.chat(prompt, **chat_kwargs)
+            repaired_code = self._select_generated_code(
+                generated_code, self._extract_code_blocks(raw_response), raw_response,
+            )
+            generated_code = self._normalize_generated_formatting(
+                original_code=generated_code, generated_code=repaired_code,
+            )
+            validation = validator.validate(
+                target_path, generated_code, max_diagnostics=max_diagnostics,
+            )
+            review = review_candidate(generated_code, validation)
+            repair_attempts.append({
+                "attempt": attempt, "validation": validation.to_dict(),
+                "semantic_review": review.model_dump(),
+            })
 
-        rejected = introduced_invalid_syntax
+        rejected = not review.approved
         if rejected:
             generated_code = original_code
 
@@ -414,6 +413,8 @@ class ApplyPlanSweCodeChangeTool:
             "original": original_validation.to_dict(),
             "final": validation.to_dict(),
             "repair_attempts": repair_attempts,
+            "initial_semantic_review": initial_review,
+            "final_semantic_review": review.model_dump(),
             "rejected_invalid_generation": rejected,
         }
 
@@ -428,7 +429,6 @@ class ApplyPlanSweCodeChangeTool:
         """Generate candidate modified code using plan + context + original code."""
 
         llm_cls = self._registry._llm_client_cls or MultiModelLLMClient
-        llm_client = llm_cls()
 
         server_context = self._registry._create_swe_server_context()
         config = server_context.config.execution
@@ -438,6 +438,45 @@ class ApplyPlanSweCodeChangeTool:
 
         target_path = target_file or "target_file"
         target_language = swe_context.plan.target_language
+        implementation = swe_context.plan.implementation_plan
+        assignments = [
+            step
+            for step in implementation
+            if step.target_file == target_path and step.action != "reuse"
+        ]
+        if implementation and not self._is_documentation_target(target_path):
+            baseline = swe_context.plan.baseline_context.get(target_path)
+            if not baseline or baseline.get("sha256") != self._sha256_text(
+                original_code
+            ):
+                raise ValueError(
+                    f"Code does not match the grounded plan baseline: {target_path}"
+                )
+            if not assignments:
+                logger.info(
+                    "Preserving %s: no edits assigned by the validated plan",
+                    target_path,
+                )
+                return {
+                    "target_file": target_path,
+                    "generated_code": original_code,
+                    "raw_response": "",
+                    "extracted_code_blocks": [],
+                    "used_fallback_to_original": False,
+                    "apply_outcome": "unchanged_plan_scope",
+                    "error": None,
+                    "prompt": "[no edits assigned by grounded plan]",
+                    "compact_context": {},
+                    "chunked": False,
+                    "chunk_count": 0,
+                    "chunk_errors": [],
+                    "content_reference": self._build_content_reference(
+                        target_file=target_path,
+                        original_code=original_code,
+                        generated_code=original_code,
+                        target_language=target_language,
+                    ),
+                }
 
         if self._is_documentation_target(target_path):
             guardrail_error = (
@@ -476,7 +515,16 @@ class ApplyPlanSweCodeChangeTool:
             max_security_context_chars=config.max_security_context_chars,
         )
         compact_context_json = json.dumps(compact_context, ensure_ascii=False, indent=2)
+        llm_client = llm_cls()
         chunked = len(original_code) > config.max_single_shot_code_chars
+        max_concurrency = int(getattr(config, "max_generation_concurrency", 1))
+        logger.info(
+            "Generating %s (chars=%s, chunked=%s, concurrency_limit=%s)",
+            target_path,
+            len(original_code),
+            chunked,
+            max_concurrency,
+        )
 
         chat_kwargs: dict[str, Any] = {}
         if temperature is not None:
@@ -494,7 +542,10 @@ class ApplyPlanSweCodeChangeTool:
                 raw_response = llm_client.chat(prompt, **chat_kwargs)
             except Exception as exc:  # pragma: no cover
                 self._registry._logger.warning(
-                    "apply_plan_swe_code_change failed: %s", exc
+                    "apply_plan_swe_code_change failed for %s: %s",
+                    target_path,
+                    exc,
+                    exc_info=True,
                 )
                 return {
                     "target_file": target_path,
@@ -524,12 +575,22 @@ class ApplyPlanSweCodeChangeTool:
             chunks = self._split_code_chunks(
                 original_code, chunk_lines=config.chunk_lines
             )
-            updated_chunks: list[str] = []
+            updated_chunks: list[str] = [str(chunk["code"]) for chunk in chunks]
             raw_responses: list[str] = []
             chunk_errors = []
 
-            for idx, chunk in enumerate(chunks, start=1):
-                chunk_prompt = self._build_chunk_prompt(
+            selected_chunks = [
+                (idx, chunk)
+                for idx, chunk in enumerate(chunks, start=1)
+                if not implementation
+                or any(
+                    step.start_line <= int(chunk["end"])
+                    and step.end_line >= int(chunk["start"])
+                    for step in assignments
+                )
+            ]
+            chunk_prompts = [
+                self._build_chunk_prompt(
                     target_path=target_path,
                     compact_context_json=compact_context_json,
                     chunk_index=idx,
@@ -538,20 +599,57 @@ class ApplyPlanSweCodeChangeTool:
                     end_line=int(chunk["end"]),
                     chunk_code=str(chunk["code"]),
                 )
+                for idx, chunk in selected_chunks
+            ]
+            batch_chat = getattr(llm_client, "chat_batch", None)
+            responses = (
+                batch_chat(
+                    chunk_prompts, max_concurrency=max_concurrency, **chat_kwargs
+                )
+                if max_concurrency > 1 and callable(batch_chat)
+                else None
+            )
 
+            for response_index, ((idx, chunk), chunk_prompt) in enumerate(
+                zip(selected_chunks, chunk_prompts, strict=True)
+            ):
                 try:
-                    chunk_raw = llm_client.chat(chunk_prompt, **chat_kwargs)
+                    chunk_raw = (
+                        responses[response_index]
+                        if responses is not None
+                        else llm_client.chat(chunk_prompt, **chat_kwargs)
+                    )
+                    if isinstance(chunk_raw, Exception):
+                        raise chunk_raw
                     chunk_blocks = self._extract_code_blocks(chunk_raw)
                     updated_chunk = self._select_generated_code(
                         str(chunk["code"]),
                         chunk_blocks,
                         chunk_raw,
                     )
-                    updated_chunks.append(updated_chunk)
+                    updated_chunks[idx - 1] = updated_chunk
                     raw_responses.append(
                         f"### Chunk {idx}/{len(chunks)} (lines {chunk['start']}-{chunk['end']})\\n{chunk_raw}"
                     )
+                    logger.info(
+                        "Generated %s chunk %s/%s (lines %s-%s)",
+                        target_path,
+                        idx,
+                        len(chunks),
+                        chunk["start"],
+                        chunk["end"],
+                    )
                 except Exception as exc:  # pragma: no cover
+                    self._registry._logger.warning(
+                        "Chunk generation failed for %s (chunk %s/%s, lines %s-%s): %s",
+                        target_path,
+                        idx,
+                        len(chunks),
+                        chunk["start"],
+                        chunk["end"],
+                        exc,
+                        exc_info=True,
+                    )
                     chunk_errors.append(
                         {
                             "chunk_index": idx,
@@ -560,7 +658,6 @@ class ApplyPlanSweCodeChangeTool:
                             "error": f"{type(exc).__name__}: {exc}",
                         }
                     )
-                    updated_chunks.append(str(chunk["code"]))
 
             generated_code = "\n".join(updated_chunks)
             raw_response = "\n\n".join(raw_responses)
@@ -588,7 +685,7 @@ class ApplyPlanSweCodeChangeTool:
             max_attempts=max_repair_attempts,
             max_diagnostics=max_syntax_diagnostics,
             chat_kwargs=chat_kwargs,
-            template_service=template_service,
+            problem_summary=swe_context.plan.model_dump_json() + "\n" + swe_context.swe_summary,
         )
         syntax_rejected = bool(
             syntax_validation.get("rejected_invalid_generation", False)
@@ -646,7 +743,7 @@ class ApplyPlanSweCodeChangeTool:
                 "Guardrail fallback: generated code was empty after normalization."
                 if empty_generated_guardrail_triggered
                 else (
-                    "Guardrail fallback: generated code remained syntactically invalid "
+                    "LLM review rejected the generated code "
                     "after bounded repair attempts."
                     if syntax_rejected
                     else None

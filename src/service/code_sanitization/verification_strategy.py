@@ -34,12 +34,14 @@ class VerificationCommands:
     project_type: str = UNKNOWN_PROJECT_TYPE
     build_command: list[str] | None = None
     test_command: list[str] | None = None
+    pre_build_commands: list[list[str]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "project_type": self.project_type,
             "build_command": self.build_command,
             "test_command": self.test_command,
+            "pre_build_commands": self.pre_build_commands,
         }
 
 
@@ -72,6 +74,7 @@ class VerificationCommandOverride:
     test_command: list[str] | None = None
     extra_build_args: list[str] | None = None
     extra_test_args: list[str] | None = None
+    pre_build_commands: list[list[str]] | None = None
 
 
 @dataclass
@@ -116,6 +119,7 @@ class VerificationStrategyConfig:
                 test_command=_as_list(getter("test_command")),
                 extra_build_args=_as_list(getter("extra_build_args")),
                 extra_test_args=_as_list(getter("extra_test_args")),
+                pre_build_commands=_as_commands(getter("pre_build_commands")),
             )
 
         return cls(
@@ -128,6 +132,22 @@ def _as_list(value: Any) -> list[str] | None:
     if not value:
         return None
     return [str(item) for item in value]
+
+
+def _as_commands(value: Any) -> list[list[str]] | None:
+    if value is None:
+        return None
+    if not isinstance(value, (list, tuple)) or any(
+        not isinstance(command, (list, tuple))
+        or not command
+        or not all(isinstance(token, str) for token in command)
+        or not command[0].strip()
+        for command in value
+    ):
+        raise ValueError(
+            "pre_build_commands must contain nonempty command token lists."
+        )
+    return [list(command) for command in value]
 
 
 def _expand_tokens(command: Iterable[str], context: VerificationContext) -> list[str]:

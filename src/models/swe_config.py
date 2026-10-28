@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 import os
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 
 import yaml
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class KnowledgeBaseConfig(BaseModel):
@@ -160,6 +160,8 @@ class ConcernAssetsConfig(BaseModel):
 class ToolExecutionConfig(BaseModel):
     """Runtime limits for MCP tool execution behavior."""
 
+    model_config = ConfigDict(extra="forbid")
+
     max_summary_chars: int = Field(
         default=6000,
         ge=500,
@@ -183,6 +185,15 @@ class ToolExecutionConfig(BaseModel):
         ge=20,
         description="Chunk size in lines when chunked generation mode is used.",
     )
+    max_generation_concurrency: int = Field(
+        default=1,
+        ge=1,
+        le=8,
+        description=(
+            "Maximum independent generation or build-repair chunks requested "
+            "concurrently on backends supporting parallel requests. Default is serial."
+        ),
+    )
     max_syntax_repair_attempts: int = Field(
         default=2,
         ge=0,
@@ -203,133 +214,18 @@ class ToolExecutionConfig(BaseModel):
         ge=0,
         le=25,
         description=(
-            "Maximum build-diagnostic-guided LLM repair rounds when generated code "
-            "parses correctly but fails to compile. Bounds the repair loop so a "
-            "model that never converges cannot run indefinitely."
+            "Maximum model-selected edit transactions across build and test failures. "
+            "The action resource budget is eight times this value."
         ),
     )
-    max_build_diagnostics: int = Field(
-        default=20,
+    repair_agent_max_seconds: int = Field(
+        default=300,
         ge=1,
-        le=200,
-        description="Maximum compiler diagnostics included in a build repair prompt.",
+        le=3600,
+        description="Elapsed repair resource budget, checked between model/tool calls.",
     )
-    max_build_repair_chunks: int = Field(
-        default=4,
-        ge=1,
-        le=20,
-        description=(
-            "Maximum relevant chunks sent to the model per large-file build repair. "
-            "Chunking reuses max_single_shot_code_chars and chunk_lines."
-        ),
-    )
-    max_semantic_diagnostics: int = Field(
-        default=6,
-        ge=1,
-        le=50,
-        description=(
-            "Maximum diagnostic positions resolved into call-site and symbol "
-            "declaration context for a repair prompt."
-        ),
-    )
-    max_escalated_repair_targets: int = Field(
-        default=2,
-        ge=1,
-        le=10,
-        description=(
-            "Maximum extra files a stalled diagnostic may be routed to, ranked "
-            "by how strongly its message names the file."
-        ),
-    )
-    max_build_output_chars: int = Field(
-        default=6000,
-        ge=500,
-        description="Maximum characters of build output tail included in a repair prompt.",
-    )
-    max_build_ast_locations: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description=(
-            "Maximum failing locations per file described with AST scope and source "
-            "neighborhood in a build repair prompt."
-        ),
-    )
-    max_test_repair_attempts: int = Field(
-        default=10,
-        ge=0,
-        le=25,
-        description=(
-            "Maximum test-failure-guided LLM repair rounds when generated code "
-            "compiles but fails its tests. Bounds the repair loop so a model that "
-            "never converges cannot run indefinitely."
-        ),
-    )
-    max_test_failures: int = Field(
-        default=10,
-        ge=1,
-        le=200,
-        description="Maximum failing tests included in a test repair prompt.",
-    )
-    max_test_output_chars: int = Field(
-        default=6000,
-        ge=500,
-        description="Maximum characters of test output tail included in a repair prompt.",
-    )
-    max_test_ast_locations: int = Field(
-        default=5,
-        ge=1,
-        le=50,
-        description=(
-            "Maximum failing locations per file described with AST scope and source "
-            "neighborhood in a test repair prompt."
-        ),
-    )
-    max_test_repair_files: int = Field(
-        default=3,
-        ge=1,
-        le=25,
-        description=(
-            "Maximum files repaired per test repair round. Bounds prompt and cost "
-            "growth when many generated files could explain a failure."
-        ),
-    )
-    max_test_related_declarations: int = Field(
-        default=40,
-        ge=1,
-        le=400,
-        description=(
-            "Maximum declarations listed per related file in the cross-file index "
-            "of a test repair prompt."
-        ),
-    )
-    max_related_symbols: int = Field(
-        default=8,
-        ge=0,
-        le=50,
-        description=(
-            "Maximum symbols taken from verification diagnostics when resolving "
-            "read-only declaration context from the repository."
-        ),
-    )
-    max_related_symbol_files: int = Field(
-        default=5,
-        ge=0,
-        le=25,
-        description=(
-            "Maximum repository files whose declarations are attached to a repair "
-            "prompt as read-only cross-file context."
-        ),
-    )
-    max_related_declarations: int = Field(
-        default=12,
-        ge=1,
-        le=200,
-        description=(
-            "Maximum declarations listed per resolved repository symbol in a "
-            "repair prompt."
-        ),
-    )
+    repair_mode: Literal["loop", "tree"] = "loop"
+    repair_concurrency: int = Field(default=3, ge=1, le=8)
 
 
 class VerificationCommandOverrideConfig(BaseModel):
@@ -357,6 +253,14 @@ class VerificationCommandOverrideConfig(BaseModel):
     extra_test_args: Optional[List[str]] = Field(
         default=None,
         description="Arguments appended to the discovered test command.",
+    )
+    pre_build_commands: Optional[List[List[str]]] = Field(
+        default=None,
+        description=(
+            "Ordered prerequisite build commands, run before the main build. "
+            "Supports the same placeholders as build_command. An empty list "
+            "disables automatic prerequisite stages."
+        ),
     )
 
 
@@ -529,17 +433,14 @@ class SweMcpConfig(BaseModel):
     def load(cls, repo_root: str) -> "SweMcpConfig":
         """Load configuration from `swe_mcp_config.yaml` if present.
 
-        If no file is found or parsing fails, default values are returned.
+        Missing files use defaults. Invalid files raise instead of silently
+        replacing the requested execution settings.
         """
 
         config_path = os.path.join(repo_root, "swe_mcp_config.yaml")
         if not os.path.exists(config_path):
             return cls()
 
-        try:
-            with open(config_path, "r", encoding="utf-8") as f:
-                raw = yaml.safe_load(f) or {}
-            return cls.model_validate(raw)
-        except Exception:
-            # Fall back to defaults on any parsing error to keep the server robust.
-            return cls()
+        with open(config_path, "r", encoding="utf-8") as f:
+            raw = yaml.safe_load(f) or {}
+        return cls.model_validate(raw)

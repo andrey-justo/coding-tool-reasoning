@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from src.service.code_sanitization import (
     VerificationContext,
     VerificationStrategyResolver,
@@ -81,6 +83,102 @@ def test_configured_project_type_none_skips_verification(tmp_path: Path) -> None
 
     assert resolved.project_type == "unknown"
     assert resolved.build_command is None
+
+
+def _make_analyzer_reference(repo: Path) -> Path:
+    tooling = repo / "tooling"
+    tooling.mkdir()
+    analyzer = tooling / "CompilerPlugin.csproj"
+    analyzer.write_text("<Project />", encoding="utf-8")
+    (repo / "src" / "Core" / "Core.csproj").write_text(
+        '<Project><ItemGroup><ProjectReference Include="../../tooling/CompilerPlugin.csproj" '
+        'OutputItemType="Analyzer" /></ItemGroup></Project>',
+        encoding="utf-8",
+    )
+    return analyzer
+
+
+def test_stages_are_discovered_from_analyzer_metadata_not_project_names(tmp_path: Path):
+    repo = _make_dotnet_repo(tmp_path)
+    analyzer = _make_analyzer_reference(repo)
+    resolved = VerificationStrategyResolver().resolve(
+        _context(repo, changed=("src/Core/Changed.cs",), language="c#")
+    )
+    assert resolved.pre_build_commands == [
+        ["dotnet", "build", str(analyzer.relative_to(repo)), "--nologo"]
+    ]
+    assert "-p:EmitCompilerGeneratedFiles=true" in resolved.build_command
+
+
+def test_stage_discovery_honors_roslyn_metadata_and_project_reference_cycles(
+    tmp_path: Path,
+):
+    repo = _make_dotnet_repo(tmp_path)
+    core = repo / "src" / "Core" / "Core.csproj"
+    core.write_text(
+        "<Project><PropertyGroup><IsRoslynComponent>true</IsRoslynComponent></PropertyGroup>"
+        '<ItemGroup><ProjectReference Include="../Core.Tests/Core.Tests.csproj" /></ItemGroup></Project>',
+        encoding="utf-8",
+    )
+    (repo / "src" / "Core.Tests" / "Core.Tests.csproj").write_text(
+        '<Project><ItemGroup><ProjectReference Include="../Core/Core.csproj" /></ItemGroup></Project>',
+        encoding="utf-8",
+    )
+    resolved = VerificationStrategyResolver().resolve(
+        _context(repo, changed=("src/Core/Changed.cs",), language="c#")
+    )
+    assert len(resolved.pre_build_commands) == 1
+    assert resolved.pre_build_commands[0][2] == str(core.relative_to(repo))
+
+
+def test_stage_flags_are_preserved_and_custom_main_command_disables_auto_stages(
+    tmp_path: Path,
+):
+    repo = _make_dotnet_repo(tmp_path)
+    _make_analyzer_reference(repo)
+    override = {"extra_build_args": ["--verbosity", "quiet"]}
+    config = {"language_overrides": {"c#": override}}
+    resolver = VerificationStrategyResolver(config=config)
+    context = _context(repo, changed=("src/Core/Changed.cs",), language="c#")
+    assert resolver.resolve(context).pre_build_commands[0][-2:] == [
+        "--verbosity",
+        "quiet",
+    ]
+    override["build_command"] = ["custom-build"]
+    assert (
+        VerificationStrategyResolver(config=config).resolve(context).pre_build_commands
+        == []
+    )
+    override.pop("build_command")
+    override["pre_build_commands"] = []
+    assert (
+        VerificationStrategyResolver(config=config).resolve(context).pre_build_commands
+        == []
+    )
+
+
+def test_explicit_stages_are_available_to_other_language_strategies(tmp_path: Path):
+    repo = _make_python_repo(tmp_path)
+    config = {
+        "language_overrides": {
+            "python": {
+                "pre_build_commands": [["make", "-C", "{repo_path}", "generate"]],
+            }
+        }
+    }
+    resolved = VerificationStrategyResolver(config=config).resolve(
+        _context(repo, language="python")
+    )
+    assert resolved.pre_build_commands == [["make", "-C", repo.as_posix(), "generate"]]
+
+
+@pytest.mark.parametrize("commands", [[[]], ["make"], [[""]]])
+def test_invalid_stage_commands_fail_explicitly(tmp_path: Path, commands):
+    repo = _make_python_repo(tmp_path)
+    with pytest.raises(ValueError, match="nonempty command token lists"):
+        VerificationStrategyResolver(
+            config={"language_overrides": {"python": {"pre_build_commands": commands}}}
+        ).resolve(_context(repo, language="python"))
 
 
 def test_configured_project_type_forces_strategy(tmp_path: Path) -> None:

@@ -1,6 +1,12 @@
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field
+from src.models.issue_planning import (
+    ImplementationStep,
+    IssueDiscussion,
+    IssueSummary,
+    NfrDiscovery,
+)
 
 
 class CodeGenPlan(BaseModel):
@@ -32,4 +38,9 @@ class CodeGenPlan(BaseModel):
         default=None,
         description="Raw text returned by the planner LLM call before structured parsing.",
     )
-
+    issue_summary: Optional[IssueSummary] = None
+    issue_discussion: Optional[IssueDiscussion] = None
+    nfr_discovery: List[NfrDiscovery] = Field(default_factory=list)
+    nfr_discovery_source: str = "legacy"
+    implementation_plan: List[ImplementationStep] = Field(default_factory=list)
+    baseline_context: dict[str, Any] = Field(default_factory=dict)

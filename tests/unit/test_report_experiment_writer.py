@@ -103,11 +103,185 @@ def test_scalar_helpers_cover_fallbacks() -> None:
     assert _extract_verdict("not-a-dict") == "n/a"
 
 
+def test_report_preserves_atomic_patch_and_focused_compile_metadata(tmp_path: Path):
+    report = _base_report()
+    report["mcp"]["build_repair"] = [
+        {
+            "attempt": 1,
+            "repair_mode": "scoped_patch",
+            "group_id": "group-A",
+            "source_sha256": "source-hash",
+            "repaired_files": ["src/a.py"],
+            "patch_summary": {"edit_count": 1},
+            "focused_verification": {"status": "pass", "focus_files": ["src/a.py"]},
+            "candidate_accepted": True,
+            "decision_reason": "Build passed.",
+        }
+    ]
+    output = tmp_path / "report.md"
+    write_markdown_report(
+        output,
+        report,
+        metrics_rows(report),
+        tmp_path / "report.json",
+        tmp_path / "report.csv",
+        tmp_path / "report.log",
+    )
+    text = output.read_text(encoding="utf-8")
+    assert "group-A" in text and "source-hash" in text
+    assert "Compilacao focada: pass" in text
+
+
 def test_metrics_rows_includes_solid_and_semantic_metrics() -> None:
     rows = metrics_rows(_base_report())
     metrics = {row["metric"] for row in rows}
     assert "Delta de violacoes SOLID" in metrics
     assert "Similaridade semantica (CodeBERT)" in metrics
+
+
+def test_report_preserves_issue_evidence_discovery_and_ownership(tmp_path: Path):
+    report = _base_report()
+    report["issue"]["discussion"] = {
+        "fingerprint": "abc123",
+        "cutoff": None,
+        "fetched_comments": 8,
+        "omitted_comments": 3,
+        "omitted_blocks": 1,
+        "notes": ["No historical cutoff was supplied."],
+        "evidence": [
+            {
+                "source_id": "comment:99",
+                "url": "https://example/comment/99",
+                "author": "reviewer",
+                "updated_at": "2026-01-01",
+            }
+        ],
+    }
+    report["mcp"]["plan"] = {
+        "nfr_discovery_source": "issue_evidence",
+        "nfr_focus": ["Reliability", "Maintainability"],
+        "nfr_discovery": [
+            {
+                "nfr_id": "NFR-R",
+                "evidence_ids": ["comment:99"],
+                "rationale": "Counting must be correct.",
+            }
+        ],
+        "issue_summary": {
+            "requirements": [
+                {
+                    "requirement_id": "R1",
+                    "text": "Increment once.",
+                    "evidence_ids": ["comment:99"],
+                    "acceptance_check": "Count equals one.",
+                }
+            ],
+            "unresolved_questions": [],
+        },
+        "implementation_plan": [
+            {
+                "step_id": "S1",
+                "target_file": "Counter.cs",
+                "symbol": "Increment",
+                "action": "modify",
+                "start_line": 4,
+                "end_line": 4,
+                "requirement_ids": ["R1"],
+                "depends_on": [],
+                "validation": ["Run counting test."],
+            }
+        ],
+    }
+    output = tmp_path / "report.md"
+    write_markdown_report(
+        output,
+        report,
+        metrics_rows(report),
+        tmp_path / "report.json",
+        tmp_path / "report.csv",
+        tmp_path / "report.log",
+    )
+    text = output.read_text(encoding="utf-8")
+    for expected in [
+        "abc123",
+        "issue_evidence",
+        "comment:99",
+        "reviewer",
+        "NFR-R",
+        "Maintainability",
+        "R1",
+        "Count equals one.",
+        "Counter.cs::Increment",
+        "Run counting test.",
+        "No historical cutoff",
+    ]:
+        assert expected in text
+
+
+def test_report_preserves_stage_results_and_candidate_rejection(tmp_path: Path):
+    report = _base_report()
+    report["run_config"]["auto_repair"] = {
+        "strategy": "multi_branch",
+        "search_width": 2,
+        "concurrency": 3,
+        "max_depth": 3,
+        "max_branch_seconds": 300,
+    }
+    report["verification"] = {
+        "build": {
+            "stages": [
+                {
+                    "stage": "prerequisite",
+                    "status": "pass",
+                    "duration_seconds": 1.25,
+                    "command": ["make", "generate"],
+                }
+            ]
+        }
+    }
+    report["mcp"]["build_repair"] = [
+        {
+            "attempt": 1,
+            "candidate_accepted": False,
+            "decision_reason": "No diagnostic progress",
+            "introduced_diagnostics": [],
+            "resolved_diagnostics": [],
+            "stopped_reason": "Repeated errors",
+            "branch_id": "checkpoint-1",
+            "branch_depth": 2,
+            "branch_state": "rolled_back",
+            "branch_reason": "Provisional branch depth budget exhausted.",
+            "transaction_accepted": False,
+            "handoff_from": "Models.cs",
+            "handoff_to": "Generator.cs",
+            "local_resolved_diagnostics": [["Models.cs", "E1", "Missing"]],
+            "local_introduced_diagnostics": [],
+            "local_decision_reason": "Local progress",
+        }
+    ]
+    path = tmp_path / "report.md"
+    write_markdown_report(
+        path,
+        report,
+        metrics_rows(report),
+        tmp_path / "r.json",
+        tmp_path / "r.csv",
+        tmp_path / "r.log",
+    )
+    content = path.read_text(encoding="utf-8")
+    assert (
+        "Estrategia de auto-reparo: multi_branch; largura=2; concorrencia=3; profundidade=3"
+        in content
+    )
+    assert "Transferencia de owner: `Models.cs` -> `Generator.cs`" in content
+    assert "Progresso local: novos=0; resolvidos=1; decisao=Local progress" in content
+    assert "Branch: `checkpoint-1`; profundidade=2; estado=rolled_back" in content
+    assert "Provisional branch depth budget exhausted." in content
+    assert "Etapa de build prerequisite: status=pass" in content
+    assert "comando=`make generate`" in content
+    assert "Candidato aceito: False" in content
+    assert "No diagnostic progress" in content
+    assert "Motivo da parada: Repeated errors" in content
 
 
 def test_write_reports_generate_expected_files(tmp_path: Path) -> None:

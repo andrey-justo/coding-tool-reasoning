@@ -46,7 +46,9 @@ def test_load_raises_when_template_missing(tmp_path: Path) -> None:
 
 
 def test_packaged_syntax_repair_template_renders() -> None:
-    rendered = ToolPromptTemplateService().render(
+    rendered = ToolPromptTemplateService(
+        Path(__file__).resolve().parents[2] / "templates", subdirectory="utils"
+    ).render(
         "syntax_repair",
         {
             "TARGET_PATH": "src/Hub.cs",
@@ -55,6 +57,7 @@ def test_packaged_syntax_repair_template_renders() -> None:
             "DIAGNOSTICS_JSON": "[]",
             "ORIGINAL_CODE": "class A {}",
             "GENERATED_CODE": "class A {",
+            "REVIEW_CONTEXT": "{}",
         },
     )
 

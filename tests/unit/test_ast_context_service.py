@@ -75,7 +75,7 @@ def test_describe_outline_lists_declarations_without_file_content():
     payload = outline.to_dict()
     assert payload["file"].endswith("AkkaSerializerGenerator.cs")
     assert all(
-        set(declaration) == {"node_type", "name", "start_line", "end_line"}
+        set(declaration) == {"node_type", "name", "start_line", "end_line", "header"}
         for declaration in payload["declarations"]
     )
 

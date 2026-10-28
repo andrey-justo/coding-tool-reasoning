@@ -9,11 +9,9 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from pathlib import Path
 from typing import ClassVar, Iterable
 
 from src.service.build_diagnostics.build_diagnostic import (
-    ERROR_SEVERITY,
     BuildDiagnostic,
     BuildDiagnosticsResult,
 )
@@ -48,18 +46,10 @@ class BuildDiagnosticParser(ABC):
 
     def build(self, output: str, *, max_diagnostics: int) -> BuildDiagnosticsResult:
         diagnostics = self.parse(output or "")
-        errors = [
-            diagnostic
-            for diagnostic in diagnostics
-            if diagnostic.severity == ERROR_SEVERITY
-        ]
-        # Errors are what block the build, so warnings never crowd them out of
-        # the bounded diagnostic window sent to the repair model.
-        selected = errors or diagnostics
         return BuildDiagnosticsResult(
             parser=self.parser_name,
-            available=bool(selected),
-            diagnostics=selected[: max(int(max_diagnostics), 1)],
+            available=bool(diagnostics),
+            diagnostics=diagnostics[: max(int(max_diagnostics), 1)],
         )
 
 
@@ -97,8 +87,4 @@ def match_diagnostic_file(
     if best_match is not None:
         return best_match
 
-    diagnostic_name = Path(normalized).name.lower()
-    for candidate in candidates:
-        if Path(candidate.replace("\\", "/")).name.lower() == diagnostic_name:
-            return candidate
     return None

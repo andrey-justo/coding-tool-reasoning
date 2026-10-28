@@ -4,9 +4,12 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
+from src.llm_client.multi_model_llm_client import MultiModelLLMClient
+from src.models.utility_decisions import SemanticReview
 from src.service.localizer.ast.tree_sitter_symbol_extractor import (
     TreeSitterSymbolExtractor,
 )
+from src.service.utility_llm_service import UtilityLlmService
 
 
 @dataclass
@@ -34,8 +37,30 @@ class SyntaxValidationResult:
 class SyntaxValidator:
     """Validate source structure with the tree-sitter parsers already in use."""
 
-    def __init__(self) -> None:
+    def __init__(self, llm_client: MultiModelLLMClient | None = None) -> None:
         self._extractor = TreeSitterSymbolExtractor()
+        self._semantic = UtilityLlmService(llm_client)
+
+    def review_repair(
+        self,
+        target_file: str,
+        original: str,
+        repaired: str,
+        *,
+        problem_summary: str = "",
+        diagnostics: list[dict[str, Any]] | None = None,
+    ) -> SemanticReview:
+        return self._semantic.complete(
+            "repair_review",
+            SemanticReview,
+            {
+                "target_file": target_file,
+                "issue_intent_and_nfrs": problem_summary,
+                "current_source": original,
+                "proposed_source": repaired,
+                "verification_diagnostics": diagnostics or [],
+            },
+        )
 
     @staticmethod
     def normalize_transport_bom(value: str) -> str:
