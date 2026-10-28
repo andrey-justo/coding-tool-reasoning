@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from typing import ClassVar
 
@@ -8,6 +10,8 @@ from src.service.code_sanitization.verification_strategy import (
     VerificationCommandStrategy,
     VerificationContext,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class DotnetVerificationStrategy(VerificationCommandStrategy):
@@ -25,6 +29,9 @@ class DotnetVerificationStrategy(VerificationCommandStrategy):
         repo_path = context.repo_path
         owning_projects = self._infer_owning_projects(repo_path, context.changed_files)
         test_projects = self._infer_test_projects(repo_path, owning_projects)
+        generator_projects = self._generator_projects(
+            repo_path, owning_projects + test_projects
+        )
 
         build_target = self._resolve_build_target(
             repo_path, owning_projects, test_projects
@@ -38,6 +45,8 @@ class DotnetVerificationStrategy(VerificationCommandStrategy):
             self._as_argument(repo_path, build_target),
             "--nologo",
         ]
+        if generator_projects:
+            build_command.append("-p:EmitCompilerGeneratedFiles=true")
 
         test_command: list[str] | None = None
         if test_projects:
@@ -58,7 +67,60 @@ class DotnetVerificationStrategy(VerificationCommandStrategy):
             project_type=self.project_type,
             build_command=build_command,
             test_command=test_command,
+            pre_build_commands=[
+                ["dotnet", "build", self._as_argument(repo_path, project), "--nologo"]
+                for project in generator_projects
+            ],
         )
+
+    @staticmethod
+    def _generator_projects(repo_path: Path, projects: list[Path]) -> list[Path]:
+        pending = list(projects)
+        visited: set[Path] = set()
+        generators: set[Path] = set()
+        root = repo_path.resolve()
+        while pending:
+            project = pending.pop().resolve()
+            if project in visited or not project.is_relative_to(root):
+                continue
+            visited.add(project)
+            try:
+                document = ET.parse(project)
+            except (OSError, ET.ParseError) as error:
+                logger.warning(
+                    "Cannot inspect project %s for generator staging: %s",
+                    project,
+                    error,
+                )
+                continue
+            elements = list(document.iter())
+            if any(
+                element.tag.rsplit("}", 1)[-1] == "IsRoslynComponent"
+                and (element.text or "").strip().lower() == "true"
+                for element in elements
+            ):
+                generators.add(project)
+            for element in elements:
+                if element.tag.rsplit("}", 1)[-1] != "ProjectReference":
+                    continue
+                include = element.get("Include")
+                if not include or "$(" in include:
+                    continue
+                reference = (project.parent / include.replace("\\", "/")).resolve()
+                if not reference.is_relative_to(root):
+                    continue
+                pending.append(reference)
+                output_type = element.get("OutputItemType") or next(
+                    (
+                        child.text
+                        for child in element
+                        if child.tag.rsplit("}", 1)[-1] == "OutputItemType"
+                    ),
+                    "",
+                )
+                if (output_type or "").strip().lower() == "analyzer":
+                    generators.add(reference)
+        return sorted(generators)
 
     def _resolve_build_target(
         self,

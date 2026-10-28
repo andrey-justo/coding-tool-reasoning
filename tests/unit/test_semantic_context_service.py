@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from src.service.localizer.ast.tree_sitter_symbol_extractor import (
     _LANG_MODULE_BY_SUFFIX,
 )
@@ -77,7 +79,8 @@ def test_resolves_callee_declared_far_from_the_failing_line():
     assert callee.file == "Generator.cs"
     assert callee.declarations
     assert "INamedTypeSymbol symbol" in callee.declarations[0]["signature"]
-    assert callee.declarations[0]["defines_contract"] is True
+    assert "defines_contract" not in callee.declarations[0]
+    assert callee.declarations[0]["node_type"] == "method_declaration"
 
 
 def test_symbols_absent_from_file_and_repository_are_marked_external():
@@ -86,8 +89,44 @@ def test_symbols_absent_from_file_and_repository_are_marked_external():
     contexts = service.describe("Generator.cs", CSHARP_SOURCE, [_csharp_diagnostic()])
 
     origins = {symbol.symbol: symbol.origin for symbol in contexts[0].symbols}
-    assert origins["ITypeSymbol"] == "external_or_unresolved"
-    assert origins["INamedTypeSymbol"] == "external_or_unresolved"
+    assert origins["ITypeSymbol"] == "not_found_in_retrieved_context"
+    assert origins["INamedTypeSymbol"] == "not_found_in_retrieved_context"
+
+
+def test_repository_model_failure_is_not_reported_as_an_external_contract(tmp_path):
+    class Resolver:
+        def declarations_for_symbol(self, *args, **kwargs):
+            raise RuntimeError("Declaration model unavailable")
+
+    with pytest.raises(RuntimeError, match="Declaration model unavailable"):
+        SemanticContextService().describe(
+            "Generator.cs",
+            CSHARP_SOURCE,
+            [_csharp_diagnostic()],
+            repo_path=tmp_path,
+            symbol_resolver=Resolver(),
+        )
+
+
+def test_symbol_extraction_is_batched_across_diagnostics():
+    class Resolver:
+        def __init__(self):
+            self.messages = []
+
+        def extract_symbols(self, messages):
+            self.messages.append(messages)
+            return ["ITypeSymbol", "INamedTypeSymbol"]
+
+    resolver = Resolver()
+    diagnostics = [_csharp_diagnostic(), {**_csharp_diagnostic(), "code": "OTHER"}]
+    SemanticContextService().describe(
+        "Generator.cs",
+        CSHARP_SOURCE,
+        diagnostics,
+        symbol_resolver=resolver,
+    )
+    assert len(resolver.messages) == 1
+    assert len(resolver.messages[0]) == 2
 
 
 def test_overloaded_declarations_are_all_reported():

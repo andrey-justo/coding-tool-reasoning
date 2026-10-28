@@ -1,13 +1,23 @@
 import json
+import logging
 from typing import List, Optional, Tuple
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.intent_planning_result import IntentPlanningResult
+from src.models.issue_planning import (
+    GroundedImplementationPlan,
+    ImplementationStep,
+    IssueDiscussion,
+    IssueUnderstanding,
+)
 from src.models.swe_config import SweMcpConfig
 from src.service.language_detection import infer_language_from_text
 from src.service.swe_knowledge_base_service import SweKnowledgeBase
+from src.service.issue_planning_service import IssuePlanningService
+from src.service.utility_llm_service import UtilityLlmService
 
 _DEFAULT_NFR_FOCUS = ["Maintainability", "Readability"]
+logger = logging.getLogger(__name__)
 
 
 class IntentPlanner:
@@ -35,6 +45,8 @@ class IntentPlanner:
         target_language: Optional[str] = None,
         nfr_focus: Optional[List[str]] = None,
         user_prompt_data: Optional[str] = None,
+        issue_discussion: Optional[IssueDiscussion] = None,
+        baseline_code_by_file: Optional[dict[str, str]] = None,
     ) -> IntentPlanningResult:
         """Create a knowledge-base-guided high-level plan for a code change.
 
@@ -50,17 +62,42 @@ class IntentPlanner:
         ):
             effective_target_language = self._infer_target_language(problem_description)
 
+        understanding = None
+        baseline_context = {}
+        discovery_source = "legacy"
+        requested_focus = nfr_focus
+        if issue_discussion is not None:
+            planning_service = IssuePlanningService(self.kb, self.llm_client)
+            baseline_context = planning_service.repository_context(
+                baseline_code_by_file or {}
+            )
+            understanding = planning_service.understand(issue_discussion)
+            requested_focus = [
+                self.kb.nodes[item.nfr_id].name or item.nfr_id
+                for item in understanding.nfr_discovery
+            ]
+            discovery_source = "issue_evidence"
+            if nfr_focus:
+                logger.warning(
+                    "Explicit NFR override replaces issue-discovered focus for this manual request"
+                )
+                requested_focus = nfr_focus
+                discovery_source = "explicit_override"
         effective_nfr_focus, resolved_ids = self._resolve_nfr_focus(
             problem_description=problem_description,
-            nfr_focus=nfr_focus,
+            nfr_focus=requested_focus,
         )
 
-        steps, llm_prompt, llm_raw_response = self._generate_steps_with_llm(
-            problem_description=problem_description,
-            target_language=effective_target_language,
-            nfr_focus=effective_nfr_focus,
-            resolved_nfr_ids=resolved_ids,
-            user_prompt_data=user_prompt_data,
+        steps, llm_prompt, llm_raw_response, implementation_plan = (
+            self._generate_steps_with_llm(
+                problem_description=problem_description,
+                target_language=effective_target_language,
+                nfr_focus=effective_nfr_focus,
+                resolved_nfr_ids=resolved_ids,
+                user_prompt_data=user_prompt_data,
+                understanding=understanding,
+                baseline_context=baseline_context,
+            )
         )
 
         return IntentPlanningResult(
@@ -70,6 +107,12 @@ class IntentPlanner:
             inferred_target_language=effective_target_language,
             llm_prompt=llm_prompt,
             llm_raw_response=llm_raw_response,
+            issue_summary=understanding.summary if understanding else None,
+            issue_discussion=issue_discussion,
+            nfr_discovery=understanding.nfr_discovery if understanding else [],
+            nfr_discovery_source=discovery_source,
+            implementation_plan=implementation_plan,
+            baseline_context=baseline_context,
         )
 
     # ------------------------- helpers ---------------------------
@@ -191,7 +234,9 @@ class IntentPlanner:
         nfr_focus: List[str],
         resolved_nfr_ids: List[str],
         user_prompt_data: Optional[str],
-    ) -> Tuple[List[str], str, Optional[str]]:
+        understanding: Optional[IssueUnderstanding] = None,
+        baseline_context: Optional[dict] = None,
+    ) -> Tuple[List[str], str, Optional[str], List[ImplementationStep]]:
         """Use the LLM with knowledge base RAG to propose high-level steps.
 
         If the LLM output cannot be parsed as JSON, we fall back to a
@@ -203,71 +248,77 @@ class IntentPlanner:
             depth=self.config.knowledge_base.relationship_depth,
         )
         max_steps = self.config.planning.max_steps
-        language_label = target_language or "the project"
-
-        # Build a human-readable lifecycle-phase guide from workflow.stages so
-        # the LLM knows which SE phases the steps should be distributed across.
-        stages = self.config.workflow.stages or []
-        stages_guidance = ""
-        if stages:
-            stages_list = "\n".join(f"  - {s}" for s in stages)
-            stages_guidance = (
-                "The plan should produce at least one step for each of the\n"
-                "following software-engineering lifecycle phases (workflow\n"
-                "stages configured for this project):\n"
-                f"{stages_list}\n\n"
+        utility = UtilityLlmService(self.llm_client)
+        prompt_data = {
+            "request": problem_description,
+            "language": target_language or "the project",
+            "Additional user prompt data": user_prompt_data,
+            "nfr_focus": nfr_focus,
+            "SWE knowledge-base endorsement context": knowledge_base_summary,
+            "lifecycle_stages": self.config.workflow.stages or [],
+            "max_steps": max_steps,
+        }
+        prompt = utility.render("high_level_plan", prompt_data)
+        if understanding is not None:
+            prompt = utility.render(
+                "implementation_plan",
+                {
+                    **prompt_data,
+                    "issue_understanding": understanding.model_dump(),
+                    "baseline_declarations": baseline_context,
+                },
+                GroundedImplementationPlan,
             )
-
-        additional_user_context = (
-            f"Additional user prompt data:\n{user_prompt_data}\n\n"
-            if user_prompt_data
-            else ""
-        )
-
-        prompt_header = (
-            "You are a senior software engineer planning safe,\n"
-            f"step-by-step code changes in a {language_label} codebase.\n\n"
-            f"User request (natural language):\n{problem_description}\n\n"
-            f"{additional_user_context}"
-            f"Non-functional requirements to prioritize: {', '.join(nfr_focus) or 'None specified'}.\n\n"
-            f"{stages_guidance}"
-            "Here is structured software-engineering knowledge base data with NFRs,\n"
-            "principles, practices, and code smells that are relevant to this\n"
-            "request. Use it as background knowledge when reasoning:\n\n"
-            f"{knowledge_base_summary}\n\n"
-            "Think in a chain-of-thought about what changes are needed, then\n"
-            "produce a concise JSON object describing the high-level plan.\n"
-            "The JSON must have exactly this shape and no extra keys or text:\n\n"
-            "{\n"
-            '  "high_level_steps": [\n'
-            '    "Step 1 ...",\n'
-            '    "Step 2 ..."\n'
-            "  ]\n"
-            "}\n\n"
-        )
-
-        prompt_footer = (
-            "Do NOT include markdown, explanations, or any text before or\n"
-            "after the JSON. The steps should be phrased as imperative\n"
-            "actions that another coding agent could execute (e.g., 'Scan\n"
-            "existing controller classes for long methods related to X').\n"
-            f"Limit yourself to at most {max_steps} high-level steps."
-        )
-
-        prompt = prompt_header + prompt_footer
 
         raw: Optional[str] = None
         try:
             raw = self.llm_client.chat(prompt)
+            if understanding is not None:
+
+                def validate_response(response: str) -> GroundedImplementationPlan:
+                    structured = GroundedImplementationPlan.model_validate_json(
+                        response
+                    )
+                    IssuePlanningService.validate_implementation(
+                        structured,
+                        understanding,
+                        baseline_context or {},
+                        llm_client=self.llm_client,
+                    )
+                    return structured
+
+                try:
+                    structured = validate_response(raw)
+                except ValueError as error:
+                    logger.warning(
+                        "Grounded plan failed validation; requesting one correction: %s",
+                        error,
+                    )
+                    prompt += "\n" + utility.render(
+                        "implementation_plan_correction",
+                        {
+                            "validation_error": str(error),
+                            "previous_invalid_plan": raw[:24000],
+                        },
+                    )
+                    raw = self.llm_client.chat(prompt)
+                    structured = validate_response(raw)
+                return (
+                    structured.high_level_steps[:max_steps],
+                    prompt,
+                    raw,
+                    structured.implementation_plan,
+                )
             data = json.loads(raw)
             steps = data.get("high_level_steps") or []
             if isinstance(steps, list) and all(isinstance(s, str) for s in steps):
                 # Basic sanity filter to avoid empty or trivial output.
                 cleaned = [s.strip() for s in steps if s and s.strip()]
-                return cleaned[:max_steps], prompt, raw
+                return cleaned[:max_steps], prompt, raw, []
         except Exception:
-            # Fall through to deterministic default plan.
-            pass
+            logger.exception("Implementation planning failed")
+            if understanding is not None:
+                raise
 
         # Fallback: deterministic knowledge base-aware steps.
         default_steps = [
@@ -278,5 +329,4 @@ class IntentPlanner:
             "Apply the changes in small commits, verifying behavior after each change.",
             "Update or add tests to cover both the original and new behavior.",
         ]
-        return default_steps, prompt, raw
-
+        return default_steps, prompt, raw, []

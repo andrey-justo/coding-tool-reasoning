@@ -20,7 +20,8 @@ def test_dotnet_parser_extracts_positioned_error():
 
     assert result.parser == "dotnet"
     assert result.available is True
-    assert len(result.diagnostics) == 1
+    assert len(result.diagnostics) == 2
+    assert result.diagnostics[1].severity == "warning"
 
     diagnostic = result.diagnostics[0]
     assert diagnostic.code == "CS1503"
@@ -82,12 +83,12 @@ def test_match_diagnostic_file_maps_temporary_worktree_path():
     assert matched == "src/Akka/Serialization/AkkaSerializerGenerator.cs"
 
 
-def test_match_diagnostic_file_falls_back_to_file_name():
+def test_match_diagnostic_file_does_not_guess_from_basename():
     matched = match_diagnostic_file(
         "/build/elsewhere/Other.cs", ["src/Akka/Serialization/Other.cs"]
     )
 
-    assert matched == "src/Akka/Serialization/Other.cs"
+    assert matched is None
 
 
 def test_match_diagnostic_file_returns_none_for_unknown_file():
@@ -95,7 +96,7 @@ def test_match_diagnostic_file_returns_none_for_unknown_file():
     assert match_diagnostic_file(None, ["src/Known.cs"]) is None
 
 
-def test_errors_take_priority_over_warnings_in_bounded_window():
+def test_bounded_context_preserves_emitted_order_without_severity_ranking():
     output = "\n".join(
         [f"a.csproj : warning NU190{index}: vuln [a.csproj]" for index in range(5)]
         + ["a.cs(1,1): error CS0103: The name 'x' does not exist [a.csproj]"]
@@ -105,4 +106,24 @@ def test_errors_take_priority_over_warnings_in_bounded_window():
         output, BuildDiagnosticContext(project_type="dotnet"), max_diagnostics=2
     )
 
-    assert [diagnostic.code for diagnostic in result.diagnostics] == ["CS0103"]
+    assert [diagnostic.code for diagnostic in result.diagnostics] == ["NU1900", "NU1901"]
+
+
+def test_generator_codes_receive_no_special_ranking():
+    output = (
+        "a.cs(1,1): error CS0534: Missing generated implementation [a.csproj]\n"
+        "CSC : warning CS8784: Generator 'ExampleGenerator' failed to initialize. [a.csproj]\n"
+        "a.csproj : warning NU1902: Unrelated package warning [a.csproj]"
+    )
+    result = BuildDiagnosticParserResolver().parse(
+        output, BuildDiagnosticContext(project_type="dotnet"), max_diagnostics=2
+    )
+    assert [diagnostic.code for diagnostic in result.diagnostics] == [
+        "CS0534",
+        "CS8784",
+    ]
+    assert [diagnostic.code for diagnostic in result.errors] == ["CS0534"]
+    bounded = BuildDiagnosticParserResolver().parse(
+        output, BuildDiagnosticContext(project_type="dotnet"), max_diagnostics=1
+    )
+    assert [diagnostic.code for diagnostic in bounded.diagnostics] == ["CS0534"]

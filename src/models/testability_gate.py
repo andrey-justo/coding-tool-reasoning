@@ -13,6 +13,10 @@ class VerificationCommandResult:
     stdout_tail: str | None = None
     stderr_tail: str | None = None
     timed_out: bool | None = None
+    stage: str | None = None
+    completed_stages: int = 0
+    stages: list[dict[str, Any]] = field(default_factory=list)
+    diagnostics: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -49,9 +53,13 @@ class VerifyTestabilityGateResult:
     enabled: bool = True
     build: VerificationCommandResult = field(default_factory=VerificationCommandResult)
     test: VerificationCommandResult = field(default_factory=VerificationCommandResult)
-    coverage: VerificationCoverageResult = field(default_factory=VerificationCoverageResult)
+    coverage: VerificationCoverageResult = field(
+        default_factory=VerificationCoverageResult
+    )
     junit: VerificationJunitResult = field(default_factory=VerificationJunitResult)
-    testability_gate: TestabilityGateStatus = field(default_factory=TestabilityGateStatus)
+    testability_gate: TestabilityGateStatus = field(
+        default_factory=TestabilityGateStatus
+    )
     test_pass_rate_source: str = "not-run"
     test_pass_rate: TestPassRateResult | None = None
     log_lines: list[str] = field(default_factory=list)

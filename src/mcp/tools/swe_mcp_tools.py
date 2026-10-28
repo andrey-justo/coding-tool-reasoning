@@ -1,15 +1,15 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Callable, List, Optional, Type
 
 from src.mcp.tools.apply_plan_swe_code_change_tool import ApplyPlanSweCodeChangeTool
 from src.mcp.tools.build_swe_code_context_tool import BuildSweCodeContextTool
+from src.mcp.tools.decide_repair_action_tool import DecideRepairActionTool
 from src.mcp.tools.find_best_issue_candidates_tool import FindBestIssueCandidatesTool
 from src.mcp.tools.judge_swe_code_change_tool import JudgeSweCodeChangeTool
 from src.mcp.tools.plan_swe_code_change_tool import PlanSweCodeChangeTool
-from src.mcp.tools.repair_build_failure_tool import RepairBuildFailureTool
-from src.mcp.tools.repair_test_failure_tool import RepairTestFailureTool
 from src.mcp.tools.verify_testability_gate_tool import VerifyTestabilityGateTool
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.issue_candidate_ranking import (
@@ -18,6 +18,7 @@ from src.models.issue_candidate_ranking import (
     PullRequestContext,
 )
 from src.models.swe_context import SweContext
+from src.models.issue_planning import IssueDiscussion
 from src.models.swe_explanation import SweCodeChangeExplanation
 
 LOGGER = logging.getLogger(__name__)
@@ -42,11 +43,10 @@ class SweMcpToolRegistry:
         self._logger = LOGGER
         self._plan_tool = PlanSweCodeChangeTool(self)
         self._build_context_tool = BuildSweCodeContextTool(self)
+        self._decide_repair_action_tool = DecideRepairActionTool(self)
         self._apply_plan_tool = ApplyPlanSweCodeChangeTool(self)
         self._judge_tool = JudgeSweCodeChangeTool(self)
         self._verify_testability_gate_tool = VerifyTestabilityGateTool(self)
-        self._repair_build_failure_tool = RepairBuildFailureTool(self)
-        self._repair_test_failure_tool = RepairTestFailureTool(self)
         self._find_best_issue_candidates_tool = FindBestIssueCandidatesTool(self)
 
     def apply_plan_swe_code_change(
@@ -72,6 +72,8 @@ class SweMcpToolRegistry:
         target_file_hints: Optional[List[str]] = None,
         nfr_focus: Optional[List[str]] = None,
         user_prompt_data: Optional[str] = None,
+        issue_discussion: Optional[IssueDiscussion] = None,
+        baseline_code_by_file: Optional[dict[str, str]] = None,
     ) -> CodeGenPlan:
         return self._plan_tool.execute(
             problem_description=problem_description,
@@ -79,6 +81,8 @@ class SweMcpToolRegistry:
             target_file_hints=target_file_hints,
             nfr_focus=nfr_focus,
             user_prompt_data=user_prompt_data,
+            issue_discussion=issue_discussion,
+            baseline_code_by_file=baseline_code_by_file,
         )
 
     def build_swe_code_context(
@@ -133,67 +137,23 @@ class SweMcpToolRegistry:
         base_ref: str,
         generated_code_by_file: dict[str, str],
         timeout_seconds: int = 300,
+        focus_files: Optional[List[str]] = None,
+        compile_only: bool = False,
     ) -> dict[str, Any]:
         return self._verify_testability_gate_tool.execute(
             repo_path=repo_path,
             base_ref=base_ref,
             generated_code_by_file=generated_code_by_file,
             timeout_seconds=timeout_seconds,
+            focus_files=focus_files,
+            compile_only=compile_only,
         )
 
-    def repair_build_failure(
-        self,
-        problem_summary: str,
-        build_output: str,
-        generated_code_by_file: dict[str, str],
-        build_command: Optional[List[str]] = None,
-        attempt: int = 1,
-        max_attempts: int = 10,
-        temperature: Optional[float] = None,
-        seed: Optional[int] = None,
-        repo_path: Optional[str] = None,
-        repair_history: Optional[List[dict[str, Any]]] = None,
-        escalate_routing: bool = False,
-    ) -> dict[str, Any]:
-        return self._repair_build_failure_tool.execute(
-            problem_summary=problem_summary,
-            build_output=build_output,
-            generated_code_by_file=generated_code_by_file,
-            build_command=build_command,
-            attempt=attempt,
-            max_attempts=max_attempts,
-            temperature=temperature,
-            seed=seed,
-            repo_path=repo_path,
-            repair_history=repair_history,
-            escalate_routing=escalate_routing,
-        )
+    def decide_repair_action(self, state: dict[str, Any]) -> dict[str, Any]:
+        return self._decide_repair_action_tool.execute(state)
 
-    def repair_test_failure(
-        self,
-        problem_summary: str,
-        test_output: str,
-        generated_code_by_file: dict[str, str],
-        results_path: Optional[str] = None,
-        test_command: Optional[List[str]] = None,
-        attempt: int = 1,
-        max_attempts: int = 10,
-        temperature: Optional[float] = None,
-        seed: Optional[int] = None,
-        repo_path: Optional[str] = None,
-    ) -> dict[str, Any]:
-        return self._repair_test_failure_tool.execute(
-            problem_summary=problem_summary,
-            test_output=test_output,
-            generated_code_by_file=generated_code_by_file,
-            results_path=results_path,
-            test_command=test_command,
-            attempt=attempt,
-            max_attempts=max_attempts,
-            temperature=temperature,
-            seed=seed,
-            repo_path=repo_path,
-        )
+    def review_repair_changes(self, state: dict[str, Any]) -> dict[str, Any]:
+        return self._decide_repair_action_tool.review(state)
 
     def register_on_mcp(self, mcp: Any) -> None:
         """Register class-backed methods as MCP tools."""
@@ -205,6 +165,8 @@ class SweMcpToolRegistry:
             target_file_hints: Optional[List[str]] = None,
             nfr_focus: Optional[List[str]] = None,
             user_prompt_data: Optional[str] = None,
+            issue_discussion: Optional[IssueDiscussion] = None,
+            baseline_code_by_file: Optional[dict[str, str]] = None,
         ) -> CodeGenPlan:
             return self.plan_swe_code_change(
                 problem_description=problem_description,
@@ -212,6 +174,8 @@ class SweMcpToolRegistry:
                 target_file_hints=target_file_hints,
                 nfr_focus=nfr_focus,
                 user_prompt_data=user_prompt_data,
+                issue_discussion=issue_discussion,
+                baseline_code_by_file=baseline_code_by_file,
             )
 
         @mcp.tool()
@@ -277,72 +241,31 @@ class SweMcpToolRegistry:
             )
 
         @mcp.tool()
-        def verify_testability_gate(
+        async def verify_testability_gate(
             repo_path: str,
             base_ref: str,
             generated_code_by_file: dict[str, str],
             timeout_seconds: int = 300,
+            focus_files: Optional[List[str]] = None,
+            compile_only: bool = False,
         ) -> dict[str, Any]:
-            return self.verify_testability_gate(
+            return await asyncio.to_thread(
+                self.verify_testability_gate,
                 repo_path=repo_path,
                 base_ref=base_ref,
                 generated_code_by_file=generated_code_by_file,
                 timeout_seconds=timeout_seconds,
+                focus_files=focus_files,
+                compile_only=compile_only,
             )
 
         @mcp.tool()
-        def repair_build_failure(
-            problem_summary: str,
-            build_output: str,
-            generated_code_by_file: dict[str, str],
-            build_command: Optional[List[str]] = None,
-            attempt: int = 1,
-            max_attempts: int = 10,
-            temperature: Optional[float] = None,
-            seed: Optional[int] = None,
-            repo_path: Optional[str] = None,
-            repair_history: Optional[List[dict[str, Any]]] = None,
-            escalate_routing: bool = False,
-        ) -> dict[str, Any]:
-            return self.repair_build_failure(
-                problem_summary=problem_summary,
-                build_output=build_output,
-                generated_code_by_file=generated_code_by_file,
-                build_command=build_command,
-                attempt=attempt,
-                max_attempts=max_attempts,
-                temperature=temperature,
-                seed=seed,
-                repo_path=repo_path,
-                repair_history=repair_history,
-                escalate_routing=escalate_routing,
-            )
+        async def decide_repair_action(state: dict[str, Any]) -> dict[str, Any]:
+            return await asyncio.to_thread(self.decide_repair_action, state)
 
         @mcp.tool()
-        def repair_test_failure(
-            problem_summary: str,
-            test_output: str,
-            generated_code_by_file: dict[str, str],
-            results_path: Optional[str] = None,
-            test_command: Optional[List[str]] = None,
-            attempt: int = 1,
-            max_attempts: int = 10,
-            temperature: Optional[float] = None,
-            seed: Optional[int] = None,
-            repo_path: Optional[str] = None,
-        ) -> dict[str, Any]:
-            return self.repair_test_failure(
-                problem_summary=problem_summary,
-                test_output=test_output,
-                generated_code_by_file=generated_code_by_file,
-                results_path=results_path,
-                test_command=test_command,
-                attempt=attempt,
-                max_attempts=max_attempts,
-                temperature=temperature,
-                seed=seed,
-                repo_path=repo_path,
-            )
+        async def review_repair_changes(state: dict[str, Any]) -> dict[str, Any]:
+            return await asyncio.to_thread(self.review_repair_changes, state)
 
 
 class SweMcpToolsRegistrar:

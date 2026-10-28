@@ -171,6 +171,7 @@ def write_markdown_report(
     mcp_cfg = run_config.get("mcp_server", {})
     metrics_cfg = run_config.get("metrics", {})
     github_cfg = run_config.get("github", {})
+    repair_cfg = run_config.get("auto_repair", {})
 
     lines: list[str] = []
     lines.append("# Relatorio de Execucao do Experimento")
@@ -182,7 +183,9 @@ def write_markdown_report(
     lines.append(f"- Repositorio alvo: {report['subject']['repo_path']}")
     target_files = report["subject"].get("target_files") or []
     if target_files:
-        lines.append(f"- Arquivos-alvo selecionados pelo localizador: {len(target_files)}")
+        lines.append(
+            f"- Arquivos-alvo selecionados pelo localizador: {len(target_files)}"
+        )
         for file_path in target_files:
             lines.append(f"  - {file_path}")
     else:
@@ -262,11 +265,86 @@ def write_markdown_report(
     lines.append(
         f"- Ferramentas registradas: {', '.join(tool_names) if tool_names else 'n/a'}"
     )
+    discussion = report["issue"].get("discussion") or {}
+    plan = report["mcp"].get("plan") or {}
+    if discussion:
+        lines.append("")
+        lines.append("### Evidencias da issue e descoberta de NFRs")
+        lines.append("")
+        lines.append(f"- Fingerprint: `{discussion.get('fingerprint')}`")
+        lines.append(
+            f"- Corte historico: {discussion.get('cutoff') or 'nao configurado'}"
+        )
+        lines.append(
+            f"- Comentarios coletados: {discussion.get('fetched_comments', 0)}; "
+            f"omitidos: {discussion.get('omitted_comments', 0)}; "
+            f"blocos omitidos: {discussion.get('omitted_blocks', 0)}"
+        )
+        for note in discussion.get("notes") or []:
+            lines.append(f"  - {note}")
+        for evidence in discussion.get("evidence") or []:
+            lines.append(
+                f"- Fonte `{evidence.get('source_id')}`: "
+                f"{evidence.get('url') or 'URL indisponivel'}; "
+                f"autor={evidence.get('author') or 'desconhecido'}; "
+                f"atualizado={evidence.get('updated_at') or 'desconhecido'}"
+            )
+    if plan.get("issue_summary"):
+        lines.append("")
+        lines.append("### Resumo e plano fundamentado")
+        lines.append("")
+        lines.append(f"- Origem dos NFRs: {plan.get('nfr_discovery_source')}")
+        for discovery in plan.get("nfr_discovery") or []:
+            lines.append(
+                f"- NFR descoberto `{discovery.get('nfr_id')}`: "
+                f"{discovery.get('rationale')} "
+                f"(fontes: {', '.join(discovery.get('evidence_ids') or [])})"
+            )
+        lines.append(
+            f"- Foco apos expansao pela KB: {', '.join(plan.get('nfr_focus') or [])}"
+        )
+        for category, claims in plan["issue_summary"].items():
+            lines.append(f"- {category}:")
+            for claim in claims:
+                requirement = claim.get("requirement_id")
+                lines.append(
+                    f"  - {requirement + ': ' if requirement else ''}{claim.get('text')} "
+                    f"(fontes: {', '.join(claim.get('evidence_ids') or [])})"
+                )
+                if claim.get("acceptance_check"):
+                    lines.append(f"    - Aceite: {claim['acceptance_check']}")
+        for step in plan.get("implementation_plan") or []:
+            lines.append(
+                f"- `{step.get('step_id')}`: {step.get('action')} "
+                f"`{step.get('target_file')}::{step.get('symbol')}` "
+                f"(linhas base {step.get('start_line')}-{step.get('end_line')}); "
+                f"requisitos={', '.join(step.get('requirement_ids') or [])}; "
+                f"dependencias={', '.join(step.get('depends_on') or []) or 'nenhuma'}"
+            )
+            for check in step.get("validation") or []:
+                lines.append(f"  - Validacao: {check}")
+        lines.append("")
     lines.append(f"- Build status: {report['testability_gate']['build_status']}")
     lines.append(f"- Test status: {report['testability_gate']['test_status']}")
     lines.append(f"- Justificativa gate: {report['testability_gate']['reason']}")
+    build = (report.get("verification") or {}).get("build") or {}
+    for stage in build.get("stages") or []:
+        lines.append(
+            f"  - Etapa de build {stage.get('stage')}: "
+            f"status={stage.get('status')}, "
+            f"duracao={stage.get('duration_seconds')}s, "
+            f"comando=`{' '.join(stage.get('command') or [])}`"
+        )
     build_repair_rounds = report["mcp"].get("build_repair") or []
     lines.append(f"- Rodadas de auto-reparo de build: {len(build_repair_rounds)}")
+    if repair_cfg:
+        lines.append(
+            f"- Estrategia de auto-reparo: {repair_cfg.get('strategy')}; "
+            f"largura={repair_cfg.get('search_width')}; "
+            f"concorrencia={repair_cfg.get('concurrency', 1)}; "
+            f"profundidade={repair_cfg.get('max_depth')}; "
+            f"orcamento por branch={repair_cfg.get('max_branch_seconds')}s"
+        )
     for round_payload in build_repair_rounds:
         repaired = round_payload.get("repaired_files") or []
         lines.append(
@@ -276,6 +354,47 @@ def write_markdown_report(
             f"build antes={round_payload.get('build_status_before')}, "
             f"build depois={round_payload.get('build_status_after')}"
         )
+        if round_payload.get("candidate_accepted") is not None:
+            lines.append(
+                f"    - Candidato aceito: {round_payload['candidate_accepted']}; "
+                f"decisao: {round_payload.get('decision_reason')}; "
+                f"diagnosticos novos={len(round_payload.get('introduced_diagnostics') or [])}; "
+                f"diagnosticos resolvidos={len(round_payload.get('resolved_diagnostics') or [])}"
+            )
+        if round_payload.get("branch_id"):
+            lines.append(
+                f"    - Branch: `{round_payload['branch_id']}`; "
+                f"profundidade={round_payload.get('branch_depth')}; "
+                f"estado={round_payload.get('branch_state')}; "
+                f"transacao aceita={round_payload.get('transaction_accepted', False)}; "
+                f"motivo={round_payload.get('branch_reason')}"
+            )
+        if round_payload.get("handoff_to"):
+            lines.append(
+                f"    - Transferencia de owner: `{round_payload.get('handoff_from')}` "
+                f"-> `{round_payload['handoff_to']}`"
+            )
+        if "local_resolved_diagnostics" in round_payload:
+            lines.append(
+                f"    - Progresso local: "
+                f"novos={len(round_payload.get('local_introduced_diagnostics') or [])}; "
+                f"resolvidos={len(round_payload.get('local_resolved_diagnostics') or [])}; "
+                f"decisao={round_payload.get('local_decision_reason')}"
+            )
+        if round_payload.get("repair_mode") == "scoped_patch":
+            lines.append(
+                f"    - Grupo atomico: `{round_payload.get('group_id')}`; "
+                f"hash base: `{round_payload.get('source_sha256')}`; "
+                f"edicoes: {(round_payload.get('patch_summary') or {}).get('edit_count', 0)}"
+            )
+            focused = round_payload.get("focused_verification")
+            if focused:
+                lines.append(
+                    f"    - Compilacao focada: {focused.get('status')}; "
+                    f"arquivos: {', '.join(focused.get('focus_files') or [])}"
+                )
+        if round_payload.get("stopped_reason"):
+            lines.append(f"    - Motivo da parada: {round_payload['stopped_reason']}")
     test_repair_rounds = report["mcp"].get("test_repair") or []
     lines.append(f"- Rodadas de auto-reparo de testes: {len(test_repair_rounds)}")
     for round_payload in test_repair_rounds:

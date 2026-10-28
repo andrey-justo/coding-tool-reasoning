@@ -35,15 +35,16 @@ concern_assets:
   templates_root_dir: knowledge/template
 
 execution:
+  repair_mode: loop
+  repair_concurrency: 3
+  repair_agent_max_seconds: 300
   max_summary_chars: 6000
   max_security_context_chars: 2000
   max_single_shot_code_chars: 12000
   chunk_lines: 160
+  max_generation_concurrency: 3
   max_syntax_repair_attempts: 2
   max_syntax_diagnostics: 20
-  max_build_repair_chunks: 4
-  max_semantic_diagnostics: 6
-  max_escalated_repair_targets: 2
 
 verification:
   project_type: auto

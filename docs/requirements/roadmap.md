@@ -116,6 +116,59 @@ Status legend used below:
 
 ## Tracking
 
+### Repair search backlog
+
+- **LLM-controlled loop/tree scheduling**: implemented. The model chooses
+  investigations, coherent edits, alternative goals, continuation and checkpoint
+  selection. Tree mode can run isolated sibling loops concurrently; the parent
+  can resume a child and fork again. Scheduling code enforces resource budgets,
+  path/hash safety and actual verification, not compiler-code routing,
+  diagnostic-count ranking or semantic branch pruning. Configured tree mode
+  does not guarantee that the model requests a fork; report actual branch usage.
+- **Provisional checkpoints and optional replay**: implemented. Preserve source
+  snapshots and audit observations without promoting an unverified candidate.
+  Replay avoids repeated generation and validates provenance. Only complete,
+  authoritative build/test verification plus requirement review permits finish.
+- **Generated fixture correction**: repair can correct generated test setup
+  while preserving baseline tests, all assertions, exercised cases and coverage.
+  Baseline and initial-generated source facts support LLM judgment; filenames
+  do not determine origin or edit permission. Independent acceptance tests and
+  verification settings remain protected.
+- **General tree search over code changes**: **Partial**. Model-requested forks,
+  parallel siblings and deeper parent-controlled continuation exist. Explicit
+  token/cost accounting and evaluation of exploration quality remain deferred.
+  Compare actual branching, completion, regressions, tokens, cost and elapsed
+  time against loop mode. Do not reintroduce deterministic semantic pruning.
+
+### Generation performance backlog
+
+- **Evidence**: Pilot 2 execution `20261027T225633Z` spent 20m48s in generation
+  and review. The main generator took 10m40s; two full-file regeneration calls
+  alone took 7m01s, returning about 101,000 characters each from prompts of
+  roughly 244,000 and 265,000 characters. These measurements motivate the
+  following work; no performance behavior is changed by the fixture-policy fix.
+- **Model-directed incremental generation repair**: **Not started**. Replace
+  whole-file regeneration with exact, atomic edit transactions chosen by the
+  model. Retain full semantic review, baseline provenance and actual validation;
+  no deterministic fix prescriptions or weaker acceptance.
+- **Context reuse and size control**: **Not started**. Measure and remove
+  duplicated plan/source context, reference unchanged versions by hash, and
+  retrieve additional source on demand. Disclose truncation/unavailable facts
+  and retain enough original evidence for review; do not sacrifice grounding.
+- **Independent file-generation scheduling**: **Not started**. Explore bounded
+  parallel generation where the model establishes independence/dependencies.
+  Preserve deterministic result assembly, coherent cross-file contracts and
+  isolated verification. Existing chunk concurrency is not file concurrency.
+- **Phase and call telemetry**: **Not started**. Record planning, generation,
+  semantic review, regeneration, verification and repair time separately, along
+  with prompt/response sizes, tokens when available, retry counts and actual
+  concurrency. Distinguish provider latency from additional orchestration work.
+- **Evaluation**: compare measured wall time, token/cost use, full-suite results
+  and independent requirement acceptance under the same model/profile.
+  Faster generation alone is not success. Do not introduce model/account
+  switches, weaker reviews, suppressed diagnostics or reduced tests to improve
+  timings.
+
 Suggested tracking unit for implementation and experiments:
 
 - **Issue/Feature ID** â†’ multiple **Executions** â†’ each execution produces an
@@ -123,4 +176,3 @@ Suggested tracking unit for implementation and experiments:
 
 This creates a natural grouping for debugging and for comparing supervised vs.
 baseline runs.
-

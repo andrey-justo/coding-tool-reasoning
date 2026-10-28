@@ -1,5 +1,7 @@
 import os
 import tempfile
+from threading import Barrier, Lock
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -51,6 +53,25 @@ def test_azure_provider_is_loaded():
     assert "az" in client.clients
 
 
+def test_copilot_provider_alias_uses_sdk_model_without_azure_key():
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_yaml(
+            tmp,
+            [
+                {
+                    "model_name": "copilot-codex",
+                    "provider": "CopilotSDK",
+                    "sdk_model": "gpt-5.3-codex",
+                    "timeout": 123,
+                }
+            ],
+        )
+        client = _make_client(path)
+    sdk_client = client.get_client("copilot-codex")
+    assert sdk_client.default_model == "gpt-5.3-codex"
+    assert sdk_client.timeout == 123
+
+
 def test_get_client_returns_correct_client():
     with tempfile.TemporaryDirectory() as tmp:
         path = _write_yaml(tmp, _YAML_LOCALAI)
@@ -92,3 +113,91 @@ def test_openai_client_returns_client():
         client = _make_client(path)
     client.default_model = "m1"
     assert client.openai_client() is client.clients["m1"]
+
+
+@pytest.mark.parametrize("api_key_name", ["AUTH_KEY", "auth_key", "API_KEY"])
+def test_process_environment_is_loaded_without_dotenv(monkeypatch, api_key_name):
+    for name in ("AUTH_KEY", "auth_key", "API_KEY"):
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv(api_key_name, "test-key")
+    monkeypatch.setenv("DEFAULT_MODEL", "m1")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_yaml(tmp, _YAML_LOCALAI)
+        client = _make_client(path)
+    assert client.default_model == "m1"
+    assert client.api_key == "test-key"
+    assert client.get_client() is client.clients["m1"]
+    client.clients["m1"].chat = MagicMock(return_value="generated")
+    assert client.chat("prompt") == "generated"
+
+
+def test_dotenv_defaults_do_not_override_inherited_model(monkeypatch):
+    monkeypatch.setenv("DEFAULT_MODEL", "m1")
+    with tempfile.TemporaryDirectory() as tmp:
+        path = _write_yaml(tmp, _YAML_LOCALAI)
+        with (
+            patch(
+                "src.llm_client.multi_model_llm_client.os.path.join", return_value=path
+            ),
+            patch(
+                "src.llm_client.multi_model_llm_client.os.path.exists",
+                return_value=True,
+            ),
+            patch("src.llm_client.multi_model_llm_client.load_dotenv") as load,
+        ):
+            client = MultiModelLLMClient()
+    load.assert_called_once_with(path)
+    assert client.get_client() is client.clients["m1"]
+
+
+def test_batch_is_bounded_and_preserves_input_order():
+    with tempfile.TemporaryDirectory() as tmp:
+        client = _make_client(_write_yaml(tmp, _YAML_LOCALAI))
+    barrier = Barrier(3)
+    lock = Lock()
+    active = peak = 0
+
+    def generate(prompt, **kwargs):
+        nonlocal active, peak
+        with lock:
+            active += 1
+            peak = max(peak, active)
+        try:
+            barrier.wait(timeout=5)
+            return f"response-{prompt}"
+        finally:
+            with lock:
+                active -= 1
+
+    client.default_model = "m1"
+    client.clients["m1"] = SimpleNamespace(
+        chat=generate, supports_parallel_requests=True
+    )
+    prompts = [str(index) for index in range(6)]
+    assert client.chat_batch(prompts, max_concurrency=3) == [
+        f"response-{prompt}" for prompt in prompts
+    ]
+    assert peak == 3
+
+
+def test_batch_keeps_unsupported_backends_serial_and_returns_errors(caplog):
+    with tempfile.TemporaryDirectory() as tmp:
+        client = _make_client(_write_yaml(tmp, _YAML_LOCALAI))
+    client.default_model = "m1"
+    chat = MagicMock(side_effect=["first", RuntimeError("failed chunk"), "third"])
+    client.clients["m1"].chat = chat
+    with patch("src.llm_client.multi_model_llm_client.ThreadPoolExecutor") as executor:
+        responses = client.chat_batch(["a", "b", "c"], max_concurrency=3)
+    executor.assert_not_called()
+    assert responses[0] == "first"
+    assert isinstance(responses[1], RuntimeError)
+    assert responses[2] == "third"
+    assert "Batch request 2/3 failed" in caplog.text
+    assert "Traceback" in caplog.text
+
+
+def test_batch_rejects_nonpositive_concurrency():
+    with tempfile.TemporaryDirectory() as tmp:
+        client = _make_client(_write_yaml(tmp, _YAML_LOCALAI))
+    with pytest.raises(ValueError, match="must be positive"):
+        client.chat_batch(["prompt"], max_concurrency=0)

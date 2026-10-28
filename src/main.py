@@ -19,16 +19,22 @@ from src.evaluation.reproducibility_experiment import (
     run_reproducibility_from_args,
 )
 from src.experiments.issue_mcp_experiment import main as run_issue_experiment
+from src.experiments.repair_replay import run_repair_replay
+from src.llm_client.copilot_sdk_client import CopilotSDKClient
 from src.mcp.swe_mcp_server import register_swe_tools_on_mcp
 
 
 def _configure_mcp_logging() -> None:
-    """Reduce MCP transport noise that PowerShell surfaces as NativeCommandError.
+    """Format runtime diagnostics on stderr while reducing MCP transport noise."""
 
-    The MCP library emits informational request traces on stderr. In PowerShell,
-    any stderr line from a native process is wrapped as a non-terminating
-    NativeCommandError, which pollutes experiment logs despite successful runs.
-    """
+    logging.basicConfig(
+        level=logging.INFO,
+        format=(
+            "%(asctime)s [%(levelname)s] %(name)s "
+            "(%(pathname)s:%(lineno)d): %(message)s"
+        ),
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+    )
 
     noisy_loggers = [
         "mcp.server.lowlevel.server",
@@ -53,6 +59,10 @@ def _build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=False)
 
     subparsers.add_parser("mcp-server", help="Run the SWE MCP server.")
+    subparsers.add_parser(
+        "copilot-models",
+        help="List models available to the authenticated Copilot account.",
+    )
 
     reproducibility_parser = subparsers.add_parser(
         "reproducibility",
@@ -83,6 +93,21 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Path to YAML config file.",
     )
+
+    replay_parser = subparsers.add_parser(
+        "repair-replay", help="Probe repairs against a frozen experiment candidate."
+    )
+    replay_parser.add_argument("--report", type=Path, required=True)
+    replay_parser.add_argument("--out-json", type=Path, required=True)
+    replay_parser.add_argument("--max-attempts", type=int, default=3)
+    replay_parser.add_argument("--timeout-seconds", type=int, default=300)
+    replay_parser.add_argument("--model")
+    replay_parser.add_argument("--run-tests", action=argparse.BooleanOptionalAction, default=True)
+    replay_parser.add_argument("--candidate-report", type=Path)
+    replay_parser.add_argument("--candidate-attempt", type=int)
+    replay_parser.add_argument("--repair-mode", choices=["loop", "tree"], default="loop")
+    replay_parser.add_argument("--repair-concurrency", type=int, default=3)
+    replay_parser.add_argument("--repair-agent-max-seconds", type=int, default=300)
 
     return parser
 
@@ -122,6 +147,9 @@ def _run_from_yaml(config_path: str) -> None:
         raise ValueError("YAML config root must be a mapping/object.")
 
     command, forwarded_args = _yaml_config_to_argv(payload)
+    logging.getLogger(__name__).info(
+        "Starting %s using config %s", command, config_path
+    )
 
     if command == "mcp-server":
         _run_mcp_server()
@@ -139,15 +167,18 @@ def _run_from_yaml(config_path: str) -> None:
     raise ValueError(f"Unsupported command in YAML config: {command}")
 
 
-def main() -> None:
-    _configure_mcp_logging()
-
+def _dispatch() -> None:
     parser = _build_parser()
     args = parser.parse_args()
 
     # SWE MCP is the primary runtime path for this project.
     if args.command in (None, "mcp-server"):
         _run_mcp_server()
+        return
+
+    if args.command == "copilot-models":
+        for model in CopilotSDKClient.list_models():
+            print(f"{model['id']}\t{model['name']}")
         return
 
     if args.command == "reproducibility":
@@ -165,7 +196,33 @@ def main() -> None:
         _run_from_yaml(args.config)
         return
 
+    if args.command == "repair-replay":
+        result = run_repair_replay(
+            report_path=args.report,
+            output_path=args.out_json,
+            max_attempts=args.max_attempts,
+            timeout_seconds=args.timeout_seconds,
+            model=args.model,
+            max_seconds=args.repair_agent_max_seconds,
+            mode=args.repair_mode,
+            concurrency=args.repair_concurrency,
+            run_tests=args.run_tests,
+            candidate_report=args.candidate_report,
+            candidate_attempt=args.candidate_attempt,
+        )
+        print(f"Replay accepted: {result['accepted']}; {result['stopped_reason']}")
+        print(f"JSON report: {args.out_json.resolve()}")
+        return
+
     parser.error(f"Unsupported command: {args.command}")
+
+
+def main() -> None:
+    _configure_mcp_logging()
+    try:
+        _dispatch()
+    finally:
+        CopilotSDKClient.shutdown()
 
 
 if __name__ == "__main__":

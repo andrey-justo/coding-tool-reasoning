@@ -5,6 +5,7 @@ import asyncio
 import contextlib
 import difflib
 import json
+import logging
 import os
 import re
 import shutil
@@ -26,7 +27,9 @@ from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
 from src.models.issue_tracking import ParsedIssueUrl
 from src.models.localizer.models import LocalizerResult
-from src.models.swe_config import SweMcpConfig
+from src.models.swe_config import SweMcpConfig, ToolExecutionConfig
+from src.models.issue_planning import IssueDiscussion
+from src.service.issue_discussion_service import IssueDiscussionService
 from src.report.experiment_report_writer import (
     metrics_rows,
     write_csv_report,
@@ -34,6 +37,9 @@ from src.report.experiment_report_writer import (
     write_markdown_report,
 )
 from src.service.localizer import RepositoryIssueLocalizer
+from src.experiments.repair_agent_loop import repair_with_agent
+
+logger = logging.getLogger(__name__)
 
 
 def _default_execution_id() -> str:
@@ -756,7 +762,7 @@ class GitHubIssueClient:
     def api_base(self) -> str:
         return self._api_base
 
-    def _get(self, path: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _get(self, path: str, params: dict[str, Any] | None = None) -> Any:
         url = f"{self._api_base}{path}"
         response = self._session.get(url, params=params, timeout=30)
         response.raise_for_status()
@@ -768,10 +774,27 @@ class GitHubIssueClient:
     def fetch_issue_comments(
         self, owner: str, repo: str, issue_number: int, per_page: int = 20
     ) -> list[dict[str, Any]]:
-        return self._get(
-            f"/repos/{owner}/{repo}/issues/{issue_number}/comments",
-            params={"per_page": per_page},
-        )
+        if per_page < 0:
+            raise ValueError("The maximum issue comment count cannot be negative.")
+        comments: list[dict[str, Any]] = []
+        page = 1
+        page_size = min(100, per_page)
+        while len(comments) < per_page:
+            batch = self._get(
+                f"/repos/{owner}/{repo}/issues/{issue_number}/comments",
+                params={"per_page": page_size, "page": page},
+            )
+            if not isinstance(batch, list) or not all(
+                isinstance(item, dict) for item in batch
+            ):
+                raise ValueError(
+                    "GitHub issue comments response is not a list of objects."
+                )
+            comments.extend(batch[: per_page - len(comments)])
+            if len(batch) < page_size:
+                break
+            page += 1
+        return comments
 
     def detect_linked_pr(self, owner: str, repo: str, issue_number: int) -> int | None:
         query = f'repo:{owner}/{repo} is:pr "#{issue_number}" in:body'
@@ -794,22 +817,9 @@ class GitHubIssueClient:
 
 
 def _build_issue_prompt(issue: dict[str, Any], comments: list[dict[str, Any]]) -> str:
-    body = issue.get("body") or ""
-    lines = [
-        f"Issue #{issue.get('number')}: {issue.get('title', '')}",
-        "",
-        "Issue body:",
-        body,
-        "",
-    ]
-    if comments:
-        lines.append("Top comments:")
-        for idx, comment in enumerate(comments[:5], start=1):
-            user = (comment.get("user") or {}).get("login", "unknown")
-            text = (comment.get("body") or "").strip()
-            snippet = text[:500]
-            lines.append(f"{idx}. @{user}: {snippet}")
-    return "\n".join(lines)
+    return IssueDiscussionService.render(
+        IssueDiscussionService().build(issue, comments)
+    )
 
 
 def _resolve_head_ref(
@@ -848,45 +858,10 @@ def _resolve_head_ref(
         return "HEAD"
 
 
-def _build_output_for_repair(verification_gate: dict[str, Any]) -> str:
-    build = verification_gate.get("build")
-    if not isinstance(build, dict):
-        return ""
-    parts = [
-        str(build.get("stdout_tail") or ""),
-        str(build.get("stderr_tail") or ""),
-    ]
-    return "\n".join(part for part in parts if part.strip())
 
 
-def _test_output_for_repair(verification_gate: dict[str, Any]) -> str:
-    test = verification_gate.get("test")
-    if not isinstance(test, dict):
-        return ""
-    parts = [
-        str(test.get("stdout_tail") or ""),
-        str(test.get("stderr_tail") or ""),
-    ]
-    return "\n".join(part for part in parts if part.strip())
 
 
-def _test_results_path_for_repair(verification_gate: dict[str, Any]) -> str | None:
-    junit = verification_gate.get("junit")
-    if not isinstance(junit, dict):
-        return None
-    path_value = junit.get("path")
-    return str(path_value) if path_value else None
-
-
-def _summarize_test_repair_round(round_payload: dict[str, Any]) -> str:
-    repaired = round_payload.get("repaired_files") or []
-    return (
-        f"test repair attempt {round_payload.get('attempt')}: "
-        f"parser={round_payload.get('failures_parser')}, "
-        f"files_repaired={len(repaired)}, "
-        f"test_after={round_payload.get('test_status_after', 'n/a')}, "
-        f"build_after={round_payload.get('build_status_after', 'n/a')}"
-    )
 
 
 def _summarize_repair_round(round_payload: dict[str, Any]) -> str:
@@ -895,411 +870,34 @@ def _summarize_repair_round(round_payload: dict[str, Any]) -> str:
         f"build repair attempt {round_payload.get('attempt')}: "
         f"parser={round_payload.get('diagnostics_parser')}, "
         f"files_repaired={len(repaired)}, "
-        f"build_after={round_payload.get('build_status_after', 'n/a')}"
+        f"build_after={round_payload.get('build_status_after', 'n/a')}, "
+        f"candidate_accepted={round_payload.get('candidate_accepted', 'not-evaluated')}, "
+        f"decision={round_payload.get('decision_reason', 'n/a')}"
     )
 
 
 def _sanitize_build_repair_rounds(rounds: Any) -> list[dict[str, Any]]:
-    """Keep build repair rounds auditable in the report without inlining prompts.
-
-    Full prompts and raw responses are preserved as LLM debug artifacts; the JSON
-    report keeps their sizes plus the decision metadata of each round.
-    """
-
-    if not isinstance(rounds, list):
-        return []
-
-    sanitized: list[dict[str, Any]] = []
-    for round_payload in rounds:
-        if not isinstance(round_payload, dict):
-            continue
-
-        file_results: list[dict[str, Any]] = []
-        for file_result in round_payload.get("file_results") or []:
-            if not isinstance(file_result, dict):
-                continue
-            file_results.append(
-                {
-                    "target_file": file_result.get("target_file"),
-                    "diagnostic_count": file_result.get("diagnostic_count"),
-                    "ast_context_available": file_result.get("ast_context_available"),
-                    "chunked_mode": file_result.get("chunked_mode"),
-                    "repair_history_size": file_result.get("repair_history_size"),
-                    "related_symbol_files": file_result.get("related_symbol_files"),
-                    "semantic_context_resolved_symbols": file_result.get(
-                        "semantic_context_resolved_symbols"
-                    ),
-                    "semantic_context_error": file_result.get(
-                        "semantic_context_error"
-                    ),
-                    "changed": file_result.get("changed"),
-                    "rejected_reason": file_result.get("rejected_reason"),
-                    "error": file_result.get("error"),
-                    "syntax_validation": file_result.get("syntax_validation"),
-                    "prompt_chars": len(str(file_result.get("prompt") or "")),
-                    "raw_response_chars": len(
-                        str(file_result.get("raw_response") or "")
-                    ),
-                }
-            )
-
-        sanitized.append(
-            {
-                "attempt": round_payload.get("attempt"),
-                "max_attempts": round_payload.get("max_attempts"),
-                "diagnostics_parser": round_payload.get("diagnostics_parser"),
-                "diagnostics_by_file": round_payload.get("diagnostics_by_file"),
-                "unmatched_diagnostics": round_payload.get("unmatched_diagnostics"),
-                "deferred_diagnostics": round_payload.get("deferred_diagnostics"),
-                "inferred_diagnostic_mappings": round_payload.get(
-                    "inferred_diagnostic_mappings"
-                ),
-                "escalated_targets": round_payload.get("escalated_targets"),
-                "repaired_files": round_payload.get("repaired_files"),
-                "changed": round_payload.get("changed"),
-                "build_status_before": round_payload.get("build_status_before"),
-                "build_status_after": round_payload.get("build_status_after"),
-                "stopped_reason": round_payload.get("stopped_reason"),
-                "error": round_payload.get("error"),
-                "file_results": file_results,
-            }
-        )
-
-    return sanitized
+    return [dict(row) for row in rounds if isinstance(row, dict)] if isinstance(rounds, list) else []
 
 
 def _sanitize_test_repair_rounds(rounds: Any) -> list[dict[str, Any]]:
-    """Keep test repair rounds auditable in the report without inlining prompts."""
-
-    if not isinstance(rounds, list):
-        return []
-
-    sanitized: list[dict[str, Any]] = []
-    for round_payload in rounds:
-        if not isinstance(round_payload, dict):
-            continue
-
-        file_results: list[dict[str, Any]] = []
-        for file_result in round_payload.get("file_results") or []:
-            if not isinstance(file_result, dict):
-                continue
-            file_results.append(
-                {
-                    "target_file": file_result.get("target_file"),
-                    "failure_count": file_result.get("failure_count"),
-                    "matched_by_stack_trace": file_result.get("matched_by_stack_trace"),
-                    "ast_context_available": file_result.get("ast_context_available"),
-                    "related_files": file_result.get("related_files"),
-                    "changed": file_result.get("changed"),
-                    "rejected_reason": file_result.get("rejected_reason"),
-                    "error": file_result.get("error"),
-                    "syntax_validation": file_result.get("syntax_validation"),
-                    "prompt_chars": len(str(file_result.get("prompt") or "")),
-                    "raw_response_chars": len(
-                        str(file_result.get("raw_response") or "")
-                    ),
-                }
-            )
-
-        sanitized.append(
-            {
-                "attempt": round_payload.get("attempt"),
-                "max_attempts": round_payload.get("max_attempts"),
-                "failures_parser": round_payload.get("failures_parser"),
-                "failures_by_file": round_payload.get("failures_by_file"),
-                "unmatched_failures": round_payload.get("unmatched_failures"),
-                "repair_targets": round_payload.get("repair_targets"),
-                "repaired_files": round_payload.get("repaired_files"),
-                "changed": round_payload.get("changed"),
-                "test_status_before": round_payload.get("test_status_before"),
-                "test_status_after": round_payload.get("test_status_after"),
-                "build_status_after": round_payload.get("build_status_after"),
-                "test_pass_rate_before": round_payload.get("test_pass_rate_before"),
-                "test_pass_rate_after": round_payload.get("test_pass_rate_after"),
-                "build_recovery_rounds": round_payload.get("build_recovery_rounds"),
-                "stopped_reason": round_payload.get("stopped_reason"),
-                "error": round_payload.get("error"),
-                "file_results": file_results,
-            }
-        )
-
-    return sanitized
+    return [dict(row) for row in rounds if isinstance(row, dict)] if isinstance(rounds, list) else []
 
 
-async def _repair_tests_until_pass(
-    *,
-    session: Any,
-    verification_gate: dict[str, Any],
-    generated_code_by_file: dict[str, str],
-    apply_results: dict[str, dict[str, Any]],
-    problem_summary: str,
-    temperature: float,
-    seed: int,
-    max_attempts: int,
-    run_gate: Any,
-    log_lines: list[str],
-    recover_build: Any = None,
-    symbol_context_repo: Path | None = None,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Repair failing tests and re-verify, up to a bounded number of rounds.
-
-    The loop stops as soon as the tests pass, when the repair step cannot change
-    any file, when no test output survived the gate, or when the attempt budget
-    is exhausted. Because a behavioral repair can break compilation, the build is
-    recovered before the next attempt whenever it regresses.
-    """
-
-    rounds: list[dict[str, Any]] = []
-    if max_attempts <= 0:
-        return verification_gate, rounds
-
-    for attempt in range(1, int(max_attempts) + 1):
-        test = verification_gate.get("test")
-        test_status = str(test.get("status")) if isinstance(test, dict) else "not-run"
-        if test_status != "fail":
-            break
-
-        test_output = _test_output_for_repair(verification_gate)
-        results_path = _test_results_path_for_repair(verification_gate)
-        if not test_output.strip() and not results_path:
-            log_lines.append(
-                "Test repair skipped: verification gate preserved no test output."
-            )
-            break
-
-        repair_result = await session.call_tool(
-            "repair_test_failure",
-            {
-                "problem_summary": problem_summary,
-                "test_output": test_output,
-                "generated_code_by_file": generated_code_by_file,
-                "results_path": results_path,
-                "test_command": test.get("command") if isinstance(test, dict) else None,
-                "attempt": attempt,
-                "max_attempts": int(max_attempts),
-                "temperature": temperature,
-                "seed": seed,
-                "repo_path": str(symbol_context_repo)
-                if symbol_context_repo
-                else None,
-            },
-        )
-        repair_content = _coerce_json(
-            repair_result.content[0].text if repair_result.content else None
-        )
-        if not isinstance(repair_content, dict):
-            log_lines.append(
-                f"repair_test_failure returned invalid payload: {repair_content}"
-            )
-            break
-
-        round_payload: dict[str, Any] = dict(repair_content)
-        round_payload["test_status_before"] = test_status
-        round_payload["test_pass_rate_before"] = verification_gate.get("test_pass_rate")
-
-        if not repair_content.get("changed"):
-            round_payload["test_status_after"] = test_status
-            round_payload["stopped_reason"] = repair_content.get("error") or (
-                "No file could be repaired in this attempt."
-            )
-            rounds.append(round_payload)
-            log_lines.append(_summarize_test_repair_round(round_payload))
-            break
-
-        repaired_code_by_file = repair_content.get("generated_code_by_file")
-        if isinstance(repaired_code_by_file, dict):
-            for target_file, code in repaired_code_by_file.items():
-                if not isinstance(code, str):
-                    continue
-                generated_code_by_file[target_file] = code
-                apply_result = apply_results.get(target_file)
-                if isinstance(apply_result, dict):
-                    apply_result["generated_code"] = code
-                    apply_result["test_repair_applied"] = True
-
-        verification_gate = await run_gate(generated_code_by_file)
-
-        updated_build = verification_gate.get("build")
-        build_status = (
-            str(updated_build.get("status"))
-            if isinstance(updated_build, dict)
-            else "not-run"
-        )
-        if build_status == "fail" and recover_build is not None:
-            verification_gate, recovery_rounds = await recover_build(verification_gate)
-            round_payload["build_recovery_rounds"] = len(recovery_rounds)
-            updated_build = verification_gate.get("build")
-            build_status = (
-                str(updated_build.get("status"))
-                if isinstance(updated_build, dict)
-                else "not-run"
-            )
-
-        updated_test = verification_gate.get("test")
-        round_payload["build_status_after"] = build_status
-        round_payload["test_status_after"] = (
-            str(updated_test.get("status"))
-            if isinstance(updated_test, dict)
-            else "not-run"
-        )
-        round_payload["test_pass_rate_after"] = verification_gate.get("test_pass_rate")
-        round_payload["generated_code_by_file"] = {
-            target_file: generated_code_by_file.get(target_file, "")
-            for target_file in repair_content.get("repaired_files") or []
-        }
-        rounds.append(round_payload)
-        log_lines.append(_summarize_test_repair_round(round_payload))
-
-        if round_payload["test_status_after"] == "pass":
-            break
-
-    return verification_gate, rounds
 
 
-async def _repair_build_until_pass(
-    *,
-    session: Any,
-    verification_gate: dict[str, Any],
-    generated_code_by_file: dict[str, str],
-    apply_results: dict[str, dict[str, Any]],
-    problem_summary: str,
-    temperature: float,
-    seed: int,
-    max_attempts: int,
-    run_gate: Any,
-    log_lines: list[str],
-    symbol_context_repo: Path | None = None,
-) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    """Repair compilation failures and re-verify, up to a bounded number of rounds.
+def _resolve_repair_execution(args: argparse.Namespace, config: ToolExecutionConfig) -> ToolExecutionConfig:
+    settings = config.model_dump()
+    override = getattr(args, 'repair_agent_max_seconds', None)
+    if override is not None:
+        settings['repair_agent_max_seconds'] = override
+    for field in ("repair_mode", "repair_concurrency", "max_build_repair_attempts"):
+        override = getattr(args, field, None)
+        if override is not None:
+            settings[field] = override
+    return ToolExecutionConfig.model_validate(settings)
 
-    The loop stops as soon as the build passes, when the repair step cannot change
-    any file, or when the attempt budget is exhausted, so a model that never
-    converges cannot keep the pipeline running indefinitely.
-    """
 
-    rounds: list[dict[str, Any]] = []
-    repair_history: list[dict[str, Any]] = []
-    escalate_routing = False
-    if max_attempts <= 0:
-        return verification_gate, rounds
-
-    for attempt in range(1, int(max_attempts) + 1):
-        build = verification_gate.get("build")
-        build_status = (
-            str(build.get("status")) if isinstance(build, dict) else "not-run"
-        )
-        if build_status != "fail":
-            break
-
-        build_output = _build_output_for_repair(verification_gate)
-        if not build_output.strip():
-            log_lines.append(
-                "Build repair skipped: verification gate preserved no build output."
-            )
-            break
-
-        repair_result = await session.call_tool(
-            "repair_build_failure",
-            {
-                "problem_summary": problem_summary,
-                "build_output": build_output,
-                "generated_code_by_file": generated_code_by_file,
-                "build_command": build.get("command")
-                if isinstance(build, dict)
-                else None,
-                "attempt": attempt,
-                "max_attempts": int(max_attempts),
-                "temperature": temperature,
-                "seed": seed,
-                "repo_path": str(symbol_context_repo)
-                if symbol_context_repo
-                else None,
-                "repair_history": repair_history[-5:],
-                "escalate_routing": escalate_routing,
-            },
-        )
-        repair_content = _coerce_json(
-            repair_result.content[0].text if repair_result.content else None
-        )
-        if not isinstance(repair_content, dict):
-            log_lines.append(
-                f"repair_build_failure returned invalid payload: {repair_content}"
-            )
-            break
-
-        round_payload: dict[str, Any] = dict(repair_content)
-        round_payload["build_status_before"] = build_status
-
-        if not repair_content.get("changed"):
-            round_payload["build_status_after"] = build_status
-            # Repairing the attributed owner changed nothing, so the owner is
-            # not where the fix belongs. Widen the routing once before giving
-            # up, instead of spending the remaining budget on the same target.
-            retry_with_escalation = not escalate_routing and attempt < int(
-                max_attempts
-            )
-            round_payload["stopped_reason"] = repair_content.get("error") or (
-                "No file could be repaired; escalating routing to the files "
-                "named by the diagnostics."
-                if retry_with_escalation
-                else "No file could be repaired in this attempt."
-            )
-            rounds.append(round_payload)
-            repair_history.append(
-                {
-                    "attempt": attempt,
-                    "build_status_before": build_status,
-                    "build_status_after": build_status,
-                    "diagnostics_by_file": repair_content.get(
-                        "diagnostics_by_file", {}
-                    ),
-                }
-            )
-            log_lines.append(_summarize_repair_round(round_payload))
-            if retry_with_escalation:
-                escalate_routing = True
-                continue
-            break
-
-        repaired_code_by_file = repair_content.get("generated_code_by_file")
-        if isinstance(repaired_code_by_file, dict):
-            for target_file, code in repaired_code_by_file.items():
-                if not isinstance(code, str):
-                    continue
-                generated_code_by_file[target_file] = code
-                apply_result = apply_results.get(target_file)
-                if isinstance(apply_result, dict):
-                    apply_result["generated_code"] = code
-                    apply_result["build_repair_applied"] = True
-
-        verification_gate = await run_gate(generated_code_by_file)
-        updated_build = verification_gate.get("build")
-        round_payload["build_status_after"] = (
-            str(updated_build.get("status"))
-            if isinstance(updated_build, dict)
-            else "not-run"
-        )
-        round_payload["generated_code_by_file"] = {
-            target_file: generated_code_by_file.get(target_file, "")
-            for target_file in repair_content.get("repaired_files") or []
-        }
-        rounds.append(round_payload)
-        repair_history.append(
-            {
-                "attempt": attempt,
-                "build_status_before": build_status,
-                "build_status_after": round_payload["build_status_after"],
-                "diagnostics_by_file": repair_content.get(
-                    "diagnostics_by_file", {}
-                ),
-            }
-        )
-        log_lines.append(_summarize_repair_round(round_payload))
-
-        if round_payload["build_status_after"] == "pass":
-            break
-
-    return verification_gate, rounds
 
 
 async def _run_mcp_workflow(
@@ -1315,7 +913,10 @@ async def _run_mcp_workflow(
     skip_verification_gate: bool,
     log_lines: list[str],
     max_build_repair_attempts: int = 10,
-    max_test_repair_attempts: int = 10,
+    issue_discussion: IssueDiscussion | None = None,
+    repair_agent_max_seconds: float = 300,
+    repair_mode: str = "loop",
+    repair_concurrency: int = 3,
 ) -> dict[str, Any]:
     workspace_root = Path(__file__).resolve().parents[2]
     server_params = StdioServerParameters(
@@ -1338,11 +939,25 @@ async def _run_mcp_workflow(
                     "problem_description": issue_prompt,
                     "target_file_hints": target_files,
                     "nfr_focus": nfr_focus,
+                    "issue_discussion": issue_discussion.model_dump()
+                    if issue_discussion
+                    else None,
+                    "baseline_code_by_file": original_code_by_file
+                    if issue_discussion
+                    else None,
                 },
             )
             plan_content = _coerce_json(
                 plan_result.content[0].text if plan_result.content else None
             )
+            if not isinstance(plan_content, dict):
+                raise ValueError(
+                    f"Planning failed before code generation: {plan_content}"
+                )
+            if issue_discussion and not plan_content.get("implementation_plan"):
+                raise ValueError(
+                    "Evidence-grounded planning produced no validated implementation plan."
+                )
             log_lines.append("plan_swe_code_change completed")
 
             context_result = await session.call_tool(
@@ -1400,14 +1015,15 @@ async def _run_mcp_workflow(
                 apply_results[target_file] = apply_content
                 generated_code_by_file[target_file] = generated_code
 
-            combined_original = "\n\n".join(
-                f"### FILE: {path}\n{original_code_by_file.get(path, '')}"
-                for path in target_files
-            )
-
             async def _run_verification_gate(
                 code_by_file: dict[str, str],
+                *,
+                focus_files: list[str] | None = None,
+                compile_only: bool = False,
             ) -> dict[str, Any]:
+                logger.info(
+                    "Verifying generated changes in %s files", len(code_by_file)
+                )
                 verification_result = await session.call_tool(
                     "verify_testability_gate",
                     {
@@ -1415,6 +1031,11 @@ async def _run_mcp_workflow(
                         "base_ref": base_ref,
                         "generated_code_by_file": code_by_file,
                         "timeout_seconds": verification_timeout_seconds,
+                        **(
+                            {"focus_files": focus_files, "compile_only": compile_only}
+                            if focus_files is not None
+                            else {}
+                        ),
                     },
                 )
                 verification_content = _coerce_json(
@@ -1445,10 +1066,33 @@ async def _run_mcp_workflow(
                     log_lines.extend(
                         str(line) for line in extra_logs if str(line).strip()
                     )
+                logger.info(
+                    "Verification finished: build=%s, tests=%s",
+                    verification_content.get("build", {}).get("status"),
+                    verification_content.get("test", {}).get("status"),
+                )
                 return verification_content
 
             build_repair_rounds: list[dict[str, Any]] = []
             test_repair_rounds: list[dict[str, Any]] = []
+            repair_problem_summary = (
+                issue_prompt
+                + "\nValidated planning and NFR guidance:\n"
+                + json.dumps(
+                    {
+                        "issue_summary": plan_content.get("issue_summary"),
+                        "nfr_focus": plan_content.get("nfr_focus"),
+                        "nfr_discovery_source": plan_content.get(
+                            "nfr_discovery_source"
+                        ),
+                        "nfr_discovery": plan_content.get("nfr_discovery"),
+                        "endorsed_entities": plan_content.get("related_entities"),
+                        "swe_summary": context_content.get("swe_summary")
+                        if isinstance(context_content, dict)
+                        else None,
+                    }
+                )
+            )
             if skip_verification_gate:
                 verification_gate = {
                     "enabled": False,
@@ -1472,52 +1116,33 @@ async def _run_mcp_workflow(
                     repo_path, base_ref, log_lines
                 ) as symbol_context_repo:
 
-                    async def _recover_build(
-                        gate: dict[str, Any],
-                    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-                        return await _repair_build_until_pass(
-                            session=session,
-                            verification_gate=gate,
-                            generated_code_by_file=generated_code_by_file,
-                            apply_results=apply_results,
-                            problem_summary=issue_prompt,
-                            temperature=temperature,
-                            seed=seed,
-                            max_attempts=max_build_repair_attempts,
-                            run_gate=_run_verification_gate,
-                            log_lines=log_lines,
-                            symbol_context_repo=symbol_context_repo,
-                        )
-
-                    verification_gate, build_repair_rounds = await _recover_build(
-                        verification_gate
-                    )
-
-                    async def _recover_build_during_test_repair(
-                        gate: dict[str, Any],
-                    ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-                        gate, recovery_rounds = await _recover_build(gate)
-                        build_repair_rounds.extend(recovery_rounds)
-                        return gate, recovery_rounds
-
-                    (
-                        verification_gate,
-                        test_repair_rounds,
-                    ) = await _repair_tests_until_pass(
+                    verification_gate, build_repair_rounds = await repair_with_agent(
                         session=session,
                         verification_gate=verification_gate,
                         generated_code_by_file=generated_code_by_file,
                         apply_results=apply_results,
-                        problem_summary=issue_prompt,
-                        temperature=temperature,
-                        seed=seed,
-                        max_attempts=max_test_repair_attempts,
+                        problem_summary=repair_problem_summary,
+                        max_attempts=max_build_repair_attempts,
                         run_gate=_run_verification_gate,
                         log_lines=log_lines,
-                        recover_build=_recover_build_during_test_repair,
                         symbol_context_repo=symbol_context_repo,
+                        max_seconds=repair_agent_max_seconds,
+                        mode=repair_mode, concurrency=repair_concurrency,
                     )
+                    for path in generated_code_by_file:
+                        if path not in target_files:
+                            target_files.append(path)
+                            baseline_path = symbol_context_repo / path
+                            original_code_by_file[path] = (
+                                baseline_path.read_text(encoding="utf-8-sig")
+                                if baseline_path.is_file()
+                                else ""
+                            )
 
+            combined_original = "\n\n".join(
+                f"### FILE: {path}\n{original_code_by_file.get(path, '')}"
+                for path in target_files
+            )
             combined_modified = "\n\n".join(
                 f"### FILE: {path}\n{generated_code_by_file.get(path, '')}"
                 for path in target_files
@@ -1531,6 +1156,8 @@ async def _run_mcp_workflow(
                 "coverage": verification_gate.get("coverage"),
                 "junit": verification_gate.get("junit"),
                 "build_repair": {
+                    "controller": "llm",
+                    "mode": repair_mode,
                     "attempts": len(build_repair_rounds),
                     "max_attempts": int(max_build_repair_attempts),
                     "repaired_files": sorted(
@@ -1545,16 +1172,14 @@ async def _run_mcp_workflow(
                             related_file
                             for round_payload in build_repair_rounds
                             for file_result in round_payload.get("file_results") or []
-                            for related_file in file_result.get(
-                                "related_symbol_files"
-                            )
+                            for related_file in file_result.get("related_symbol_files")
                             or []
                         }
                     ),
                 },
                 "test_repair": {
                     "attempts": len(test_repair_rounds),
-                    "max_attempts": int(max_test_repair_attempts),
+                    "handled_by": "llm_repair_controller",
                     "repaired_files": sorted(
                         {
                             target_file
@@ -1567,9 +1192,7 @@ async def _run_mcp_workflow(
                             related_file
                             for round_payload in test_repair_rounds
                             for file_result in round_payload.get("file_results") or []
-                            for related_file in file_result.get(
-                                "related_symbol_files"
-                            )
+                            for related_file in file_result.get("related_symbol_files")
                             or []
                         }
                     ),
@@ -1775,13 +1398,30 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     # to avoid future-knowledge leakage in open-world issue runs.
     detected_pr: int | None = None
 
-    issue_prompt = _build_issue_prompt(issue, comments)
+    discussion = IssueDiscussionService().build(
+        issue,
+        comments,
+        max_chars=getattr(args, "max_issue_evidence_chars", 20000),
+        cutoff=getattr(args, "issue_context_cutoff", None),
+    )
+    issue_prompt = IssueDiscussionService.render(discussion)
+    log_lines.extend(discussion.notes)
+    logger.info(
+        "Issue evidence selected: %s sources, %s omitted comments, %s omitted blocks",
+        len(discussion.evidence),
+        discussion.omitted_comments,
+        discussion.omitted_blocks,
+    )
 
     pr_candidate_files = [
         item.strip() for item in (args.candidate_files or "").split(",") if item.strip()
     ] or None
 
     config = SweMcpConfig.load(str(repo_path))
+    repair_execution = _resolve_repair_execution(args, config.execution)
+    log_lines.append(
+        f"LLM repair controller; seconds={repair_execution.repair_agent_max_seconds}."
+    )
     semantic_index_config = config.semantic_index
     localizer = RepositoryIssueLocalizer(
         enable_semantic_nlp=args.enable_nlp_localizer,
@@ -1876,8 +1516,11 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             verification_timeout_seconds=args.verification_timeout_seconds,
             skip_verification_gate=args.skip_verification_gate,
             log_lines=log_lines,
-            max_build_repair_attempts=args.max_build_repair_attempts,
-            max_test_repair_attempts=args.max_test_repair_attempts,
+            max_build_repair_attempts=repair_execution.max_build_repair_attempts,
+            issue_discussion=discussion,
+            repair_agent_max_seconds=repair_execution.repair_agent_max_seconds,
+            repair_mode=repair_execution.repair_mode,
+            repair_concurrency=repair_execution.repair_concurrency,
         )
     )
 
@@ -2135,6 +1778,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "number": parsed_issue.issue_number,
             "title": issue.get("title"),
             "state": issue.get("state"),
+            "discussion": discussion.model_dump(),
         },
         "subject": {
             "repo_path": str(repo_path),
@@ -2173,6 +1817,13 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "apply_outcome_counts": _count_apply_outcomes(apply_results),
         },
         "run_config": {
+            "auto_repair": {
+                "controller": "llm",
+                "mode": repair_execution.repair_mode,
+                "concurrency": repair_execution.repair_concurrency,
+                "max_seconds": repair_execution.repair_agent_max_seconds,
+                "max_build_attempts": repair_execution.max_build_repair_attempts,
+            },
             "github": {
                 "api_base": gh_client.api_base,
                 "authenticated": gh_client.authenticated,
@@ -2321,16 +1972,27 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-issue-comments",
         type=int,
-        default=20,
+        default=200,
         help="Maximum number of comments to fetch from GitHub issue API.",
+    )
+    parser.add_argument(
+        "--max-issue-evidence-chars",
+        type=int,
+        default=20000,
+        help="Maximum selected issue/comment body characters; complete code fences are preserved.",
+    )
+    parser.add_argument(
+        "--issue-context-cutoff",
+        default=None,
+        help="Optional timezone-qualified ISO timestamp; exclude later comments and reject later-edited issue bodies.",
     )
     parser.add_argument(
         "--github-token", default=None, help="GitHub token for API requests"
     )
     parser.add_argument(
         "--nfr-focus",
-        default="Reliability,Maintainability,Security",
-        help="Comma-separated NFR focus list",
+        default="",
+        help="Optional explicit NFR override. By default discover NFRs from issue evidence.",
     )
     parser.add_argument(
         "--model",
@@ -2444,21 +2106,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-build-repair-attempts",
         type=int,
-        default=10,
+        default=None,
         help=(
             "Maximum diagnostic-guided repair rounds when the generated code parses "
             "but fails to compile. Use 0 to disable the build repair loop."
         ),
     )
-    parser.add_argument(
-        "--max-test-repair-attempts",
-        type=int,
-        default=10,
-        help=(
-            "Maximum failure-guided repair rounds when the generated code compiles "
-            "but fails its tests. Use 0 to disable the test repair loop."
-        ),
-    )
+    parser.add_argument("--repair-mode", choices=["loop", "tree"], default=None)
+    parser.add_argument("--repair-concurrency", type=int, default=None)
+    parser.add_argument("--repair-agent-max-seconds", type=int, default=None)
     parser.add_argument(
         "--clean-output",
         action="store_true",

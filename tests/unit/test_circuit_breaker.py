@@ -2,6 +2,7 @@ import json
 from types import SimpleNamespace
 
 import pytest
+import yaml
 
 from src.mcp.swe_mcp_server import SweMcpServerContextProvider
 from src.mcp.tools import judge_code_changes_step as judge_module
@@ -148,7 +149,7 @@ def test_swe_knowledge_base_ignores_blank_and_comment_lines(tmp_path):
     assert kb.edges[0].relation == "related_to"
 
 
-def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
+def test_swe_config_load_uses_missing_file_defaults_but_rejects_invalid_files(tmp_path):
     default_config = SweMcpConfig.load(str(tmp_path))
     assert default_config.knowledge_base.relationship_depth == 1
     assert default_config.semantic_index.graph_memory_hops == 2
@@ -203,8 +204,11 @@ def test_swe_config_load_reads_yaml_and_falls_back_for_invalid_files(tmp_path):
 
     config_path.write_text("not: [valid", encoding="utf-8")
 
-    fallback_config = SweMcpConfig.load(str(tmp_path))
-    assert fallback_config.knowledge_base.relationship_depth == 1
+    with pytest.raises(yaml.YAMLError):
+        SweMcpConfig.load(str(tmp_path))
+    config_path.write_text("execution:\n  auto_repair_strategy: scoped\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="auto_repair_strategy"):
+        SweMcpConfig.load(str(tmp_path))
 
 
 def test_swe_models_reexports_and_server_context_fields():
@@ -565,4 +569,3 @@ def test_server_context_provider_loads_concern_assets(monkeypatch, tmp_path):
     data_items = [item for item in ctx.templates if item["kind"] == "swe_concern_data"]
     assert len(data_items) == 1
     assert '"DESIGN_PATTERN_NAME": "group_a"' in data_items[0]["content"]
-

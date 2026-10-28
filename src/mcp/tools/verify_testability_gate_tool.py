@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import json
 import shutil
 import subprocess
 import tempfile
@@ -9,13 +11,19 @@ from pathlib import Path
 from typing import Any
 
 from src.models.testability_gate import TestPassRateResult, VerifyTestabilityGateResult
+from src.service.build_diagnostics import (
+    BuildDiagnosticContext,
+    BuildDiagnosticParserResolver,
+)
 from src.service.code_sanitization import (
     VerificationContext,
     VerificationStrategyResolver,
 )
 from src.service.language_detection import infer_language_from_file_paths
+from src.service.ast_context_service import AstContextService, declaration_signature_at
 
 _GIT_SETUP_TIMEOUT_SECONDS = 600
+logger = logging.getLogger(__name__)
 
 
 class VerifyTestabilityGateTool:
@@ -141,7 +149,7 @@ class VerifyTestabilityGateTool:
         cls,
         command: list[str],
         cwd: Path,
-        timeout_seconds: int,
+        timeout_seconds: float,
     ) -> dict[str, Any]:
         started = time.monotonic()
         try:
@@ -162,6 +170,8 @@ class VerifyTestabilityGateTool:
                 "stdout_tail": cls._tail_text(completed.stdout),
                 "stderr_tail": cls._tail_text(completed.stderr),
                 "timed_out": False,
+                "stdout": completed.stdout,
+                "stderr": completed.stderr,
             }
         except subprocess.TimeoutExpired as exc:
             duration = time.monotonic() - started
@@ -177,6 +187,93 @@ class VerifyTestabilityGateTool:
                 ),
                 "timed_out": True,
             }
+
+    @staticmethod
+    def _capture_build_diagnostics(
+        execution: dict[str, Any],
+        worktree: Path,
+        project_type: str,
+        changed_files: list[str],
+    ) -> list[dict[str, Any]]:
+        output = "\n".join(
+            str(execution.get(key) or "")
+            for key in ("stdout", "stderr", "stdout_tail", "stderr_tail")
+        )
+        parsed = BuildDiagnosticParserResolver().parse(
+            output,
+            BuildDiagnosticContext(
+                project_type=project_type,
+                language=infer_language_from_file_paths(changed_files),
+                changed_files=tuple(changed_files),
+            ),
+            max_diagnostics=100,
+        )
+        diagnostics = [diagnostic.to_dict() for diagnostic in parsed.errors]
+        remaining_chars = 12000
+        root = worktree.resolve()
+        inventoried: set[Path] = set()
+        for diagnostic in diagnostics:
+            file = diagnostic.get("file")
+            line = diagnostic.get("line")
+            if not file:
+                continue
+            source = (root / file).resolve()
+            if not source.is_relative_to(root):
+                continue
+            diagnostic["relative_file"] = source.relative_to(root).as_posix()
+            if not line or remaining_chars <= 0:
+                continue
+            if not source.is_file():
+                diagnostic["source_context_error"] = (
+                    "Diagnostic source was not materialized in the verification worktree."
+                )
+                continue
+            try:
+                source_text = source.read_text(encoding="utf-8-sig")
+                lines = source_text.splitlines()
+            except (OSError, UnicodeError) as error:
+                diagnostic["source_context_error"] = str(error)
+                continue
+            start = max(0, int(line) - 9)
+            excerpt = "\n".join(
+                f"{index + 1}: {lines[index]}"
+                for index in range(start, min(len(lines), int(line) + 8))
+            )[: min(2000, remaining_chars)]
+            diagnostic["source_excerpt"] = excerpt
+            remaining_chars -= len(excerpt)
+            if source not in inventoried and (
+                source.name.endswith(".g.cs") or "obj" in source.relative_to(root).parts
+            ):
+                inventoried.add(source)
+                outline = AstContextService().describe_outline(
+                    source.name,
+                    source_text,
+                    max_declarations=80,
+                )
+                inventory = []
+                budget = min(4000, remaining_chars)
+                for declaration in outline.declarations:
+                    entry = {
+                        "name": declaration.name,
+                        "line": declaration.start_line,
+                        "signature": declaration_signature_at(
+                            lines, declaration.start_line
+                        )[:400],
+                    }
+                    cost = len(json.dumps(entry))
+                    if cost > budget:
+                        break
+                    inventory.append(entry)
+                    budget -= cost
+                    remaining_chars -= cost
+                diagnostic["generated_declarations"] = inventory
+                diagnostic["generated_declarations_truncated"] = (
+                    len(inventory) < len(outline.declarations)
+                    or len(outline.declarations) >= 80
+                )
+                if outline.error:
+                    diagnostic["generated_outline_error"] = outline.error
+        return diagnostics
 
     @staticmethod
     def _discover_verification_commands(
@@ -209,11 +306,29 @@ class VerifyTestabilityGateTool:
         base_ref: str,
         generated_code_by_file: dict[str, str],
         timeout_seconds: int = 300,
+        focus_files: list[str] | None = None,
+        compile_only: bool = False,
     ) -> dict[str, Any]:
         """Run build/test validation in a detached worktree with generated file contents."""
 
         resolved_repo_path = Path(repo_path).resolve()
+        if focus_files is not None and (
+            not focus_files or not set(focus_files) <= generated_code_by_file.keys()
+        ):
+            raise ValueError(
+                "Focused verification requires nonempty files from the candidate."
+            )
         gate_result = VerifyTestabilityGateResult()
+
+        def serialize_result() -> dict[str, Any]:
+            result = gate_result.to_dict()
+            result.update(
+                verification_scope="focused" if focus_files is not None else "full",
+                focus_files=focus_files,
+                compile_only=compile_only,
+            )
+            return result
+
         # Worktree setup/teardown is bounded separately: it should never take as
         # long as a full build, and an unbounded call here blocks the pipeline.
         git_timeout_seconds = min(timeout_seconds, _GIT_SETUP_TIMEOUT_SECONDS)
@@ -245,7 +360,7 @@ class VerifyTestabilityGateTool:
                 )
                 gate_result.testability_gate.reason = reason
                 gate_result.log_lines.append(reason)
-                return gate_result.to_dict()
+                return serialize_result()
 
             if setup_result.returncode != 0:
                 reason = (
@@ -254,7 +369,7 @@ class VerifyTestabilityGateTool:
                 )
                 gate_result.testability_gate.reason = reason
                 gate_result.log_lines.append(reason)
-                return gate_result.to_dict()
+                return serialize_result()
 
             try:
                 for relative_path, content in generated_code_by_file.items():
@@ -271,7 +386,9 @@ class VerifyTestabilityGateTool:
                     repo_path=worktree_path,
                     junit_xml_path=junit_xml_path,
                     coverage_xml_path=coverage_xml_path,
-                    changed_files=list(generated_code_by_file),
+                    changed_files=focus_files
+                    if focus_files is not None
+                    else list(generated_code_by_file),
                     verification_config=self._load_verification_config(),
                 )
 
@@ -279,31 +396,82 @@ class VerifyTestabilityGateTool:
                 test_command = discovery.get("test_command")
 
                 if isinstance(build_command, list):
-                    gate_result.build.command = build_command
-                    gate_result.log_lines.append(
-                        "Verification gate build command discovered: "
-                        + " ".join(build_command)
-                    )
-                    build_execution = self._run_command_with_timeout(
-                        build_command,
-                        cwd=worktree_path,
-                        timeout_seconds=timeout_seconds,
-                    )
-                    gate_result.build.status = str(
-                        build_execution.get("status", "not-run")
-                    )
-                    gate_result.build.exit_code = build_execution.get("exit_code")
-                    gate_result.build.duration_seconds = build_execution.get(
-                        "duration_seconds"
-                    )
-                    gate_result.build.stdout_tail = build_execution.get("stdout_tail")
-                    gate_result.build.stderr_tail = build_execution.get("stderr_tail")
-                    gate_result.build.timed_out = build_execution.get("timed_out")
+                    stages = [
+                        ("prerequisite", command)
+                        for command in discovery.get("pre_build_commands", [])
+                    ] + [("full", build_command)]
+                    build_started = time.monotonic()
+                    for stage, command in stages:
+                        gate_result.build.command = command
+                        gate_result.build.stage = stage
+                        gate_result.log_lines.append(
+                            f"Verification gate {stage} build: " + " ".join(command)
+                        )
+                        logger.info(
+                            "Verification build stage %s: %s", stage, " ".join(command)
+                        )
+                        remaining_seconds = max(
+                            0.001, timeout_seconds - (time.monotonic() - build_started)
+                        )
+                        execution = self._run_command_with_timeout(
+                            command,
+                            cwd=worktree_path,
+                            timeout_seconds=remaining_seconds,
+                        )
+                        gate_result.build.status = str(
+                            execution.get("status", "not-run")
+                        )
+                        gate_result.build.exit_code = execution.get("exit_code")
+                        gate_result.build.duration_seconds = execution.get(
+                            "duration_seconds"
+                        )
+                        gate_result.build.stdout_tail = execution.get("stdout_tail")
+                        gate_result.build.stderr_tail = execution.get("stderr_tail")
+                        gate_result.build.timed_out = execution.get("timed_out")
+                        gate_result.build.diagnostics = self._capture_build_diagnostics(
+                            execution,
+                            worktree_path,
+                            discovery.get("project_type", "unknown"),
+                            list(generated_code_by_file),
+                        )
+                        gate_result.build.stages.append(
+                            {
+                                "stage": stage,
+                                "command": command,
+                                "status": gate_result.build.status,
+                                "duration_seconds": gate_result.build.duration_seconds,
+                            }
+                        )
+                        logger.info(
+                            "Verification build stage %s finished: %s (%.3fs)",
+                            stage,
+                            gate_result.build.status,
+                            gate_result.build.duration_seconds or 0.0,
+                        )
+                        if gate_result.build.status != "pass":
+                            break
+                        gate_result.build.completed_stages += 1
+                    if all(
+                        entry["duration_seconds"] is not None
+                        for entry in gate_result.build.stages
+                    ):
+                        gate_result.build.duration_seconds = round(
+                            sum(
+                                entry["duration_seconds"]
+                                for entry in gate_result.build.stages
+                            ),
+                            3,
+                        )
 
-                if isinstance(test_command, list) and gate_result.build.status in {
-                    "pass",
-                    "not-run",
-                }:
+                if (
+                    not compile_only
+                    and isinstance(test_command, list)
+                    and gate_result.build.status
+                    in {
+                        "pass",
+                        "not-run",
+                    }
+                ):
                     gate_result.test.command = test_command
                     gate_result.log_lines.append(
                         "Verification gate test command discovered: "
@@ -375,12 +543,14 @@ class VerifyTestabilityGateTool:
 
                 gate_result.testability_gate.build_status = build_status
                 gate_result.testability_gate.test_status = test_status
+                if compile_only and build_status == "pass":
+                    reason = "Compilation-only checkpoint passed; full verification is still required."
                 gate_result.testability_gate.reason = reason
                 gate_result.log_lines.append(
                     "Verification gate result: "
                     f"build={build_status}, test={test_status}, reason={reason}"
                 )
-                return gate_result.to_dict()
+                return serialize_result()
             finally:
                 try:
                     subprocess.run(

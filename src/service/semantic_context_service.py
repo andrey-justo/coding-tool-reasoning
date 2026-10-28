@@ -1,22 +1,4 @@
-"""Semantic context for verification diagnostics, resolved with tree-sitter.
-
-AST context proves *where* a diagnostic is, but not *what contract* the failing
-expression has to satisfy. A type-mismatch diagnostic names the supplied and the
-expected type, yet the repair prompt never carried the signature of the callee
-that imposes the expectation, so the model had to guess between a cast, a
-pattern test and a signature change.
-
-This service closes that gap without hard-coding any compiler: it resolves the
-call site at the diagnostic position, the declarations of the symbols named by
-the diagnostic, and the places those symbols are already used. Everything is
-derived from tree-sitter grammars, so it works for every language the localizer
-already parses instead of a single toolchain.
-
-Declarations are searched in the failing file first. That ordering matters for
-chunked repair, where the callee can be declared in a chunk the model is not
-being shown, and for the repository resolver, which deliberately skips files
-whose full content is already in the prompt.
-"""
+"""Retrieve call-site, declaration and source-occurrence facts for LLM context."""
 
 from __future__ import annotations
 
@@ -47,22 +29,6 @@ _CALL_NODE_TYPES = {
 
 #: Grammars disagree on which field holds the callee, so each is tried in turn.
 _CALLEE_FIELDS = ("function", "name", "constructor", "type")
-
-_IDENTIFIER_RE = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
-
-#: Declarations that define a callable or type contract. Usages of other node
-#: kinds are still reported, but these are what carry a signature.
-_CONTRACT_NODE_HINTS = (
-    "method",
-    "function",
-    "constructor",
-    "class",
-    "interface",
-    "struct",
-    "record",
-    "enum",
-    "type",
-)
 
 
 @dataclass(frozen=True)
@@ -181,6 +147,13 @@ class SemanticContextService:
             max_declarations=400,
         )
         local_declarations = outline.declarations if outline.available else []
+        messages = [str(diagnostic.get("message") or "") for diagnostic in selected]
+        extractor = getattr(symbol_resolver, "extract_symbols", None)
+        diagnostic_symbols = (
+            extractor(messages)
+            if callable(extractor)
+            else extract_diagnostic_symbols(messages)
+        )
 
         contexts: list[DiagnosticSemanticContext] = []
         for diagnostic in selected:
@@ -196,7 +169,7 @@ class SemanticContextService:
                 target_file=target_file,
                 source_lines=source_lines,
                 local_declarations=local_declarations,
-                message=message,
+                diagnostic_symbols=diagnostic_symbols,
                 call_site=call_site,
                 repo_path=repo_path,
                 symbol_resolver=symbol_resolver,
@@ -280,15 +253,12 @@ class SemanticContextService:
                 callee_node = None
             if callee_node is not None:
                 break
-        if callee_node is None and node.children:
-            callee_node = node.children[0]
 
         callee_text = (
             self._extractor._node_text(source_bytes, callee_node).strip()
             if callee_node is not None
             else ""
         )
-        identifiers = _IDENTIFIER_RE.findall(callee_text)
 
         return CallSiteContext(
             line=line,
@@ -296,7 +266,7 @@ class SemanticContextService:
             expression=self._truncate(
                 self._extractor._node_text(source_bytes, node).strip()
             ),
-            callee=identifiers[-1] if identifiers else None,
+            callee=callee_text or None,
             arguments=self._arguments(node, source_bytes),
         )
 
@@ -338,24 +308,7 @@ class SemanticContextService:
                 walk(child)
 
         walk(root)
-        if best is not None:
-            return best
-
-        # A diagnostic column can point past the call it refers to, so the line
-        # alone is used as a fallback anchor before giving up.
-        fallback = None
-
-        def walk_line(node) -> None:
-            nonlocal fallback
-            if node.start_point[0] > row or node.end_point[0] < row:
-                return
-            if node.type in _CALL_NODE_TYPES and fallback is None:
-                fallback = node
-            for child in node.children:
-                walk_line(child)
-
-        walk_line(root)
-        return fallback
+        return best
 
     def _resolve_symbols(
         self,
@@ -363,7 +316,7 @@ class SemanticContextService:
         target_file: str,
         source_lines: list[str],
         local_declarations: list[Any],
-        message: str,
+        diagnostic_symbols: list[str],
         call_site: CallSiteContext | None,
         repo_path: Path | str | None,
         symbol_resolver: Any,
@@ -374,7 +327,7 @@ class SemanticContextService:
         ordered: list[str] = []
         if call_site and call_site.callee:
             ordered.append(call_site.callee)
-        for symbol in extract_diagnostic_symbols([message]):
+        for symbol in diagnostic_symbols:
             if symbol not in ordered:
                 ordered.append(symbol)
 
@@ -405,13 +358,10 @@ class SemanticContextService:
                 resolved.append(repository)
                 continue
 
-            # An unresolved symbol is still evidence: it tells the model the
-            # declaration lives outside the repository, so the contract has to
-            # be honoured rather than redefined.
             resolved.append(
                 SemanticSymbolContext(
                     symbol=symbol,
-                    origin="external_or_unresolved",
+                    origin="not_found_in_retrieved_context",
                     usages=self._usages(symbol, source_lines, max_usages),
                 )
             )
@@ -426,10 +376,9 @@ class SemanticContextService:
     ) -> list[dict[str, Any]]:
         """Return every same-file declaration of ``symbol``, overloads included."""
 
-        target = symbol.lower()
         matched: list[dict[str, Any]] = []
         for declaration in declarations:
-            if (declaration.name or "").lower() != target:
+            if declaration.name != symbol:
                 continue
             matched.append(
                 {
@@ -437,11 +386,8 @@ class SemanticContextService:
                     "node_type": declaration.node_type,
                     "start_line": declaration.start_line,
                     "end_line": declaration.end_line,
-                    "signature": declaration_signature_at(
+                    "signature": declaration.header or declaration_signature_at(
                         source_lines, declaration.start_line
-                    ),
-                    "defines_contract": any(
-                        hint in declaration.node_type for hint in _CONTRACT_NODE_HINTS
                     ),
                 }
             )
@@ -457,14 +403,11 @@ class SemanticContextService:
     ) -> SemanticSymbolContext | None:
         if repo_path is None or symbol_resolver is None:
             return None
-        try:
-            contexts = symbol_resolver.declarations_for_symbol(
-                repo_path,
-                symbol,
-                exclude_files=exclude_files,
-            )
-        except Exception:  # pragma: no cover - defensive
-            return None
+        contexts = symbol_resolver.declarations_for_symbol(
+            repo_path,
+            symbol,
+            exclude_files=exclude_files,
+        )
         if not contexts:
             return None
 

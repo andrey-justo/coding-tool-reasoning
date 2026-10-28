@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Mapping, Optional
+from typing import Literal, Mapping, Optional
 
 _PLACEHOLDER_PATTERN = re.compile(r"\{\{\s*([A-Za-z0-9_.-]+)\s*\}\}")
 
-_TOOL_TEMPLATE_SUBDIR = "tool"
 _DEFAULT_TEMPLATES_ROOT = Path(__file__).resolve().parents[2] / "knowledge" / "template"
 
 
@@ -22,13 +21,19 @@ class ToolPromptTemplateService:
     and injects every match into generation prompts.
     """
 
-    def __init__(self, templates_root: Optional[str | Path] = None) -> None:
+    def __init__(
+        self,
+        templates_root: Optional[str | Path] = None,
+        *,
+        subdirectory: Literal["tool", "utils"] = "tool",
+    ) -> None:
         self._templates_root = (
             Path(templates_root) if templates_root else _DEFAULT_TEMPLATES_ROOT
         )
+        self._subdirectory = subdirectory
 
     def template_path(self, name: str) -> Path:
-        return self._templates_root / _TOOL_TEMPLATE_SUBDIR / f"{name}.md"
+        return self._templates_root / self._subdirectory / f"{name}.md"
 
     def load(self, name: str) -> str:
         path = self.template_path(name)

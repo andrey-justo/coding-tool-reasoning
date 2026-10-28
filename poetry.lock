@@ -3591,7 +3591,25 @@ h11 = ">=0.8"
 [package.extras]
 standard = ["colorama (>=0.4) ; sys_platform == \"win32\"", "httptools (>=0.6.3)", "python-dotenv (>=0.13)", "pyyaml (>=5.1)", "uvloop (>=0.15.1) ; sys_platform != \"win32\" and sys_platform != \"cygwin\" and platform_python_implementation != \"PyPy\"", "watchfiles (>=0.13)", "websockets (>=10.4)"]
 
+[[package]]
+name = "github-copilot-sdk"
+version = "1.0.23"
+description = "Python SDK for GitHub Copilot CLI"
+optional = false
+python-versions = ">=3.11"
+groups = ["main"]
+files = [
+    {file = "github_copilot_sdk-1.0.23-py3-none-any.whl", hash = "sha256:dd50c74550c42437c55185c2b862ca758548c66ddfe6b0ade1cb1be5bd05c7a7"},
+]
+
+[package.dependencies]
+python-dateutil = ">=2.9.0.post0"
+pydantic = ">=2.11"
+httpx = ">=0.24.0"
+
+[package.extras]
+telemetry = ["opentelemetry-api (>=1.0.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "<3.14,>=3.11"
-content-hash = "121915781b31e5668fd9e6812f641035ad458b1187adb225d7825df3c703bbf5"
+content-hash = "95d85ba6ac958498bf7804cfceaa58b6a428a2502cfc5d342b8a007ea1a0dd1d"

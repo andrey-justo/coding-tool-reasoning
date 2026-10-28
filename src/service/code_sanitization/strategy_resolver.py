@@ -102,10 +102,20 @@ class VerificationStrategyResolver:
                 override.extra_test_args, context
             )
 
+        prerequisites = (
+            override.pre_build_commands
+            if override.pre_build_commands is not None
+            else ([] if override.build_command else commands.pre_build_commands)
+        )
         return VerificationCommands(
             project_type=commands.project_type,
             build_command=build_command,
             test_command=test_command,
+            pre_build_commands=[
+                _expand_tokens(command, context)
+                + _expand_tokens(override.extra_build_args or [], context)
+                for command in prerequisites
+            ],
         )
 
     def _lookup_override(

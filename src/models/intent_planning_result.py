@@ -1,5 +1,11 @@
-from dataclasses import dataclass
-from typing import List, Optional
+from dataclasses import dataclass, field
+from typing import Any, List, Optional
+from src.models.issue_planning import (
+    ImplementationStep,
+    IssueDiscussion,
+    IssueSummary,
+    NfrDiscovery,
+)
 
 
 @dataclass
@@ -16,3 +22,9 @@ class IntentPlanningResult:
     inferred_target_language: Optional[str] = None
     llm_prompt: Optional[str] = None
     llm_raw_response: Optional[str] = None
+    issue_summary: Optional[IssueSummary] = None
+    issue_discussion: Optional[IssueDiscussion] = None
+    nfr_discovery: List[NfrDiscovery] = field(default_factory=list)
+    nfr_discovery_source: str = "legacy"
+    implementation_plan: List[ImplementationStep] = field(default_factory=list)
+    baseline_context: dict[str, Any] = field(default_factory=dict)
