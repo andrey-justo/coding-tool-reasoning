@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import csv
+import json
 from pathlib import Path
 from typing import Any
 
@@ -48,6 +49,64 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     )
 
     rows: list[dict[str, Any]] = []
+
+    structural = ((report.get("metrics") or {}).get("design_quality") or {}).get("structural") or {}
+    if structural.get("status") == "ok":
+        comparison = structural["comparison"]
+        provenance = json.dumps({
+            "protocol_sha256": comparison["protocol_sha256"],
+            "protocol_id": comparison["evidence"]["protocol"]["protocol_id"],
+            "mapping_version": comparison["evidence"]["protocol"]["mapping_version"],
+            "before": [
+                {key: value for key, value in item.items() if key != "counts"}
+                for item in comparison["evidence"]["before"]
+            ],
+            "after": [
+                {key: value for key, value in item.items() if key != "counts"}
+                for item in comparison["evidence"]["after"]
+            ],
+        }, sort_keys=True)
+        rows.append({
+            "dimension": "Structural quality",
+            "metric": "M-1 V_struct (relative improvement delta)",
+            "original": comparison["before"]["v_struct"],
+            "modified": comparison["after"]["v_struct"],
+            "delta": comparison["delta_struct"],
+            "unit": "score: severity-weighted findings / max(1, KLOC); delta: ratio",
+            "provenance": provenance,
+        })
+        rows.append({
+            "dimension": "Structural quality",
+            "metric": "M-1 absolute delta (after-before)",
+            "original": comparison["before"]["v_struct"],
+            "modified": comparison["after"]["v_struct"],
+            "delta": comparison["delta_abs"],
+            "unit": "severity-weighted findings / max(1, KLOC)",
+            "provenance": provenance,
+        })
+        for component in ("solid", "arch", "smell"):
+            before = comparison["before"]["densities"][component]
+            after = comparison["after"]["densities"][component]
+            rows.append({
+                "dimension": "Structural quality",
+                "metric": f"M-1 V_{component} density (after-before delta)",
+                "original": before, "modified": after, "delta": after - before,
+                "unit": "severity-weighted findings / max(1, KLOC)",
+                "provenance": provenance,
+            })
+        for name, sensitivity in comparison["sensitivity"].items():
+            score_unit = (
+                "findings / max(1, KLOC)" if name == "unweighted_severity" else
+                "severity-weighted findings / file" if name == "per_file" else
+                "severity-weighted findings / max(1, KLOC)"
+            )
+            rows.append({
+                "dimension": "Structural sensitivity (not primary)",
+                "metric": f"M-1 {name} (relative improvement delta)",
+                "original": sensitivity["before"], "modified": sensitivity["after"],
+                "delta": sensitivity["delta_struct"], "unit": f"score: {score_unit}; delta: ratio",
+                "provenance": provenance,
+            })
 
     if isinstance(solid, dict):
         rows.append(
@@ -145,7 +204,7 @@ def write_csv_report(csv_path: Path, rows: list[dict[str, Any]]) -> None:
     with csv_path.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["dimension", "metric", "original", "modified", "delta", "unit"],
+            fieldnames=["dimension", "metric", "original", "modified", "delta", "unit", "provenance"],
         )
         writer.writeheader()
         for row in rows:
@@ -181,6 +240,15 @@ def write_markdown_report(
     lines.append(f"- Issue: {report['issue']['url']}")
     lines.append(f"- Titulo: {report['issue']['title']}")
     lines.append(f"- Repositorio alvo: {report['subject']['repo_path']}")
+    structural = ((report.get("metrics") or {}).get("design_quality") or {}).get("structural") or {}
+    if structural.get("status") == "ok":
+        comparison = structural["comparison"]
+        lines.append(f"- M-1 effectiveness: {comparison['effectiveness_verdict']}")
+        lines.append(f"- M-1: {comparison['rationale']}")
+        lines.append(f"- Registered protocol SHA-256: {comparison['protocol_sha256']}")
+        lines.append("- M-1 mapping, instrument/version, ruleset, timestamps, scope and source hashes: retained in the JSON report.")
+    elif structural:
+        lines.append(f"- M-1: not-run ({structural['reason']})")
     target_files = report["subject"].get("target_files") or []
     if target_files:
         lines.append(

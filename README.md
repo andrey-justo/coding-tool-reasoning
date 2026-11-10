@@ -155,6 +155,30 @@ step separately. JSON and Markdown reports retain the discovery evidence and pla
 `--nfr-focus` remains an explicit, reported manual override, not an experiment
 default. Legacy non-issue planning callers retain their existing defaults.
 
+### Objective structural effectiveness (M-1)
+
+The issue runner can collect and compare pre-registered structural evidence with
+`--structural-analysis-config C:\path\to\block.json`. M-1 combines severity-weighted
+SOLID/design, architectural and smell/duplication densities with reference weights
+0.50/0.30/0.20. Both relative improvement and absolute after-minus-before deltas
+are retained, including zero-baseline cases and separate sensitivity analyses.
+
+Analyzer discovery is read-only:
+
+```powershell
+python -m src.evaluation.structural_analysis --discover-repo C:\path\to\subject
+```
+
+All collectors are explicitly configurable: normalized reports, live Ruff,
+Roslyn/SARIF builds, and optional completed SonarQube scans. Discovery does not
+invent a rule mapping or authorize execution. Missing/incomparable evidence is
+never treated as a clean score. JSON/CSV/Markdown retain objective results and
+provenance separately from LLM judgment and build/test gates.
+
+See [the M-1 specification](docs/requirements/metrics.md) for formulas, schemas,
+collector requirements and the evidence-only CLI usable as a CI regression gate.
+Production rule mappings still need pre-registration; test fixtures are synthetic.
+
 ### LLM-controlled repair
 
 Repair decisions, diagnoses, edit transactions, and checkpoint selection belong

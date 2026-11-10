@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import csv
+import json
 from pathlib import Path
 
+from src.evaluation.metrics.structural import compare_structural_metrics
 from src.report.experiment_report_writer import (
     _extract_verdict,
     _format_value,
@@ -11,6 +14,7 @@ from src.report.experiment_report_writer import (
     write_log_report,
     write_markdown_report,
 )
+from tests.unit.test_structural_metrics import synthetic_input
 
 
 def _base_report() -> dict:
@@ -137,6 +141,28 @@ def test_metrics_rows_includes_solid_and_semantic_metrics() -> None:
     metrics = {row["metric"] for row in rows}
     assert "Delta de violacoes SOLID" in metrics
     assert "Similaridade semantica (CodeBERT)" in metrics
+
+
+def test_m1_is_preserved_in_csv_and_markdown_with_provenance(tmp_path):
+    report = _base_report()
+    comparison = compare_structural_metrics(synthetic_input()).model_dump(mode="json")
+    report["metrics"]["design_quality"]["structural"] = {
+        "status": "ok", "comparison": comparison,
+    }
+    rows = metrics_rows(report)
+    csv_path = tmp_path / "report.csv"
+    write_csv_report(csv_path, rows)
+    with csv_path.open(encoding="utf-8", newline="") as stream:
+        primary = next(row for row in csv.DictReader(stream) if row["metric"].startswith("M-1 V_struct"))
+    assert float(primary["delta"]) == 0.5
+    provenance = json.loads(primary["provenance"])
+    assert provenance["before"][0]["instrument_version"] == "1"
+    assert provenance["before"][0]["files"][0]["path"] == "a.py"
+    markdown = tmp_path / "report.md"
+    write_markdown_report(markdown, report, rows, tmp_path / "report.json", csv_path, tmp_path / "report.log")
+    text = markdown.read_text(encoding="utf-8")
+    assert "M-1 effectiveness: improved" in text
+    assert comparison["protocol_sha256"] in text
 
 
 def test_report_preserves_issue_evidence_discovery_and_ownership(tmp_path: Path):

@@ -1,6 +1,7 @@
 from typing import Any, Optional
 
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
+from src.models.structural_metrics import StructuralMetricInput
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation
@@ -50,6 +51,7 @@ class JudgeCodeChangesStep:
         swe_context: SweContext,
         original_code: str,
         modified_code: str,
+        structural_metrics: StructuralMetricInput | None = None,
         **_: Any,
     ) -> SweCodeChangeExplanation:
         """Asynchronously judge and explain a code change.
@@ -60,9 +62,12 @@ class JudgeCodeChangesStep:
         - ``modified_code``: code after applying the change.
         """
 
+        kwargs = {}
+        if structural_metrics is not None:
+            kwargs["structural_metrics"] = structural_metrics
         return self.service.explain_change(
             swe_context=swe_context,
             original_code=original_code,
             modified_code=modified_code,
+            **kwargs,
         )
-
