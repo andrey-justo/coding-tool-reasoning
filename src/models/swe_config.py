@@ -433,12 +433,16 @@ class SweMcpConfig(BaseModel):
     def load(cls, repo_root: str) -> "SweMcpConfig":
         """Load configuration from `swe_mcp_config.yaml` if present.
 
-        Missing files use defaults. Invalid files raise instead of silently
-        replacing the requested execution settings.
+        Missing repository-local files use defaults. SWE_MCP_CONFIG_PATH selects
+        an explicit shared file, which must exist. Invalid files raise instead
+        of silently replacing the requested execution settings.
         """
 
-        config_path = os.path.join(repo_root, "swe_mcp_config.yaml")
+        explicit_path = os.environ.get("SWE_MCP_CONFIG_PATH")
+        config_path = explicit_path or os.path.join(repo_root, "swe_mcp_config.yaml")
         if not os.path.exists(config_path):
+            if explicit_path:
+                raise FileNotFoundError(f"Explicit SWE configuration is missing: {config_path}")
             return cls()
 
         with open(config_path, "r", encoding="utf-8") as f:

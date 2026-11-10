@@ -179,6 +179,87 @@ See [the M-1 specification](docs/requirements/metrics.md) for formulas, schemas,
 collector requirements and the evidence-only CLI usable as a CI regression gate.
 Production rule mappings still need pre-registration; test fixtures are synthetic.
 
+### Configured study campaigns
+
+[The campaign manifest](experiments/campaign.yaml) defines all four studies.
+[The existing execution CSV](data/subjects/experiment_runs.csv) now has an
+`experiment_config` column: both baseline/supervised rows for an issue reference
+the same YAML in [experiments/configured](experiments/configured). These 20 task
+files hold the issue/subject anchors and the prerequisites still awaiting
+qualification; shared models, budgets and comparisons stay in the campaign.
+References resolve relative to the manifest's `config_root` (the repository root
+in the supplied configuration), not the shell's working directory.
+
+The [strictness execution folder](experiments/strictness) contains **90 generated
+execution YAMLs**: one low, medium and high configuration for each of the 30 task
+slots. Its [90-row CSV index](experiments/strictness/executions.csv) points to a
+different YAML in every `experiment_config` row. Unlike the shared task YAMLs,
+these select a specific study, block, condition and strictness, and record the
+effective runtime hash and current blockers. Campaign/task references in these
+execution YAMLs are relative to the YAML file; CSV references are relative to
+that CSV. The original 40-row baseline/supervised proposal CSV remains unchanged.
+
+Names are task-first and readable, for example
+`set01-task01-S001-issue131001-low.yaml` and
+`set03-task01-unassigned-low.yaml`. A task's three conditions sort together.
+Repetition/wording suffixes appear only when that study needs them; stable job
+IDs inside the YAML, not filenames, define execution identity.
+
+Regenerate these execution files after qualifying shared inputs; do not edit
+generated condition values or blocker snapshots independently:
+
+```powershell
+python -m src.main study materialize --config experiments\campaign.yaml --study strictness --output experiments\strictness
+```
+
+This only writes configurations and their index; it does not initialize a ledger
+or execute experiments. Unassigned slots have null subject/task references and
+remain blocked rather than inventing ten more subjects. After initializing a
+new frozen ledger, `study run` also accepts `--execution-config` to select exactly
+one of these YAMLs; stale/mismatching and blocked configurations are rejected.
+
+| Study | Task blocks | Executions | Pair records |
+|---|---:|---:|---:|
+| Effectiveness | 30 | 60 | 30 |
+| Strictness: low/medium/high | 30 | 90 | 60 |
+| Robustness: 10 wording variants | 30 | 600 | 300 |
+| Legacy effectiveness | 30 | 60 | 30 |
+| Total | | **810** | **420** |
+
+Strictness reuses each medium execution for both comparisons: 30 pairs per
+comparison, not 60 independent tasks. Robustness variants and repeated issues
+from the same repository are not independent subjects.
+
+Prepare and inspect a frozen ledger **without executing experiments**:
+
+```powershell
+python -m src.main study plan --config experiments\campaign.yaml --export out\studies\exploratory-v1\exports
+python -m src.main study status --ledger out\studies\exploratory-v1\ledger.sqlite
+```
+
+The supplied campaign is **exploratory and entirely blocked**, not ready to run.
+It imports 20 proposed main tasks and six legacy tasks; the remaining slots are
+unassigned. Local repositories, pinned commits, approved AI use, pre-registered
+M-1 configurations and robustness wording still need qualification. The subject
+registry also has 53 malformed rows, reported rather than silently repaired.
+The prompt-only baseline worker is not implemented; matched blocks remain
+blocked by default. Copilot seed/temperature controls are explicitly unsupported.
+
+Only after qualifying inputs and creating a new frozen plan, execution is an
+explicit, bounded action:
+
+```powershell
+python -m src.main study run --ledger out\studies\exploratory-v1\ledger.sqlite --max-trials 1
+```
+
+The scheduler serializes trials sharing a Git repository, limits concurrency,
+and preserves each attempt and report. Completed trials are never rerun,
+including trials with failed scientific gates; execution failures require
+`--retry-failed` and remain attempt-limited. Changing frozen inputs requires a
+new ledger **and artifact root**, not editing an existing campaign in place.
+See [the controlled protocol](docs/experiments/controlled-experiment-protocol.md#configured-campaign-execution)
+for export, crash recovery and comparability rules.
+
 ### LLM-controlled repair
 
 Repair decisions, diagnoses, edit transactions, and checkpoint selection belong

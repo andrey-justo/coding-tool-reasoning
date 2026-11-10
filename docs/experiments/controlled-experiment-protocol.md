@@ -4,6 +4,117 @@ This protocol operationalizes the methodology from *Experimentation in Software 
 
 It is designed to be executable with the current artifact structure in `out/experiments` and the current runner in `src/experiments/issue_mcp_experiment.py`.
 
+## Configured campaign execution
+
+The shared [campaign](../../experiments/campaign.yaml) defines cohorts, study
+conditions, comparisons, model/provider, strictness, scheduling limits and
+verification/repair settings. The `experiment_config` column in the
+[planned-run CSV](../../data/subjects/experiment_runs.csv) references one
+[issue configuration](../../experiments/configured) shared by both paired rows.
+Paths in task bindings and the CSV resolve from the campaign's `config_root`;
+normalized analyzer report paths resolve from their structural configuration.
+The original CSV rows and proposal run IDs are retained.
+
+For strictness, [90 execution YAMLs](../../experiments/strictness) materialize the
+30 task slots crossed with low/medium/high conditions. The
+[execution index](../../experiments/strictness/executions.csv) has one unique
+`experiment_config` per row. These are execution definitions, distinct from the
+20 shared issue definitions: each records its job/block identity, condition,
+strictness, effective runtime hash and blocker snapshot. Shared task references
+are present for the 20 proposed tasks; the ten unassigned slots remain null and
+blocked. References in the generated YAMLs are relative to their containing
+directory, and index references are relative to the CSV.
+
+Execution filenames group by task, followed by subject/issue and condition
+(for example `set01-task01-S001-issue131001-low.yaml`). Unassigned slots use
+`set03-task01-unassigned-low.yaml`; repetition and wording suffixes are included
+only for studies that vary them. Renaming does not change job or pairing IDs.
+
+`study materialize --config experiments\campaign.yaml --study strictness --output
+experiments\strictness` regenerates definitions without running workers or
+initializing a ledger. Regenerate after qualification changes; unexpected YAML
+files in the output directory are rejected rather than removed. A qualified
+execution can be selected with `study run --ledger ... --execution-config ...`.
+The selection must exactly match a trial in the frozen plan, including shared
+references, strictness, runtime hash and blockers; it cannot override that trial
+or bypass a blocked condition. Completed selections retain resume semantics.
+The existing baseline/supervised proposal CSV is not replaced or repurposed.
+
+The initial configuration expands to 810 executions and 420 comparison records:
+60/30 for effectiveness, 90/60 for strictness, 600/300 for robustness, and 60/30
+for legacy effectiveness. Each strictness block has three executions and two
+comparisons sharing the medium execution. Ten robustness variants are repeated
+observations within each task, not ten independent subjects. Multiple issues
+from one repository must also be treated as clustered observations.
+
+The 20 imported main tasks and six legacy tasks are proposals, not verified
+experimental eligibility or final open/positive/negative-control assignments.
+Ten main and 24 legacy slots remain unassigned. The planner audits all 72 subject
+rows, flags the 53 malformed rows and does not rewrite or repair them. Unassigned
+and blocked trials remain visible in the plan, exports and denominators.
+
+Task YAMLs explicitly leave the baseline commit, local repository, structural
+analyzer configuration, paraphrase file and historical evidence cutoff unset;
+AI-use approval is false. Qualify these inputs before execution. A paraphrase
+file is a JSON object mapping exactly the declared non-original variant IDs to
+nonempty human-authored wording. The current issue worker prepends this wording
+to the same issue evidence; it does not replace the issue or use future PR fixes.
+The reference head is explicitly the baseline commit, so semantic similarity to
+that reference must not be interpreted as similarity to a human solution.
+
+Planning does not call models, fetch issues, clone repositories or run analyzers.
+It checks available local commits and freezes input hashes, runtime/knowledge
+directory membership and trial runtime snapshots. Within-block execution order
+is deterministically randomized using the declared order seed; this is **not**
+a model-generation seed. The worker currently uses the application-root
+`available_models.yaml`, so alternate model registry paths are rejected.
+Credentials belong in environment variables, not campaign files or snapshots.
+
+```powershell
+python -m src.main study plan --config experiments\campaign.yaml --export out\studies\exploratory-v1\exports
+python -m src.main study status --ledger out\studies\exploratory-v1\ledger.sqlite
+python -m src.main study export --ledger out\studies\exploratory-v1\ledger.sqlite --output out\studies\exploratory-v1\exports
+```
+
+`plan` initializes a SQLite ledger and refuses reuse by a different plan.
+Exports contain the frozen plan, summary, all executions (including blockers),
+explicit comparison rows and all attempt records. Each export file is replaced
+atomically from one ledger snapshot. Changed inputs invalidate execution;
+requalification requires a new ledger and artifact root, preserving old evidence.
+
+Execution must be requested separately with `study run --ledger ... --max-trials N`.
+Only the supervised issue worker is implemented: the existing reproducibility
+scaffold is **not** accepted as a prompt-only baseline. Complete matched blocks
+are required by default, so baseline-dependent blocks cannot execute yet.
+The supplied configuration consequently has zero runnable trials. Copilot runs
+are exploratory; seed/temperature are null/unsupported, not controlled.
+
+The scheduler bounds process duration and campaign concurrency, serializes jobs
+sharing a Git common directory, and preserves per-attempt artifacts, logs and
+process IDs. Completed executions are never automatically repeated, even when
+builds/tests fail, M-1 is unavailable, or the outcome is unfavorable. Only execution
+failures/interruption can be retried explicitly with `--retry-failed`, subject to
+the registered attempt limit. A `run` returns nonzero for failed/interrupted
+executions or when every planned trial is blocked.
+
+Execution completion, complete pairs and gate/M-1-eligible pairs are distinct.
+Eligibility requires both build/test gates, available M-1, matching protocol,
+baseline score, analyzed source/scope/instrument provenance and issue-discussion
+snapshot. Unmatched or failed observations are retained, not silently removed.
+These counts do not implement inferential statistics or establish confirmatory
+eligibility by themselves.
+
+After an abrupt scheduler failure, inspect the recorded PIDs and artifacts and
+stop any remaining owned workers before acknowledging recovery:
+
+```powershell
+python -m src.main study recover --ledger out\studies\exploratory-v1\ledger.sqlite --acknowledge-workers-stopped
+```
+
+Recovery marks outstanding executions interrupted; it does not kill processes,
+clear history or automatically rerun trials. Unconfirmed worker cleanup stops
+scheduling and requires this same explicit operator recovery.
+
 ## 1. Goal and Object of Study
 
 Goal template (GQM style):
