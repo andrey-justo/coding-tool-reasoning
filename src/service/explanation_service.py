@@ -5,8 +5,13 @@ from typing import List, Optional
 from pydantic import ValidationError
 
 from src.errors.TextLLMException import TextLLMException
+from src.evaluation.metrics.structural import (
+    compare_structural_metrics,
+    validate_metric_sources,
+)
 from src.llm_client.multi_model_llm_client import MultiModelLLMClient
 from src.models.code_gen_plan import CodeGenPlan
+from src.models.structural_metrics import StructuralMetricInput
 from src.models.swe_config import SweMcpConfig
 from src.models.swe_context import SweContext
 from src.models.swe_explanation import NfrImpact, SweCodeChangeExplanation
@@ -37,8 +42,18 @@ class ExplanationService:
         swe_context: SweContext,
         original_code: str,
         modified_code: str,
+        structural_metrics: StructuralMetricInput | None = None,
     ) -> SweCodeChangeExplanation:
         plan = swe_context.plan
+        objective = None
+        if structural_metrics is not None:
+            paths = [file.path for file in structural_metrics.before[0].files]
+            if len(paths) != 1:
+                raise ValueError("Direct judging requires single-file metric evidence; use the experiment runner for a multi-file block.")
+            validate_metric_sources(
+                structural_metrics, {paths[0]: original_code}, {paths[0]: modified_code}
+            )
+            objective = compare_structural_metrics(structural_metrics)
 
         # Collect knowledge base context for the entities/nfrs referenced in the plan.
         related_ids: List[str] = list(plan.related_entities or [])
@@ -61,19 +76,24 @@ class ExplanationService:
         try:
             raw_response = self.llm_client.chat(prompt)
             data = self._parse_json_response(raw_response)
-            return self._from_llm_json(
+            explanation = self._from_llm_json(
                 plan_json=plan.model_dump(),
                 data=data,
                 llm_prompt=prompt,
                 llm_raw_response=raw_response,
             )
         except (TextLLMException, TypeError, ValueError, ValidationError) as exc:
-            return self._fallback_explanation(
+            explanation = self._fallback_explanation(
                 plan=plan,
                 prompt=prompt,
                 raw_response=raw_response,
                 error=exc,
             )
+        if objective is not None:
+            explanation.objective_metrics = objective
+            explanation.effectiveness_verdict = objective.effectiveness_verdict
+            explanation.objective_metrics_reason = objective.rationale
+        return explanation
 
     @staticmethod
     def _fallback_explanation(
