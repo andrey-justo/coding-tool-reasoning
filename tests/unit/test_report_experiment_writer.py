@@ -4,6 +4,8 @@ import csv
 import json
 from pathlib import Path
 
+import pytest
+
 from src.evaluation.metrics.structural import compare_structural_metrics
 from src.report.experiment_report_writer import (
     _extract_verdict,
@@ -154,15 +156,80 @@ def test_m1_is_preserved_in_csv_and_markdown_with_provenance(tmp_path):
     write_csv_report(csv_path, rows)
     with csv_path.open(encoding="utf-8", newline="") as stream:
         primary = next(row for row in csv.DictReader(stream) if row["metric"].startswith("M-1 V_struct"))
-    assert float(primary["delta"]) == 0.5
+    assert float(primary["delta"]) == pytest.approx(1 / 3)
     provenance = json.loads(primary["provenance"])
     assert provenance["before"][0]["instrument_version"] == "1"
     assert provenance["before"][0]["files"][0]["path"] == "a.py"
+    assert provenance["metric_version"] == "m1-bounded-v2"
+    assert provenance["weights"] == {"solid": 0.5, "arch": 0.3, "smell": 0.2}
+    assert provenance["normalization"]["kloc"] == {"solid": 6.0, "arch": 5.0, "smell": 3.0, "reliability": None}
+    assert "[0,1]" in primary["unit"]
+    assert any("normalized V_solid" in row["metric"] for row in rows)
     markdown = tmp_path / "report.md"
     write_markdown_report(markdown, report, rows, tmp_path / "report.json", csv_path, tmp_path / "report.log")
     text = markdown.read_text(encoding="utf-8")
     assert "M-1 effectiveness: improved" in text
     assert comparison["protocol_sha256"] in text
+    assert "fixed normalization references" in text
+    assert "M-1 component weights" in text
+
+
+def test_custom_component_weights_are_retained_in_report_provenance(tmp_path):
+    inputs = synthetic_input(before=(4, 0, 0), after=(0, 0, 0))
+    inputs.protocol.weights.solid = 0.6
+    inputs.protocol.weights.arch = 0.25
+    inputs.protocol.weights.smell = 0.15
+    comparison = compare_structural_metrics(inputs).model_dump(mode="json")
+    report = _base_report()
+    report["metrics"]["design_quality"]["structural"] = {"status": "ok", "comparison": comparison}
+    rows = metrics_rows(report)
+    primary = next(row for row in rows if row["metric"].startswith("M-1 V_struct"))
+    assert primary["original"] == pytest.approx(0.3)
+    assert json.loads(primary["provenance"])["weights"] == {"solid": 0.6, "arch": 0.25, "smell": 0.15}
+    markdown = tmp_path / "custom-weights.md"
+    write_markdown_report(
+        markdown, report, rows, tmp_path / "report.json",
+        tmp_path / "report.csv", tmp_path / "report.log",
+    )
+    assert '"solid": 0.6' in markdown.read_text(encoding="utf-8")
+
+
+def test_historical_density_reports_remain_renderable_and_explicitly_labelled(tmp_path):
+    report = _base_report()
+    comparison = compare_structural_metrics(synthetic_input()).model_dump(mode="json")
+    del comparison["evidence"]["protocol"]["metric_version"]
+    del comparison["evidence"]["protocol"]["normalization"]
+    for stage in ("before", "after"):
+        comparison[stage]["v_struct"] = comparison[stage].pop("raw_v_struct")
+        del comparison[stage]["normalized_components"]
+    comparison["delta_struct"] = 0.5
+    comparison["delta_abs"] = -2.55
+    comparison["rationale"] = "Historical unbounded density calculation."
+    report["metrics"]["design_quality"]["structural"] = {"status": "ok", "comparison": comparison}
+    rows = metrics_rows(report)
+    primary = next(row for row in rows if row["metric"].startswith("M-1 V_struct"))
+    assert primary["original"] == pytest.approx(5.1)
+    assert primary["modified"] == pytest.approx(2.55)
+    assert "bounded" not in primary["unit"]
+    assert json.loads(primary["provenance"])["metric_version"] == "legacy-density-v1"
+    assert not any("normalized V_" in row["metric"] for row in rows)
+    markdown = tmp_path / "historical.md"
+    write_markdown_report(markdown, report, rows, tmp_path / "historical.json", tmp_path / "historical.csv", tmp_path / "historical.log")
+    assert "historical unbounded density score" in markdown.read_text(encoding="utf-8")
+
+
+def test_unknown_metric_versions_are_not_rendered_as_legacy(tmp_path):
+    report = _base_report()
+    comparison = compare_structural_metrics(synthetic_input()).model_dump(mode="json")
+    comparison["evidence"]["protocol"]["metric_version"] = "unknown"
+    report["metrics"]["design_quality"]["structural"] = {"status": "ok", "comparison": comparison}
+    with pytest.raises(ValueError, match="Unsupported M-1 report metric version"):
+        metrics_rows(report)
+    with pytest.raises(ValueError, match="Unsupported M-1 report metric version"):
+        write_markdown_report(
+            tmp_path / "unknown.md", report, [],
+            tmp_path / "unknown.json", tmp_path / "unknown.csv", tmp_path / "unknown.log",
+        )
 
 
 def test_report_preserves_issue_evidence_discovery_and_ownership(tmp_path: Path):

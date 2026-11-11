@@ -11,6 +11,7 @@ Component = Literal["solid", "arch", "smell"]
 MeasuredComponent = Literal["solid", "arch", "smell", "reliability"]
 Severity = Literal["minor", "major", "critical"]
 NonEmpty = Annotated[str, Field(min_length=1)]
+UnitInterval = Annotated[float, Field(ge=0, le=1)]
 
 
 class MetricModel(BaseModel):
@@ -40,12 +41,31 @@ class StructuralRule(MetricModel):
     rationale: NonEmpty
 
 
+class StructuralComponentScales(MetricModel):
+    solid: float = Field(gt=0, strict=True)
+    arch: float = Field(gt=0, strict=True)
+    smell: float = Field(gt=0, strict=True)
+
+
+class StructuralPrimaryScales(StructuralComponentScales):
+    reliability: float | None = Field(default=None, gt=0, strict=True)
+
+
+class StructuralNormalization(MetricModel):
+    method: Literal["bounded-component-v1"] = "bounded-component-v1"
+    kloc: StructuralPrimaryScales
+    unweighted_severity: StructuralComponentScales
+    per_file: StructuralComponentScales
+
+
 class StructuralProtocol(MetricModel):
+    metric_version: Literal["m1-bounded-v2"] = "m1-bounded-v2"
     protocol_id: NonEmpty
     mapping_version: NonEmpty
     weights: StructuralWeights = Field(default_factory=StructuralWeights)
+    normalization: StructuralNormalization
     rules: list[StructuralRule] = Field(min_length=1)
-    regression_tolerance: float = Field(default=0, ge=0)
+    regression_tolerance: UnitInterval = 0
     reliability_focus: bool = False
 
     @model_validator(mode="after")
@@ -60,6 +80,10 @@ class StructuralProtocol(MetricModel):
         ):
             raise ValueError(
                 "Reliability sensitivity requires explicit task focus and registered reliability rules."
+            )
+        if self.reliability_focus != (self.normalization.kloc.reliability is not None):
+            raise ValueError(
+                "A reliability reference scale must be registered exactly when reliability focus is enabled."
             )
         return self
 
@@ -137,7 +161,9 @@ class StructuralScore(MetricModel):
     raw_counts: dict[MeasuredComponent, int]
     severity_weighted_counts: dict[MeasuredComponent, int]
     densities: dict[MeasuredComponent, float]
-    v_struct: float
+    normalized_components: dict[MeasuredComponent, UnitInterval]
+    raw_v_struct: float = Field(ge=0)
+    v_struct: UnitInterval
 
 
 class StructuralComparison(MetricModel):
