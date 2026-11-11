@@ -1,0 +1,22 @@
+schema_version: 1
+campaign_config: ..\campaign.yaml
+task_config: ..\configured\S003-3128.yaml
+job_id: exploratory-v1.strictness.main.set01-task03.r01.original.low
+study: strictness
+cohort: main
+slot: set01-task03
+repetition: 1
+variant: original
+block_key: strictness.main.set01-task03.r01.original
+subject_id: S003
+issue_url: https://github.com/StackExchange/StackExchange.Redis/issues/3128
+condition: low
+worker: mcp_supervised
+strictness: 0.2
+runtime_sha256: 86b4a2393d6a4f89620024ddfa5cbbdfa6ad393d861a3a343d9ccc3c06399717
+status: blocked
+blockers:
+- AI-tool use approval has not been recorded.
+- Missing pinned 40-character base commit.
+- Local repository path is missing or unavailable.
+- Missing pre-registered structural analyzer configuration.

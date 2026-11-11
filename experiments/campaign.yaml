@@ -1,0 +1,75 @@
+schema_version: 1
+campaign_id: exploratory-v1
+mode: exploratory
+config_root: ..
+subjects_registry: data\subjects\subject_data.csv
+planned_runs_registry: data\subjects\experiment_runs.csv
+available_models: available_models.yaml
+runtime_profile: swe_mcp_config.yaml
+model:
+  alias: copilot-gpt-5.3-codex
+  provider: CopilotSDK
+execution:
+  artifact_root: out\studies\exploratory-v1
+  ledger: out\studies\exploratory-v1\ledger.sqlite
+  order_seed: 20261110
+  max_parallel_trials: 1
+  max_attempts_per_trial: 2
+  trial_timeout_seconds: 7200
+  verification_timeout_seconds: 2400
+  require_complete_blocks: true
+  repair:
+    repair_mode: tree
+    repair_concurrency: 3
+    repair_agent_max_seconds: 1800
+    max_build_repair_attempts: 25
+    max_generation_concurrency: 3
+  verification:
+    project_type: auto
+    language_overrides: {}
+cohorts:
+  main:
+    sets: 3
+    tasks_per_set: 10
+    import_planned_rq: RQ2
+  legacy:
+    sets: 3
+    tasks_per_set: 10
+    legacy_only: true
+    import_planned_rq: RQ2
+studies:
+  - id: effectiveness
+    rq: RQ2
+    cohort: main
+    conditions:
+      - {id: baseline, worker: baseline_prompt_only}
+      - {id: supervised, worker: mcp_supervised}
+    comparisons:
+      - {id: supervised-vs-baseline, control: baseline, treatment: supervised}
+  - id: strictness
+    rq: RQ4a
+    cohort: main
+    conditions:
+      - {id: low, worker: mcp_supervised, strictness: 0.2}
+      - {id: medium, worker: mcp_supervised, strictness: 0.5}
+      - {id: high, worker: mcp_supervised, strictness: 0.8}
+    comparisons:
+      - {id: low-vs-medium, control: medium, treatment: low}
+      - {id: high-vs-medium, control: medium, treatment: high}
+  - id: robustness
+    rq: RQ3
+    cohort: main
+    variants: [p01, p02, p03, p04, p05, p06, p07, p08, p09, p10]
+    conditions:
+      - {id: baseline, worker: baseline_prompt_only}
+      - {id: supervised, worker: mcp_supervised}
+    comparisons:
+      - {id: supervised-vs-baseline, control: baseline, treatment: supervised}
+  - id: legacy-effectiveness
+    rq: RQ4
+    cohort: legacy
+    conditions:
+      - {id: baseline, worker: baseline_prompt_only}
+      - {id: supervised, worker: mcp_supervised}
+    comparisons:
+      - {id: supervised-vs-baseline, control: baseline, treatment: supervised}
