@@ -205,6 +205,12 @@ Strategy rule for primary metric collection:
 
 - Compute `violations_before`/`violations_after` from a language-specific local tool bundle (configured and pinned).
 - Aggregate violations using the pre-registered mapping profile for each language.
+- Normalize each component density using its fixed pre-registered reference
+  scale, `D / (D + scale)`, before weighted aggregation. M-1 component/composite
+  scores are in [0,1]; raw densities remain diagnostic. References are identical
+  before/after, never fitted to confirmatory outcomes, and included in the
+  versioned protocol hash. Old density-only scores are not comparable with
+  `m1-bounded-v2`.
 - Apply the same normalized delta formula across all languages.
 
 ### 3.4 Control Variables (Constants)

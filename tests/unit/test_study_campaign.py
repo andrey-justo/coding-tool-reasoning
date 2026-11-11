@@ -507,7 +507,7 @@ def test_report_validates_identity_runtime_and_measurement_provenance(ready_plan
     job = ready_plan.jobs[0]
     report = report_for(job, ready_plan)
     result = _validate_report(report, job, ready_plan, "test-execution")
-    assert result["delta_struct"] == pytest.approx(0.5)
+    assert result["delta_struct"] == pytest.approx(1 / 3)
     assert result["sampling_control_status"] == "unsupported"
     changed = deepcopy(report)
     changed["metrics"]["design_quality"]["structural"]["comparison"]["evidence"][
