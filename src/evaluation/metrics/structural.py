@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 
 from src.models.structural_metrics import (
     AnalyzerReport,
     StructuralComparison,
+    StructuralComponentScales,
     StructuralMetricInput,
     StructuralProtocol,
     StructuralScore,
+    StructuralWeights,
 )
 
 _COMPONENTS = ("solid", "arch", "smell")
@@ -76,6 +79,28 @@ def _validate_pair(inputs: StructuralMetricInput) -> None:
             )
 
 
+def _normalize_components(
+    densities: dict[str, float], scales: StructuralComponentScales
+) -> dict[str, float]:
+    normalized = {}
+    for component, density in densities.items():
+        scale = getattr(scales, component, None)
+        if scale is None:
+            raise ValueError(f"Missing registered reference scale for {component}.")
+        # Equivalent to x / (x + scale), without overflowing the sum.
+        ratio = density / scale if density <= scale else scale / density
+        normalized[component] = (
+            ratio / (1 + ratio) if density <= scale else 1 / (1 + ratio)
+        )
+    return normalized
+
+
+def _composite(components: dict[str, float], weights: StructuralWeights) -> float:
+    return math.fsum(
+        getattr(weights, key) * components[key] for key in _COMPONENTS
+    ) / math.fsum(getattr(weights, key) for key in _COMPONENTS)
+
+
 def _score(
     reports: list[AnalyzerReport], protocol: StructuralProtocol
 ) -> StructuralScore:
@@ -95,6 +120,7 @@ def _score(
     loc = sum(file.loc for file in reports[0].files)
     denominator = max(1.0, loc / 1000)
     densities = {key: weighted[key] / denominator for key in components}
+    normalized = _normalize_components(densities, protocol.normalization.kloc)
     return StructuralScore(
         loc=loc,
         kloc=loc / 1000,
@@ -102,9 +128,11 @@ def _score(
         raw_counts=raw,
         severity_weighted_counts=weighted,
         densities=densities,
-        v_struct=sum(
+        normalized_components=normalized,
+        raw_v_struct=sum(
             getattr(protocol.weights, key) * densities[key] for key in _COMPONENTS
         ),
+        v_struct=_composite(normalized, protocol.weights),
     )
 
 
@@ -132,19 +160,29 @@ def compare_structural_metrics(inputs: StructuralMetricInput) -> StructuralCompa
         else ("improved" if absolute < 0 else "regressed")
     )
     unweighted = [
-        sum(
-            getattr(inputs.protocol.weights, c) * score.raw_counts[c]
-            for c in _COMPONENTS
+        _composite(
+            _normalize_components(
+                {
+                    c: score.raw_counts[c] / score.normalization_denominator
+                    for c in _COMPONENTS
+                },
+                inputs.protocol.normalization.unweighted_severity,
+            ),
+            inputs.protocol.weights,
         )
-        / score.normalization_denominator
         for score in (before, after)
     ]
     per_file = [
-        sum(
-            getattr(inputs.protocol.weights, c) * score.severity_weighted_counts[c]
-            for c in _COMPONENTS
+        _composite(
+            _normalize_components(
+                {
+                    c: score.severity_weighted_counts[c] / len(reports[0].files)
+                    for c in _COMPONENTS
+                },
+                inputs.protocol.normalization.per_file,
+            ),
+            inputs.protocol.weights,
         )
-        / len(reports[0].files)
         for score, reports in ((before, inputs.before), (after, inputs.after))
     ]
     sensitivity = {
@@ -154,9 +192,13 @@ def compare_structural_metrics(inputs: StructuralMetricInput) -> StructuralCompa
     if inputs.protocol.reliability_focus:
         sensitivity["reliability_substitution"] = _deltas(
             *[
-                inputs.protocol.weights.solid * score.densities["solid"]
-                + inputs.protocol.weights.arch * score.densities["arch"]
-                + inputs.protocol.weights.smell * score.densities["reliability"]
+                _composite(
+                    {
+                        **score.normalized_components,
+                        "smell": score.normalized_components["reliability"],
+                    },
+                    inputs.protocol.weights,
+                )
                 for score in (before, after)
             ]
         )
@@ -167,7 +209,9 @@ def compare_structural_metrics(inputs: StructuralMetricInput) -> StructuralCompa
         delta_abs=absolute,
         effectiveness_verdict=verdict,
         rationale=(
-            f"M-1: V_before={before.v_struct:g}, V_after={after.v_struct:g}; "
+            f"M-1 {inputs.protocol.metric_version} (bounded [0,1], "
+            f"{inputs.protocol.normalization.method}): "
+            f"V_before={before.v_struct:g}, V_after={after.v_struct:g}; "
             f"after-before={absolute:g}, registered absolute tolerance={tolerance:g}. "
             "This structural result does not establish passing builds or tests."
         ),

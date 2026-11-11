@@ -15,7 +15,7 @@ currently implements it end-to-end**.
 
 | ID | Metric | Role | Typical instrument / source | Current repo status |
 |---|---|---|---|---|
-| M-1 | Composite structural improvement delta | Primary DV | Pre-registered analyzer reports; configurable Ruff, Roslyn/SARIF and SonarQube collection | Implemented calculation, comparability checks, judge/runner integration and reporting; production rule mapping must still be pre-registered |
+| M-1 | Composite structural improvement delta | Primary DV | Pre-registered analyzer reports; configurable Ruff, Roslyn/SARIF and SonarQube collection | Bounded [0,1] component/composite calculation, comparability checks, judge/runner integration and reporting; production rule mappings and reference scales must still be pre-registered |
 | M-2 | Testability gate outcome | Prerequisite | Repo build + unit test commands | Implemented in issue runner; M-1 never replaces this gate |
 | M-3 | Cyclomatic complexity | Must (syntax/maintainability signal) | Static analysis / CI quality tools | Partial: runner reports a lightweight heuristic; not a calibrated analyzer measurement |
 | M-4 | Test coverage | Must (testability signal) | Coverage tool + CI | Not implemented |
@@ -42,8 +42,9 @@ Additional metrics planned for future implementation are documented in `docs/req
 
 ### M-1 — Composite structural improvement delta (Primary DV)
 
-The primary measure is a composite **defect density**, not an unqualified
-count of findings or an LLM quality rating:
+The primary measure is a **bounded composite structural defect score**, not an
+unqualified count of findings or an LLM quality rating. The current protocol is
+`m1-bounded-v2`:
 
 $$
 V_{\mathrm{struct}} =
@@ -53,6 +54,26 @@ $$
 The reference weights prioritize design quality. Alternative weights must be
 nonnegative, sum to one, and be pre-registered before confirmatory experiments.
 They must not be tuned after observing results.
+
+Component weights are configurable through `protocol.weights` in the
+structural-analysis JSON. Omitting that object uses **solid=0.50, arch=0.30,
+smell=0.20**. For example, insert this field inside an existing protocol to
+override them (the remaining protocol/analyzer fields are still required):
+
+```json
+"weights": {
+  "solid": 0.60,
+  "arch": 0.25,
+  "smell": 0.15
+}
+```
+
+Omitted individual fields retain their defaults, but the resulting total must
+still be one. Invalid or nonfinite weights fail validation; they are not silently
+rescaled. Zero weights are allowed. The same effective weights apply to primary
+and sensitivity composites and are recorded in JSON evidence, CSV provenance,
+Markdown and the protocol hash. Defaults apply to **weights**, not reference
+scales: normalization scales still require explicit pre-registration.
 
 The measurement rationale follows the product-quality model in ISO/IEC
 25010:2023 and internal quality measurement in ISO/IEC 25023. McCabe (1976),
@@ -65,9 +86,31 @@ For each component $c$, in the same target-file scope:
 
 $$
 N_c = \sum_{r \in R_c} s(r)n(r), \qquad
-V_c = \frac{N_c}{\max(1,\mathrm{KLOC})}, \qquad
+D_c = \frac{N_c}{\max(1,\mathrm{KLOC})}, \qquad
 \mathrm{KLOC} = \frac{\mathrm{LOC}}{1000}
 $$
+
+Before combining components, normalize their densities using fixed positive
+reference scales:
+
+$$
+V_c = \frac{D_c}{D_c+\tau_c}, \qquad \tau_c>0
+$$
+
+Each component is in $[0,1)$ mathematically, and may round to 1 in floating-point
+arithmetic. The weighted composite is in **[0,1]**, with lower values indicating
+fewer defects. For example, a smell component with weight 0.20 cannot contribute
+more than 0.20 to the absolute composite, however large its raw count becomes.
+This does not prevent smells from being the only nonzero component, nor does it
+equalize individual rules inside a component. Normalization is deliberately at
+the **component-density** level, not per rule.
+
+The reference density $\tau_c$ is the point at which the component score is 0.5.
+Scales must be calibrated using pilot/external data and pre-registered before
+confirmatory outcomes are observed. They are never inferred from the current
+before/after pair or estimated separately for each snapshot. There are **no
+production defaults**. The transform is monotonic but compresses large
+differences; scale selection is part of the measurement protocol.
 
 Severity weights are **minor = 1, major = 3, critical = 5**. The rule mapping,
 not analyzer-specific severity spelling or model interpretation, fixes each
@@ -107,11 +150,12 @@ $$
 
 Positive relative deltas indicate improvement; negative relative deltas indicate
 regression. Absolute deltas have the opposite sign. **The relative delta is not
-bounded below by -1 when the baseline is nonzero**: a change from 1 to 4 yields
--3. The implementation does not clamp this result.
+bounded below by -1 when the baseline is nonzero**: a change in bounded score
+from 0.1 to 0.4 yields -3. Only the defect scores are bounded, not their relative
+improvement deltas. The implementation does not clamp this result.
 
 The deterministic `effectiveness_verdict` uses the absolute delta and the
-protocol's nonnegative `regression_tolerance` (default zero): within tolerance
+protocol's `regression_tolerance` in [0,1] bounded-score units (default zero): within tolerance
 is `neutral`, lower is `improved`, higher is `regressed`. The raw deltas remain
 unchanged. This is separate from the LLM's `overall_verdict` and does not establish
 behavioral correctness or passing builds/tests.
@@ -121,11 +165,42 @@ behavioral correctness or passing builds/tests.
 The validated schemas are `StructuralProtocol`, `AnalyzerReport` and
 `StructuralMetricInput` in `src/models/structural_metrics.py`.
 
-The protocol contains `protocol_id`, `mapping_version`, weights, tolerance,
+The protocol contains `metric_version`, `protocol_id`, `mapping_version`, weights, tolerance,
+required `normalization` reference profiles,
 and rules (`instrument`, `rule_id`, `component`, `severity`, `unit`,
 `rationale`). All three primary components must have registered rules, including
 components with zero observed findings. No production mapping is supplied by
-default; synthetic test mappings are **not research instruments**.
+default; synthetic test mappings and scales are **not research instruments**.
+
+`normalization.method` is `bounded-component-v1`. All three profiles below must
+explicitly provide positive finite numeric `solid`, `arch` and `smell` scales:
+
+| Profile | Reference-scale units |
+|---|---|
+| `normalization.kloc` | severity-weighted findings / max(1, KLOC) |
+| `normalization.unweighted_severity` | unweighted findings / max(1, KLOC) |
+| `normalization.per_file` | severity-weighted findings / analyzed file |
+
+If reliability sensitivity is enabled, explicitly register
+`normalization.kloc.reliability` for that substitution. It is rejected when that
+component is not registered; unused reliability scales in the other two profiles
+are also rejected. Distinct unit profiles avoid silently reusing a
+KLOC scale for a per-file sensitivity score. All scales are fixed across the
+before/after pair and included in the protocol SHA-256; changing them makes a
+new measurement definition, not a comparable repeat.
+
+`StructuralScore` retains `raw_counts`, `severity_weighted_counts`, `densities`
+and `raw_v_struct` (the former density-only composite). The new
+`normalized_components` and `v_struct` are the bounded primary inputs/output.
+Unweighted, per-file and reliability-substitution sensitivity composites are
+also bounded before calculating their improvement deltas.
+
+**Version transition:** earlier density-only protocols without normalization
+profiles cannot be recomputed by the new calculator; explicitly qualify scales
+and issue a new registration. Historical JSON/CSV/Markdown evidence is not
+rewritten. The report writer can render old reports as `legacy-density-v1`,
+clearly labelled as unbounded and not comparable with `m1-bounded-v2`. Do not
+reuse old numerical tolerance values without requalification in the new units.
 
 Each report records:
 
@@ -143,8 +218,9 @@ unknown rules, duplicate counts, stale sources, naive timestamps and
 incomparable configurations fail explicitly rather than becoming zero defects.
 The runner validates source hashes against the **final generated candidate**,
 not a reference PR or an earlier repair checkpoint. JSON preserves the full
-mapping, input reports, component counts/densities, composite values and protocol
-hash. CSV includes primary/component/sensitivity rows with provenance; Markdown
+mapping, input reports, raw counts/densities, normalized components, composite values and protocol
+hash. CSV includes bounded primary/component/sensitivity rows and separately
+labelled raw diagnostics with versioned normalization provenance; Markdown
 summarizes the result and identifies the companion JSON evidence.
 
 #### Discovery and configurable collection
@@ -241,7 +317,8 @@ Reports always include:
 
 `reliability_substitution` is included only when the protocol explicitly sets
 `reliability_focus=true` and registers separate `reliability` rules/counts.
-It replaces the smell density using the same gamma weight, solely for robustness
+It replaces the normalized smell component with the normalized reliability
+component using the same gamma weight, solely for robustness
 analysis. The original smell component and primary M-1 remain unchanged.
 Enabling the flag without evidence (or supplying these rules without explicit
 task focus) is rejected.

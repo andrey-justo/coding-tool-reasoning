@@ -415,7 +415,13 @@ def test_discovery_and_ci_regression_cli(tmp_path, capsys):
     assert main(["--input", str(source), "--output", str(output)]) == 0
     schema = tmp_path / "schema.json"
     assert main(["--config-schema", "--output", str(schema)]) == 0
-    assert "protocol" in json.loads(schema.read_text())["properties"]
+    definitions = json.loads(schema.read_text())
+    assert "protocol" in definitions["properties"]
+    assert "normalization" in definitions["$defs"]["StructuralProtocol"]["required"]
+    assert set(definitions["$defs"]["StructuralNormalization"]["required"]) == {
+        "kloc", "unweighted_severity", "per_file",
+    }
+    assert definitions["$defs"]["StructuralComponentScales"]["properties"]["solid"]["exclusiveMinimum"] == 0
 
 
 def test_live_collection_rejects_mismatched_on_disk_sources(tmp_path):

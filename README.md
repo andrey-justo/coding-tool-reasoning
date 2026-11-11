@@ -158,10 +158,32 @@ default. Legacy non-issue planning callers retain their existing defaults.
 ### Objective structural effectiveness (M-1)
 
 The issue runner can collect and compare pre-registered structural evidence with
-`--structural-analysis-config C:\path\to\block.json`. M-1 combines severity-weighted
-SOLID/design, architectural and smell/duplication densities with reference weights
-0.50/0.30/0.20. Both relative improvement and absolute after-minus-before deltas
-are retained, including zero-baseline cases and separate sensitivity analyses.
+`--structural-analysis-config C:\path\to\block.json`. M-1 first maps each
+severity-weighted SOLID/design, architecture and smell/duplication density to
+`density / (density + reference_scale)`, then combines the bounded components
+with reference weights 0.50/0.30/0.20. Components and the primary defect score are
+in **[0,1]**; lower scores mean fewer structural defects. Raw counts, densities
+and the old density composite remain available as diagnostics.
+
+Component weights are configurable via `protocol.weights` in the structural
+analysis JSON. Omit it for **solid=0.50, arch=0.30, smell=0.20**, or supply a
+nonnegative set summing to one, such as
+`{"solid": 0.60, "arch": 0.25, "smell": 0.15}`.
+Effective weights are retained in report provenance and the protocol hash;
+changes must be pre-registered before confirmatory runs.
+
+The `m1-bounded-v2` protocol requires explicit positive, finite, pre-registered
+component scales in `normalization.kloc`, `normalization.unweighted_severity`
+and `normalization.per_file`. There are **no production scale defaults**:
+calibrate on pilot data, freeze before confirmatory runs and use identical
+scales before/after. Sensitivity scales use their corresponding counting units.
+Only component densities are normalized; individual rules are still aggregated
+within their mapped component. Relative improvement deltas can remain negative
+and below -1; only component/defect scores are bounded.
+
+This intentionally versions the earlier density-only definition. Old protocols
+need explicit scales and a new registration before recomputation; historical
+reports are retained and labelled as legacy, not silently rescaled.
 
 Analyzer discovery is read-only:
 

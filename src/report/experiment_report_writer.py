@@ -33,6 +33,13 @@ def _semantic_similarity_score(value: Any) -> Any:
     return value
 
 
+def _is_bounded_structural(protocol: dict[str, Any]) -> bool:
+    version = protocol.get("metric_version", "legacy-density-v1")
+    if version not in {"legacy-density-v1", "m1-bounded-v2"}:
+        raise ValueError(f"Unsupported M-1 report metric version: {version}")
+    return version == "m1-bounded-v2"
+
+
 def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     original = report["metrics"]["original"]
     modified = report["metrics"]["modified"]
@@ -53,10 +60,16 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
     structural = ((report.get("metrics") or {}).get("design_quality") or {}).get("structural") or {}
     if structural.get("status") == "ok":
         comparison = structural["comparison"]
+        protocol = comparison["evidence"]["protocol"]
+        bounded = _is_bounded_structural(protocol)
+        score_unit = "bounded defect score [0,1]" if bounded else "severity-weighted findings / max(1, KLOC)"
         provenance = json.dumps({
             "protocol_sha256": comparison["protocol_sha256"],
-            "protocol_id": comparison["evidence"]["protocol"]["protocol_id"],
-            "mapping_version": comparison["evidence"]["protocol"]["mapping_version"],
+            "protocol_id": protocol["protocol_id"],
+            "mapping_version": protocol["mapping_version"],
+            "weights": protocol["weights"],
+            "metric_version": protocol.get("metric_version", "legacy-density-v1"),
+            "normalization": protocol.get("normalization"),
             "before": [
                 {key: value for key, value in item.items() if key != "counts"}
                 for item in comparison["evidence"]["before"]
@@ -72,7 +85,7 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
             "original": comparison["before"]["v_struct"],
             "modified": comparison["after"]["v_struct"],
             "delta": comparison["delta_struct"],
-            "unit": "score: severity-weighted findings / max(1, KLOC); delta: ratio",
+            "unit": f"score: {score_unit}; delta: ratio",
             "provenance": provenance,
         })
         rows.append({
@@ -81,21 +94,43 @@ def metrics_rows(report: dict[str, Any]) -> list[dict[str, Any]]:
             "original": comparison["before"]["v_struct"],
             "modified": comparison["after"]["v_struct"],
             "delta": comparison["delta_abs"],
-            "unit": "severity-weighted findings / max(1, KLOC)",
+            "unit": score_unit,
             "provenance": provenance,
         })
         for component in ("solid", "arch", "smell"):
             before = comparison["before"]["densities"][component]
             after = comparison["after"]["densities"][component]
             rows.append({
-                "dimension": "Structural quality",
-                "metric": f"M-1 V_{component} density (after-before delta)",
+                "dimension": "Structural diagnostics (not primary)" if bounded else "Structural quality",
+                "metric": f"M-1 raw {component} density (after-before delta)" if bounded else f"M-1 V_{component} density (after-before delta)",
                 "original": before, "modified": after, "delta": after - before,
+                "unit": "severity-weighted findings / max(1, KLOC)",
+                "provenance": provenance,
+            })
+            if bounded:
+                before_normalized = comparison["before"]["normalized_components"][component]
+                after_normalized = comparison["after"]["normalized_components"][component]
+                rows.append({
+                    "dimension": "Structural quality",
+                    "metric": f"M-1 normalized V_{component} (after-before delta)",
+                    "original": before_normalized, "modified": after_normalized,
+                    "delta": after_normalized - before_normalized,
+                    "unit": "bounded component [0,1]",
+                    "provenance": provenance,
+                })
+        if bounded:
+            before_raw = comparison["before"]["raw_v_struct"]
+            after_raw = comparison["after"]["raw_v_struct"]
+            rows.append({
+                "dimension": "Structural diagnostics (not primary)",
+                "metric": "M-1 raw density composite (after-before delta)",
+                "original": before_raw, "modified": after_raw, "delta": after_raw - before_raw,
                 "unit": "severity-weighted findings / max(1, KLOC)",
                 "provenance": provenance,
             })
         for name, sensitivity in comparison["sensitivity"].items():
             score_unit = (
+                "bounded defect score [0,1]" if bounded else
                 "findings / max(1, KLOC)" if name == "unweighted_severity" else
                 "severity-weighted findings / file" if name == "per_file" else
                 "severity-weighted findings / max(1, KLOC)"
@@ -246,6 +281,13 @@ def write_markdown_report(
         lines.append(f"- M-1 effectiveness: {comparison['effectiveness_verdict']}")
         lines.append(f"- M-1: {comparison['rationale']}")
         lines.append(f"- Registered protocol SHA-256: {comparison['protocol_sha256']}")
+        protocol = comparison["evidence"]["protocol"]
+        lines.append(f"- M-1 component weights: {json.dumps(protocol['weights'], sort_keys=True)}")
+        if _is_bounded_structural(protocol):
+            lines.append(f"- M-1 fixed normalization references: {json.dumps(protocol['normalization'], sort_keys=True)}")
+            lines.append("- Raw counts/densities are diagnostic; M-1 components and scores are bounded to [0,1]. Relative improvement deltas are not bounded to [0,1].")
+        else:
+            lines.append("- M-1 legacy-density-v1: historical unbounded density score; not comparable with m1-bounded-v2.")
         lines.append("- M-1 mapping, instrument/version, ruleset, timestamps, scope and source hashes: retained in the JSON report.")
     elif structural:
         lines.append(f"- M-1: not-run ({structural['reason']})")
