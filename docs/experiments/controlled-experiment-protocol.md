@@ -23,7 +23,10 @@ For strictness, [90 execution YAMLs](../../experiments/strictness) materialize t
 strictness, effective runtime hash and blocker snapshot. Shared task references
 are present for the 20 proposed tasks; the ten unassigned slots remain null and
 blocked. References in the generated YAMLs are relative to their containing
-directory, and index references are relative to the CSV.
+directory, and index references are relative to the CSV. Campaign/task references
+accept Windows or POSIX separators and normalize to forward slashes during
+validation and generation; separator differences do not change frozen identity.
+All other execution fields must still match exactly.
 
 Execution filenames group by task, followed by subject/issue and condition
 (for example `set01-task01-S001-issue131001-low.yaml`). Unassigned slots use

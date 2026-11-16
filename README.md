@@ -219,7 +219,10 @@ different YAML in every `experiment_config` row. Unlike the shared task YAMLs,
 these select a specific study, block, condition and strictness, and record the
 effective runtime hash and current blockers. Campaign/task references in these
 execution YAMLs are relative to the YAML file; CSV references are relative to
-that CSV. The original 40-row baseline/supervised proposal CSV remains unchanged.
+that CSV. References accept Windows or POSIX separators and are normalized to
+forward slashes when loaded or generated, so existing definitions remain portable
+without changing execution identity. The original 40-row baseline/supervised
+proposal CSV remains unchanged.
 
 Names are task-first and readable, for example
 `set01-task01-S001-issue131001-low.yaml` and

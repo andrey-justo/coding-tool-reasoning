@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from src.models.swe_config import ToolExecutionConfig, VerificationConfig
 
@@ -60,6 +60,11 @@ class StudyExecutionConfig(StudyModel):
     runtime_sha256: str = Field(pattern=r"^[a-f0-9]{64}$")
     status: Literal["planned", "blocked"]
     blockers: list[str]
+
+    @field_validator("campaign_config", "task_config")
+    @classmethod
+    def portable_reference(cls, value: str | None) -> str | None:
+        return value.replace("\\", "/") if value is not None else None
 
 
 class CohortSpec(StudyModel):

@@ -44,7 +44,7 @@ from src.experiments.campaign_runner import (
     resolve_execution_config,
     run_campaign,
 )
-from src.models.study_campaign import StudyCampaign
+from src.models.study_campaign import StudyCampaign, StudyExecutionConfig
 from src.models.swe_config import SweMcpConfig
 from tests.unit.test_structural_metrics import synthetic_input
 
@@ -875,17 +875,19 @@ def test_checked_in_strictness_has_90_distinct_execution_yamls(configured_plan):
             configured_plan, job
         )
         assert str(job.runtime.judging.strictness) == row["strictness"]
-        payload = yaml.safe_load(configuration.read_text(encoding="utf-8"))
-        assert (directory / payload["campaign_config"]).resolve() == Path(
+        payload = StudyExecutionConfig.model_validate(
+            yaml.safe_load(configuration.read_text(encoding="utf-8"))
+        )
+        assert (directory / payload.campaign_config).resolve() == Path(
             configured_plan.manifest_path
         )
-        if payload["task_config"]:
-            task = (directory / payload["task_config"]).resolve()
+        if payload.task_config:
+            task = (directory / payload.task_config).resolve()
             assert task.is_file()
             tasks.add(task)
         else:
-            assert payload["subject_id"] is None
-            assert payload["issue_url"] is None
+            assert payload.subject_id is None
+            assert payload.issue_url is None
     assert len(tasks) == 20
 
 
@@ -900,6 +902,42 @@ def test_materializing_is_deterministic_and_does_not_create_ledger(
     assert len(before) == 91
     assert index.name == "executions.csv"
     assert not list(directory.glob("*.sqlite"))
+
+
+@pytest.mark.parametrize("separator", ["\\", "/"])
+def test_execution_references_are_independent_of_host_path_separators(
+    configured_plan, tmp_path, monkeypatch, separator
+):
+    job = next(job for job in configured_plan.jobs if job.study == "strictness")
+    expected = campaign_runner._execution_definition(configured_plan, job, tmp_path)
+    native_relpath = campaign_runner.os.path.relpath
+
+    def platform_relpath(*args):
+        return native_relpath(*args).replace("\\", "/").replace("/", separator)
+
+    monkeypatch.setattr(campaign_runner.os.path, "relpath", platform_relpath)
+    actual = campaign_runner._execution_definition(configured_plan, job, tmp_path)
+    assert actual == expected
+    assert "\\" not in actual.campaign_config
+    assert actual.task_config is not None
+    assert "\\" not in actual.task_config
+
+
+@pytest.mark.parametrize("separator", ["\\", "/"])
+def test_execution_config_accepts_both_reference_styles_without_changing_identity(
+    indexed_plan, separator
+):
+    plan, configuration, selected_id = indexed_plan
+    data = yaml.safe_load(configuration.read_text(encoding="utf-8"))
+    for field in ("campaign_config", "task_config"):
+        if data[field] is not None:
+            data[field] = data[field].replace("\\", "/").replace("/", separator)
+    configuration.write_text(yaml.safe_dump(data), encoding="utf-8")
+    assert resolve_execution_config(plan, configuration).id == selected_id
+    data["runtime_sha256"] = "0" * 64
+    configuration.write_text(yaml.safe_dump(data), encoding="utf-8")
+    with pytest.raises(ValueError, match="Execution configuration"):
+        resolve_execution_config(plan, configuration)
 
 
 def test_execution_names_are_readable_and_preserve_required_dimensions(ready_plan):
