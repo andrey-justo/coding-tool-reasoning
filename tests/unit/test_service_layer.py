@@ -1,5 +1,8 @@
 import json
 
+import pytest
+
+from src.business_logic.intent_planner import IntentPlanner as LegacyIntentPlanner
 from src.errors.TextLLMException import TextLLMException
 from src.models.code_gen_plan import CodeGenPlan
 from src.models.swe_config import SweMcpConfig
@@ -26,12 +29,22 @@ def _build_minimal_kb() -> SweKnowledgeBase:
     return kb
 
 
-def test_intent_planner_falls_back_to_default_steps_on_invalid_llm_json():
+@pytest.fixture(params=[IntentPlanner, LegacyIntentPlanner], ids=["canonical", "legacy"])
+def planner_cls(request):
+    return request.param
+
+
+def test_legacy_intent_planner_is_canonical_class():
+    assert LegacyIntentPlanner is IntentPlanner
+    assert IntentPlanner.__module__ == "src.service.intent_planner"
+
+
+def test_intent_planner_falls_back_to_default_steps_on_invalid_llm_json(planner_cls):
     class FakeLLMClient:
         def chat(self, prompt):
             return "this is not json"
 
-    planner = IntentPlanner(
+    planner = planner_cls(
         kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=SweMcpConfig()
     )
     result = planner.plan(problem_description="Improve maintainability")
@@ -40,7 +53,7 @@ def test_intent_planner_falls_back_to_default_steps_on_invalid_llm_json():
     assert "Understand the current behavior" in result.high_level_steps[0]
 
 
-def test_intent_planner_truncates_llm_steps_to_configured_max_steps():
+def test_intent_planner_truncates_llm_steps_to_configured_max_steps(planner_cls):
     class FakeLLMClient:
         def chat(self, prompt):
             return json.dumps(
@@ -57,7 +70,7 @@ def test_intent_planner_truncates_llm_steps_to_configured_max_steps():
     config = SweMcpConfig()
     config.planning.max_steps = 2
 
-    planner = IntentPlanner(
+    planner = planner_cls(
         kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config
     )
     result = planner.plan(problem_description="Improve maintainability")
@@ -65,7 +78,7 @@ def test_intent_planner_truncates_llm_steps_to_configured_max_steps():
     assert result.high_level_steps == ["Step 1", "Step 2"]
 
 
-def test_intent_planner_can_disable_language_inference():
+def test_intent_planner_can_disable_language_inference(planner_cls):
     class FakeLLMClient:
         def chat(self, prompt):
             return '{"high_level_steps": ["Do work"]}'
@@ -73,7 +86,7 @@ def test_intent_planner_can_disable_language_inference():
     config = SweMcpConfig()
     config.planning.infer_target_language_when_missing = False
 
-    planner = IntentPlanner(
+    planner = planner_cls(
         kb=_build_minimal_kb(), llm_client=FakeLLMClient(), config=config
     )
     result = planner.plan(problem_description="Refactor this Python API")

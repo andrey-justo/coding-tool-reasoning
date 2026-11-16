@@ -113,6 +113,11 @@ include exception tracebacks, including failures in individual code chunks.
 
 ### Evidence-grounded issue planning and NFR discovery
 
+`src.service.intent_planner.IntentPlanner` is the canonical planner for both
+legacy non-issue requests and evidence-grounded issue planning. The deprecated
+`src.business_logic.intent_planner` module re-exports the same class for import
+compatibility; new callers should use the service module.
+
 Issue experiments discover relevant NFRs from the issue's behavioral evidence;
 they do not require NFR labels in the issue or a preset list in the run input.
 Pilot 2 no longer supplies an NFR focus. The first planning request extracts an
