@@ -17,8 +17,9 @@ from src.models.issue_candidate_ranking import (
     IssueCandidateRankingResult,
     PullRequestContext,
 )
-from src.models.swe_context import SweContext
 from src.models.issue_planning import IssueDiscussion
+from src.models.structural_metrics import StructuralMetricInput
+from src.models.swe_context import SweContext
 from src.models.swe_explanation import SweCodeChangeExplanation
 
 LOGGER = logging.getLogger(__name__)
@@ -106,11 +107,13 @@ class SweMcpToolRegistry:
         swe_context: SweContext,
         original_code: str,
         modified_code: str,
+        structural_metrics: StructuralMetricInput | None = None,
     ) -> SweCodeChangeExplanation:
         return self._judge_tool.execute(
             swe_context=swe_context,
             original_code=original_code,
             modified_code=modified_code,
+            structural_metrics=structural_metrics,
         )
 
     def find_best_issue_candidates_for_current_pr(
@@ -215,11 +218,13 @@ class SweMcpToolRegistry:
             swe_context: SweContext,
             original_code: str,
             modified_code: str,
+            structural_metrics: StructuralMetricInput | None = None,
         ) -> SweCodeChangeExplanation:
             return self.judge_swe_code_change(
                 swe_context=swe_context,
                 original_code=original_code,
                 modified_code=modified_code,
+                structural_metrics=structural_metrics,
             )
 
         @mcp.tool()

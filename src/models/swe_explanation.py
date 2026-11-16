@@ -3,6 +3,7 @@ from typing import List, Literal
 from pydantic import BaseModel, Field
 
 from src.models.code_gen_plan import CodeGenPlan
+from src.models.structural_metrics import StructuralComparison
 
 
 class NfrImpact(BaseModel):
@@ -62,6 +63,9 @@ class SweCodeChangeExplanation(BaseModel):
         default_factory=list,
         description="Concrete tests or checks the developer should run to validate the change.",
     )
+    objective_metrics: StructuralComparison | None = None
+    effectiveness_verdict: Literal["improved", "neutral", "regressed", "unavailable"] = "unavailable"
+    objective_metrics_reason: str = "M-1 was not evaluated: no pre-registered analyzer evidence supplied."
     llm_prompt: str | None = Field(
         default=None,
         description="Prompt text sent to the explanation/judge LLM call.",
@@ -70,4 +74,3 @@ class SweCodeChangeExplanation(BaseModel):
         default=None,
         description="Raw text returned by the explanation LLM call before structured parsing.",
     )
-

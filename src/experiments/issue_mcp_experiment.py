@@ -24,20 +24,31 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
+from src.evaluation.metrics.structural import (
+    canonical_hash,
+    compare_structural_metrics,
+    validate_metric_sources,
+)
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
+from src.evaluation.structural_analysis import (
+    StructuralAnalysisConfig,
+    collect_reports,
+    discover_analyzers,
+    metric_input,
+)
+from src.experiments.repair_agent_loop import repair_with_agent
+from src.models.issue_planning import IssueDiscussion
 from src.models.issue_tracking import ParsedIssueUrl
 from src.models.localizer.models import LocalizerResult
 from src.models.swe_config import SweMcpConfig, ToolExecutionConfig
-from src.models.issue_planning import IssueDiscussion
-from src.service.issue_discussion_service import IssueDiscussionService
 from src.report.experiment_report_writer import (
     metrics_rows,
     write_csv_report,
     write_log_report,
     write_markdown_report,
 )
+from src.service.issue_discussion_service import IssueDiscussionService
 from src.service.localizer import RepositoryIssueLocalizer
-from src.experiments.repair_agent_loop import repair_with_agent
 
 logger = logging.getLogger(__name__)
 
@@ -1375,11 +1386,75 @@ def _localize_at_base_ref(
             )
 
 
+def _evaluate_structural_block(
+    config_path: str | None,
+    repo_path: Path,
+    base_ref: str,
+    original: dict[str, str],
+    modified: dict[str, str],
+    log_lines: list[str],
+    registered_config: StructuralAnalysisConfig | None = None,
+) -> dict[str, Any]:
+    if not config_path:
+        return {
+            "status": "not-run",
+            "reason": "No pre-registered structural analysis configuration supplied.",
+        }
+    path = Path(config_path).resolve()
+    config = registered_config or StructuralAnalysisConfig.model_validate_json(path.read_text(encoding="utf-8"))
+    if set(original) != set(modified):
+        raise ValueError("M-1 requires identical before/after target paths.")
+    if any(
+        Path(name).is_absolute() or ".." in Path(name).parts or ":" in name or "\\" in name
+        for name in original
+    ):
+        raise ValueError("M-1 targets must be canonical repository-relative paths.")
+    collected = []
+    discovery = []
+    for stage, sources in (("before", original), ("after", modified)):
+        with _base_ref_worktree(repo_path, base_ref, log_lines) as worktree:
+            if worktree is None:
+                raise RuntimeError("Cannot materialize an isolated source snapshot for M-1.")
+            if stage == "before":
+                discovery = discover_analyzers(worktree)
+            for name, source in sources.items():
+                target = worktree / name
+                if not target.resolve().is_relative_to(worktree.resolve()) or target.is_symlink():
+                    raise ValueError(f"M-1 target resolves outside its isolated source scope: {name}")
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(source, encoding="utf-8", newline="")
+            collected.append(collect_reports(config, stage, worktree, sources, path.parent))
+    inputs = metric_input(config, collected[0], collected[1])
+    validate_metric_sources(inputs, original, modified)
+    comparison = compare_structural_metrics(inputs)
+    log_lines.append(f"M-1 structural effectiveness: {comparison.effectiveness_verdict}.")
+    return {
+        "status": "ok",
+        "discovery": discovery,
+        "registration_sha256": canonical_hash(config.model_dump(mode="json")),
+        "selection": [
+            analyzer.model_dump(include={
+                "instrument", "kind", "enabled", "expected_version",
+                "ruleset_id", "ruleset_version", "timeout_seconds",
+            })
+            for analyzer in config.analyzers
+        ],
+        "comparison": comparison.model_dump(mode="json"),
+    }
+
+
 def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
     log_lines: list[str] = []
     run_started = datetime.now(timezone.utc).isoformat()
 
     repo_path = Path(args.repo_path).resolve()
+    structural_config_path = getattr(args, "structural_analysis_config", None)
+    registered_structural_config = (
+        StructuralAnalysisConfig.model_validate_json(
+            Path(structural_config_path).read_text(encoding="utf-8")
+        )
+        if structural_config_path else None
+    )
     parsed_issue = _parse_issue_url(args.issue_url)
 
     token = args.github_token or os.getenv("GITHUB_TOKEN")
@@ -1658,6 +1733,22 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
 
     evaluator = ExperimentMetricsEvaluator()
 
+    structural = _evaluate_structural_block(
+        structural_config_path,
+        repo_path, base_ref,
+        {path: original_code_by_file[path] for path in target_files},
+        {path: generated_code_by_file[path] for path in target_files},
+        log_lines,
+        registered_config=registered_structural_config,
+    )
+    if structural["status"] == "ok":
+        comparison = structural["comparison"]
+        mcp_payload["judgement"].update(
+            objective_metrics=comparison,
+            effectiveness_verdict=comparison["effectiveness_verdict"],
+            objective_metrics_reason=comparison["rationale"],
+        )
+
     solid_delta_payload: dict[str, Any] | None = None
     if args.sonar_url and args.sonar_token and args.sonar_project_key:
         try:
@@ -1911,6 +2002,7 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         "metrics": {
             "design_quality": {
                 "solid_violation_delta": solid_delta_payload,
+                "structural": structural,
             },
             "original": original_metrics,
             "modified": modified_metrics,
@@ -1928,6 +2020,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run generic MCP issue experiment")
     parser.add_argument("--issue-url", required=True, help="GitHub issue URL")
     parser.add_argument("--repo-path", required=True, help="Local repository path")
+    parser.add_argument(
+        "--structural-analysis-config",
+        help="Pre-registered JSON protocol and analyzer configuration for M-1. Omission explicitly records not-run.",
+    )
     parser.add_argument(
         "--candidate-files",
         default="",
