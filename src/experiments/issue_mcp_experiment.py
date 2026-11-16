@@ -27,6 +27,7 @@ from src.evaluation.experiment_metrics import ExperimentMetricsEvaluator
 from src.evaluation.metrics.structural import (
     canonical_hash,
     compare_structural_metrics,
+    source_hash,
     validate_metric_sources,
 )
 from src.evaluation.sonarqube_client import SonarIssueQuery, SonarQubeClient
@@ -1480,6 +1481,12 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
         cutoff=getattr(args, "issue_context_cutoff", None),
     )
     issue_prompt = IssueDiscussionService.render(discussion)
+    task_prompt = None
+    if getattr(args, "task_prompt_file", None):
+        task_prompt = Path(args.task_prompt_file).read_bytes().decode("utf-8")
+        if not task_prompt.strip():
+            raise ValueError("An explicit task prompt must not be empty.")
+        issue_prompt = f"Task wording:\n{task_prompt}\n\nIssue evidence:\n{issue_prompt}"
     log_lines.extend(discussion.notes)
     logger.info(
         "Issue evidence selected: %s sources, %s omitted comments, %s omitted blocks",
@@ -1908,6 +1915,11 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "apply_outcome_counts": _count_apply_outcomes(apply_results),
         },
         "run_config": {
+            "swe_runtime": {
+                "sha256": canonical_hash(config.model_dump(mode="json")),
+                "judge_strictness": config.judging.strictness,
+                "task_prompt_sha256": source_hash(task_prompt) if task_prompt is not None else None,
+            },
             "auto_repair": {
                 "controller": "llm",
                 "mode": repair_execution.repair_mode,
@@ -1924,9 +1936,10 @@ def _run_experiment(args: argparse.Namespace) -> dict[str, Any]:
             "llm": {
                 "model": args.model,
                 "endpoint": args.model_endpoint,
-                "temperature": args.temperature,
-                "seed": args.seed,
-                "notes": "Model and endpoint are passed through env vars to MCP tools.",
+                "temperature": None if getattr(args, "sampling_controls_unavailable", False) else args.temperature,
+                "seed": None if getattr(args, "sampling_controls_unavailable", False) else args.seed,
+                "sampling_control_status": "unsupported" if getattr(args, "sampling_controls_unavailable", False) else "requested-not-independently-verified",
+                "notes": "Model and endpoint are passed through env vars to MCP tools. Unsupported sampling controls are not experimental controls.",
             },
             "mcp_server": {
                 "command": mcp_payload["server"]["command"],
@@ -2020,6 +2033,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run generic MCP issue experiment")
     parser.add_argument("--issue-url", required=True, help="GitHub issue URL")
     parser.add_argument("--repo-path", required=True, help="Local repository path")
+    parser.add_argument("--swe-config", help="Explicit SWE runtime snapshot shared with the MCP subprocess.")
+    parser.add_argument("--task-prompt-file", help="Human-authored task wording added to the same issue evidence.")
+    parser.add_argument("--sampling-controls-unavailable", action="store_true", help="Report seed/temperature as unsupported, not controlled experimental parameters.")
     parser.add_argument(
         "--structural-analysis-config",
         help="Pre-registered JSON protocol and analyzer configuration for M-1. Omission explicitly records not-run.",
@@ -2224,6 +2240,11 @@ def main(argv: list[str] | None = None) -> int:
     load_dotenv(workspace_root / ".env")
     parser = _build_parser()
     args = parser.parse_args(argv)
+    if args.swe_config:
+        runtime_path = Path(args.swe_config).resolve()
+        if not runtime_path.is_file():
+            raise FileNotFoundError(f"Explicit SWE configuration is missing: {runtime_path}")
+        os.environ["SWE_MCP_CONFIG_PATH"] = str(runtime_path)
 
     execution_id = args.execution_id or _default_execution_id()
     args.execution_id = execution_id

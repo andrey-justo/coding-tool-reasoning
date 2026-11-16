@@ -18,6 +18,7 @@ from src.evaluation.reproducibility_experiment import (
     parse_reproducibility_args,
     run_reproducibility_from_args,
 )
+from src.experiments.campaign_runner import main as run_study_campaign
 from src.experiments.issue_mcp_experiment import main as run_issue_experiment
 from src.experiments.repair_replay import run_repair_replay
 from src.llm_client.copilot_sdk_client import CopilotSDKClient
@@ -93,6 +94,8 @@ def _build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Path to YAML config file.",
     )
+    study_parser = subparsers.add_parser("study", help="Plan, inspect and explicitly execute study campaigns.")
+    study_parser.add_argument("study_args", nargs=argparse.REMAINDER)
 
     replay_parser = subparsers.add_parser(
         "repair-replay", help="Probe repairs against a frozen experiment candidate."
@@ -194,6 +197,11 @@ def _dispatch() -> None:
 
     if args.command == "run-config":
         _run_from_yaml(args.config)
+        return
+    if args.command == "study":
+        result = run_study_campaign(args.study_args)
+        if result:
+            raise SystemExit(result)
         return
 
     if args.command == "repair-replay":

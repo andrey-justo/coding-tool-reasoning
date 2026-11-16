@@ -1,0 +1,24 @@
+schema_version: 1
+campaign_config: ..\campaign.yaml
+task_config: null
+job_id: exploratory-v1.strictness.main.set03-task10.r01.original.low
+study: strictness
+cohort: main
+slot: set03-task10
+repetition: 1
+variant: original
+block_key: strictness.main.set03-task10.r01.original
+subject_id: null
+issue_url: null
+condition: low
+worker: mcp_supervised
+strictness: 0.2
+runtime_sha256: 86b4a2393d6a4f89620024ddfa5cbbdfa6ad393d861a3a343d9ccc3c06399717
+status: blocked
+blockers:
+- Subject is unassigned or its registry row is invalid.
+- AI-tool use approval has not been recorded.
+- Missing valid issue URL.
+- Missing pinned 40-character base commit.
+- Local repository path is missing or unavailable.
+- Missing pre-registered structural analyzer configuration.

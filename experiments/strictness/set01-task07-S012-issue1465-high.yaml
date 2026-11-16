@@ -1,0 +1,22 @@
+schema_version: 1
+campaign_config: ..\campaign.yaml
+task_config: ..\configured\S012-1465.yaml
+job_id: exploratory-v1.strictness.main.set01-task07.r01.original.high
+study: strictness
+cohort: main
+slot: set01-task07
+repetition: 1
+variant: original
+block_key: strictness.main.set01-task07.r01.original
+subject_id: S012
+issue_url: https://github.com/autofac/Autofac/issues/1465
+condition: high
+worker: mcp_supervised
+strictness: 0.8
+runtime_sha256: 5b48a066d1a372ab87301c32ba912b90af43958a7f423acac20fc804dda75b59
+status: blocked
+blockers:
+- AI-tool use approval has not been recorded.
+- Missing pinned 40-character base commit.
+- Local repository path is missing or unavailable.
+- Missing pre-registered structural analyzer configuration.
